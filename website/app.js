@@ -141,6 +141,16 @@ function composeSheet(s){
   return out;
 }
 
+// Scale the preview card down (CSS zoom) so it never overflows the stage
+// horizontally — keeps the sheet readable and the log fully visible.
+function fitCardToStage(card,stage){
+  requestAnimationFrame(()=>{
+    const avail=stage.clientWidth-40;
+    const w=card.scrollWidth;
+    card.style.zoom=(w>avail&&avail>0)?(avail/w).toFixed(3):'1';
+  });
+}
+
 // Wrap a canvas with an on-screen mm/inch ruler (x + y) and a vernier corner.
 function wrapWithRulers(canvas,dpi){
   const band=44;
@@ -250,6 +260,7 @@ function render(){
     const card=document.createElement('div');card.className='card';
     card.appendChild(wrapWithRulers(canvas,s.dpi));
     stage.appendChild(card);
+    fitCardToStage(card,stage); // shrink the sheet to fit — no horizontal scroll
     if(isSerial(s)&&s.scount>120){const note=document.createElement('div');note.className='cap';
       note.style.color='#888';note.style.marginTop='8px';
       note.textContent=`Showing first 120 of ${s.scount}`;stage.appendChild(note);}
