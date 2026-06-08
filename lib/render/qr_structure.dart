@@ -1,3 +1,9 @@
+// QSeq — Sustainable Identity on Every Thing
+// Copyright (c) 2026 Meerv Inc.  Required Notice: https://qseq.app
+// Licensed under the PolyForm Noncommercial License 1.0.0 — noncommercial use
+// only; reuse requires attribution to Meerv Inc. See LICENSE for terms.
+// https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 /// Computes which QR modules are *function patterns* — finder patterns and
 /// their separators, timing patterns, alignment patterns, format/version
 /// information and the dark module — for a given version.
