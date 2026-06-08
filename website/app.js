@@ -179,6 +179,7 @@ function wrapWithRulers(canvas,dpi){
   grid.style.display='grid';
   grid.style.gridTemplateColumns=`${canvas.width}px ${band}px`;
   grid.style.gridTemplateRows=`${canvas.height}px ${band}px`;
+  grid.style.gap='16px'; // keep the rulers clear of the code
   grid.style.background='#fff';grid.style.padding='8px';grid.style.borderRadius='8px';
   const c1=document.createElement('div');c1.appendChild(canvas);
   grid.appendChild(c1);
