@@ -26,6 +26,18 @@ const List<(String, String)> _register = [
   ('Print-true rulers', 'mm + inch scales with vernier ticks on every sheet, at exact DPI.'),
 ];
 
+/// End-user Release Notes — an excerpt of CHANGELOG.md relevant to users.
+const List<String> _releaseNotes = [
+  'Generate QR Code, Data Matrix and 1D barcodes (GS1-128, Code 128, Code 39, EAN-13, UPC-A).',
+  'Encode SGTINs as GS1 element strings, EPC Tag URIs, or GS1 Digital Links.',
+  'Choose your Digital Link resolver — GS1 (id.gs1.org) or QDat.io (tapdpp.qdat.io).',
+  'Encode NATO Stock Numbers.',
+  'Build serialized sheets of sequentially-numbered codes, with a full serial log of every encoded link.',
+  'See the exact printed size live, with mm/inch/vernier rulers on screen and in exports.',
+  'Add a centre logo without breaking the code (structure-aware dead-space).',
+  'Export PNG (exact DPI), SVG and PDF; save and open designs as JSON projects.',
+];
+
 /// Shows the About sheet: how QSeq was built and why it is open source.
 Future<void> showAboutSheet(BuildContext context) async {
   await showMacosSheet(
@@ -84,6 +96,21 @@ Future<void> showAboutSheet(BuildContext context) async {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      h('Release Notes — v$kAppVersion ($kBuildDate)'),
+                      for (final n in _releaseNotes)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 5),
+                          child: Text.rich(TextSpan(children: [
+                            TextSpan(text: '•  ', style: t.body),
+                            TextSpan(text: n, style: t.body),
+                          ])),
+                        ),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4, bottom: 4),
+                        child: Text('Full history in CHANGELOG.md.',
+                            style: t.caption1.copyWith(
+                                color: MacosColors.systemGrayColor)),
+                      ),
                       h('Why “QSeq”?'),
                       p('Seq is sequence — QSeq mints ordered, serialized '
                           'identities. The Q is chosen deliberately; every '

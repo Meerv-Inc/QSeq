@@ -8,6 +8,40 @@ feature is a **live physical-size calculator**: the printed outer perimeter is
 shown as a function of the centre logo dead-space, the byte count, the printing
 resolution (DPI) and the error-correction level.
 
+Download the macOS app and try the browser version at **[qseq.app](https://qseq.app)**.
+
+## Purpose
+
+QSeq exists to make it trivial to **mint correct, durable, standards-based
+identities for physical things** — and to do it in a way that anyone can use,
+audit and build on.
+
+Every object in a modern supply chain needs an identity that a scanner can read
+and a server can resolve: a **GTIN**, a serialized **SGTIN**, a web-resolvable
+**GS1 Digital Link**, or a **NATO Stock Number**. Getting that right is fiddly —
+the data must follow GS1/EPC rules, the symbol must hold the bytes at the chosen
+error-correction level, a logo must not destroy the code, and the print must come
+out at the *exact* physical size on the label. Most tools get one or two of
+these right. QSeq is built to get **all of them** right at once:
+
+- **Correct by construction** — SGTIN, EPC Tag URI and GS1 Digital Link encoders
+  that follow the standards, including serialization (GTIN → SGTIN via AI 21).
+- **Print-true** — a size calculator and mm/inch/vernier rulers so what you
+  design is exactly what prints.
+- **Damage-tolerant** — a structure-aware logo dead-space that respects the
+  symbol's error-correction budget and never destroys its finder patterns.
+- **Serial-ready** — generate a whole sheet of sequentially-numbered codes with a
+  full log of every encoded link.
+
+QSeq is released as **source-available** (noncommercial) in service of
+**Sustainable Identity on Every Thing (SIoT)**: a future where every physical
+object carries an open, web-resolvable, standards-based identity that anyone can
+read, verify and build upon — without proprietary lock-in. Durable, interoperable
+identity is the foundation of the circular economy (reuse, repair, recall,
+provenance, end-of-life), and the tools that *mint* those identities should stay
+a public good. It is written in Flutter so a **single codebase** serves macOS,
+Windows (forthcoming) and the web identically.
+
 ## Features
 
 - **Symbologies:** QR Code, Data Matrix, GS1-128, Code 128, Code 39, EAN-13,

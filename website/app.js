@@ -342,38 +342,80 @@ function pdfCaption(doc,prefix,bold,cx,y,fs){
   doc.setFont('courier','normal');if(prefix)doc.text(prefix,tx,y);
   doc.setFont('courier','bold');if(bold)doc.text(bold,tx+pw,y);
 }
+// Vector mm/inch + vernier rulers for the PDF, drawn in a reserved gutter so
+// they never overlay the codes. Band 13 mm, with a 3 mm gap to content.
+const RBAND=13, RGAP=3;
+function pdfHRuler(doc,x0,yTop,lenMm){
+  doc.setDrawColor(17);doc.setTextColor(17);
+  for(let i=0,n=Math.floor(lenMm);i<=n;i++){const x=x0+i,maj=i%10===0,med=i%5===0,L=maj?3.4:(med?2.1:1.2);
+    doc.setLineWidth(maj?0.25:0.1);doc.line(x,yTop,x,yTop+L);
+    if(maj&&i){doc.setFontSize(5);doc.text(String(i),x+0.4,yTop+4.4);}}
+  doc.setFontSize(5);doc.text('mm',x0+0.3,yTop+3.2);
+  const sN=Math.floor(lenMm/25.4*16);
+  for(let j=0;j<=sN;j++){const x=x0+(j/16)*25.4,maj=j%16===0,half=j%8===0,q=j%4===0,L=maj?3.4:(half?2.4:(q?1.7:1));
+    doc.setLineWidth(maj?0.25:0.1);doc.line(x,yTop+RBAND-L,x,yTop+RBAND);
+    if(maj&&j){doc.setFontSize(5);doc.text((j/16)+'"',x+0.4,yTop+RBAND-1.4);}}
+}
+function pdfVRuler(doc,xLeft,y0,lenMm){
+  doc.setDrawColor(17);doc.setTextColor(17);
+  for(let i=0,n=Math.floor(lenMm);i<=n;i++){const y=y0+i,maj=i%10===0,med=i%5===0,L=maj?3.4:(med?2.1:1.2);
+    doc.setLineWidth(maj?0.25:0.1);doc.line(xLeft,y,xLeft+L,y);
+    if(maj&&i){doc.setFontSize(5);doc.text(String(i),xLeft+0.4,y+1.7);}}
+  const sN=Math.floor(lenMm/25.4*16);
+  for(let j=0;j<=sN;j++){const y=y0+(j/16)*25.4,maj=j%16===0,half=j%8===0,q=j%4===0,L=maj?3.4:(half?2.4:(q?1.7:1));
+    doc.setLineWidth(maj?0.25:0.1);doc.line(xLeft+RBAND-L,y,xLeft+RBAND,y);
+    if(maj&&j){doc.setFontSize(5);doc.text((j/16)+'"',xLeft+RBAND-3.6,y+1.7);}}
+}
+function pdfVernier(doc,x0,y0){
+  doc.setDrawColor(17);doc.setTextColor(17);doc.setLineWidth(0.22);doc.line(x0,y0,x0+9,y0);
+  for(let k=0;k<=10;k++){doc.setLineWidth(k%5===0?0.25:0.1);doc.line(x0+k*0.9,y0,x0+k*0.9,y0+2.2);}
+  doc.setFontSize(4.4);doc.text('vernier 0.1mm',x0,y0+4.4);
+}
+
 function downloadPdf(){
   const s=state();
   const J=window.jspdf&&window.jspdf.jsPDF;
   if(!J){$('err').textContent='PDF library still loading — try again.';return;}
-  const mmpx=25.4/s.dpi;
+  const mmpx=25.4/s.dpi,gutter=RBAND+RGAP;
   try{
     if(isSerial(s)){
       const n=Math.min(s.scount,2000);
       const doc=new J({unit:'mm',format:'a4'});
-      const pageW=210,pageH=297,m=12,gap=3;
+      const pageW=210,pageH=297,m=8,gap=3;
+      const contentW=pageW-m-(m+gutter),contentH=pageH-m-(m+gutter);
       const probe=makeCanvas(s,encode(s,s.sprefix+String(s.sstart).padStart(s.spad,'0')));
       const cellW=probe.width*mmpx;
-      const cols=Math.max(1,Math.floor((pageW-2*m+gap)/(cellW+gap)));
+      const cols=Math.max(1,Math.floor((contentW+gap)/(cellW+gap)));
       let col=0,x=m,y=m,rowH=0;
       for(let i=0;i<n;i++){
         const counter=String(s.sstart+i).padStart(s.spad,'0');
         const cv=makeCanvas(s,encode(s,s.sprefix+counter));
         const wmm=cv.width*mmpx,hmm=cv.height*mmpx;
-        if(y+hmm+5>pageH-m){doc.addPage();x=m;y=m;col=0;rowH=0;}
+        if(y+hmm+5>m+contentH){doc.addPage();x=m;y=m;col=0;rowH=0;}
         doc.addImage(cv.toDataURL('image/png'),'PNG',x,y,wmm,hmm);
         pdfCaption(doc,s.sprefix,counter,x+wmm/2,y+hmm+3.5,7);
         rowH=Math.max(rowH,hmm+5);
         col++;if(col>=cols){col=0;x=m;y+=rowH+gap;rowH=0;}else{x+=cellW+gap;}
+      }
+      // rulers in the reserved bottom + right gutters of every page
+      const pages=doc.getNumberOfPages();
+      for(let p=1;p<=pages;p++){doc.setPage(p);
+        pdfHRuler(doc,m,m+contentH+RGAP,contentW);
+        pdfVRuler(doc,m+contentW+RGAP,m,contentH);
+        pdfVernier(doc,m+contentW+RGAP,m+contentH+RGAP);
       }
       doc.save('qseq-sheet.pdf');
     }else{
       const cv=makeCanvas(s,encode(s,null));
       const wmm=cv.width*mmpx,hmm=cv.height*mmpx;
       const cap=captionParts(s);const capH=(cap[0]||cap[1])?5:0;
-      const doc=new J({unit:'mm',format:[Math.max(wmm,10),hmm+capH]});
+      const cH=hmm+capH;
+      const doc=new J({unit:'mm',format:[Math.max(wmm,10)+RGAP+RBAND,cH+RGAP+RBAND]});
       doc.addImage(cv.toDataURL('image/png'),'PNG',0,0,wmm,hmm);
       if(capH)pdfCaption(doc,cap[0],cap[1],wmm/2,hmm+3.5,8);
+      pdfHRuler(doc,0,cH+RGAP,wmm);
+      pdfVRuler(doc,wmm+RGAP,0,cH);
+      pdfVernier(doc,wmm+RGAP,cH+RGAP);
       doc.save('qseq-code.pdf');
     }
   }catch(e){$('err').textContent=String(e);}
