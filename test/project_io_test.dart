@@ -1,0 +1,54 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:qr_studio/models/data_source.dart';
+import 'package:qr_studio/models/symbology.dart';
+import 'package:qr_studio/state/app_controller.dart';
+import 'package:qr_studio/state/project_io.dart';
+
+void main() {
+  test('project JSON round-trips all parameters', () {
+    const s = AppSettings(
+      mode: AppMode.comboSerial,
+      oneDSymbology: Symbology.code128,
+      twoDSymbology: Symbology.dataMatrix,
+      ecLevel: QrEcLevel.high,
+      dpi: 600,
+      xDimensionMm: 0.33,
+      logoSideMm: 6,
+      logoEcBudget: 0.4,
+      batchPrefix: 'LOT-',
+      batchStart: 100,
+      batchCount: 50,
+      batchPadding: 6,
+      data: DataSourceInput(
+        kind: DataSourceKind.sgtin,
+        gtin: '80614141123458',
+        serial: 'X1',
+      ),
+    );
+
+    final json = ProjectIo.encode(s);
+    // Well-formatted (indented) and human-readable.
+    expect(json, contains('\n  "workspace"'));
+    expect(json, contains('"mode": "comboSerial"'));
+
+    final back = ProjectIo.decode(json);
+    expect(back.mode, AppMode.comboSerial);
+    expect(back.oneDSymbology, Symbology.code128);
+    expect(back.twoDSymbology, Symbology.dataMatrix);
+    expect(back.ecLevel, QrEcLevel.high);
+    expect(back.dpi, 600);
+    expect(back.logoEcBudget, 0.4);
+    expect(back.batchPrefix, 'LOT-');
+    expect(back.batchCount, 50);
+    expect(back.data.gtin, '80614141123458');
+  });
+
+  test('decode tolerates a partial, externally-edited file', () {
+    final s = ProjectIo.decode('{"workspace":{"mode":"oneD"},'
+        '"serialization":{"count":7}}');
+    expect(s.mode, AppMode.oneD);
+    expect(s.batchCount, 7);
+    // Missing fields fall back to defaults.
+    expect(s.dpi, const AppSettings().dpi);
+  });
+}
