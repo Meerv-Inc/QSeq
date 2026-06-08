@@ -42,48 +42,48 @@ class RasterRenderer {
   /// Composes [symbol] with a caption band underneath, returning a taller image.
   static Future<ui.Image> _addCaption(
       ui.Image symbol, LabelCaption cap, double dpi) async {
-    final bandH = (Dpi.mmToInch(4.5) * dpi).round();
+    // Full human-readable interpretation, wrapped to the symbol width and set
+    // off below the code with a clear gap.
     final w = symbol.width;
-    final h = symbol.height + bandH;
+    final sidePad = Dpi.mmToInch(1.5) * dpi;
+    final gap = (Dpi.mmToInch(2.5) * dpi).round();
+    final bottomPad = (Dpi.mmToInch(1.5) * dpi).round();
+    final fontSize = Dpi.mmToInch(2.2) * dpi; // ~2.2 mm, readable
+    const black = Color(0xFF000000);
+
+    final tp = TextPainter(
+      text: TextSpan(children: [
+        if (cap.prefix.isNotEmpty)
+          TextSpan(
+              text: cap.prefix,
+              style: TextStyle(
+                  color: black,
+                  fontSize: fontSize,
+                  fontFamily: 'monospace',
+                  height: 1.3)),
+        if (cap.bold.isNotEmpty)
+          TextSpan(
+              text: cap.bold,
+              style: TextStyle(
+                  color: black,
+                  fontSize: fontSize,
+                  fontFamily: 'monospace',
+                  fontWeight: FontWeight.bold,
+                  height: 1.3)),
+      ]),
+      textAlign: TextAlign.center,
+      textDirection: TextDirection.ltr,
+    )..layout(maxWidth: w - 2 * sidePad);
+
+    final textH = tp.height.ceil();
+    final h = symbol.height + gap + textH + bottomPad;
 
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
     canvas.drawRect(Rect.fromLTWH(0, 0, w.toDouble(), h.toDouble()),
         Paint()..color = const Color(0xFFFFFFFF));
     canvas.drawImage(symbol, Offset.zero, Paint());
-
-    var fontSize = bandH * 0.6;
-    TextPainter build(double size) => TextPainter(
-          text: TextSpan(children: [
-            if (cap.prefix.isNotEmpty)
-              TextSpan(
-                  text: cap.prefix,
-                  style: TextStyle(
-                      color: const Color(0xFF000000),
-                      fontSize: size,
-                      fontFamily: 'monospace')),
-            if (cap.bold.isNotEmpty)
-              TextSpan(
-                  text: cap.bold,
-                  style: TextStyle(
-                      color: const Color(0xFF000000),
-                      fontSize: size,
-                      fontFamily: 'monospace',
-                      fontWeight: FontWeight.bold)),
-          ]),
-          textAlign: TextAlign.center,
-          textDirection: TextDirection.ltr,
-        )..layout();
-    var tp = build(fontSize);
-    final maxW = w * 0.96;
-    if (tp.width > maxW) {
-      fontSize *= maxW / tp.width;
-      tp = build(fontSize);
-    }
-    tp.paint(
-      canvas,
-      Offset((w - tp.width) / 2, symbol.height + (bandH - tp.height) / 2),
-    );
+    tp.paint(canvas, Offset((w - tp.width) / 2, symbol.height + gap.toDouble()));
 
     final picture = recorder.endRecording();
     return picture.toImage(w, h);

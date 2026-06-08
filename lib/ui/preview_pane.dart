@@ -11,6 +11,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:macos_ui/macos_ui.dart';
 
+import '../models/caption.dart';
 import '../models/combined_label.dart';
 import '../models/encode_config.dart';
 import '../models/size_result.dart';
@@ -67,7 +68,7 @@ class PreviewPane extends ConsumerWidget {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (batch.hasTwoD && it.twoDData != null)
+                      if (batch.hasTwoD && it.twoDData != null) ...[
                         bw.BarcodeWidget(
                           barcode: batch.twoDSample!.symbology.supportsEcLevel
                               ? BarcodeFactory.build(
@@ -81,8 +82,15 @@ class PreviewPane extends ConsumerWidget {
                           drawText: false,
                           errorBuilder: (c, e) => _inlineError(e),
                         ),
+                        const SizedBox(height: 6),
+                        _hri(
+                            context,
+                            LabelCaption.hri(it.twoDData!,
+                                boldTail: it.counter),
+                            cellW),
+                      ],
                       if (batch.hasOneD && it.oneDData != null) ...[
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 12),
                         bw.BarcodeWidget(
                           barcode:
                               BarcodeFactory.build(batch.oneDSample!.symbology),
@@ -92,9 +100,13 @@ class PreviewPane extends ConsumerWidget {
                           drawText: false,
                           errorBuilder: (c, e) => _inlineError(e),
                         ),
+                        const SizedBox(height: 6),
+                        _hri(
+                            context,
+                            LabelCaption.hri(it.oneDData!,
+                                boldTail: it.counter),
+                            cellW),
                       ],
-                      const SizedBox(height: 3),
-                      _caption(context, it.prefix, it.counter),
                     ],
                   ),
                 ),
@@ -122,23 +134,29 @@ class PreviewPane extends ConsumerWidget {
     );
   }
 
-  Widget _caption(BuildContext context, String prefix, String counter) {
+  /// Full human-readable interpretation under a code — the entire encoded
+  /// string, wrapped, with the incrementing serial in bold.
+  Widget _hri(BuildContext context, LabelCaption cap, double maxWidth) {
     final base = MacosTheme.of(context)
         .typography
         .caption2
-        .copyWith(fontFamily: 'monospace');
-    return Text.rich(
-      TextSpan(children: [
-        TextSpan(text: prefix, style: base),
-        TextSpan(
-            text: counter,
-            style: base.copyWith(fontWeight: FontWeight.bold)),
-      ]),
-      textAlign: TextAlign.center,
-      maxLines: 2,
-      overflow: TextOverflow.ellipsis,
+        .copyWith(fontFamily: 'monospace', height: 1.3);
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: maxWidth),
+      child: Text.rich(
+        TextSpan(children: [
+          TextSpan(text: cap.prefix, style: base),
+          if (cap.bold.isNotEmpty)
+            TextSpan(
+                text: cap.bold,
+                style: base.copyWith(fontWeight: FontWeight.bold)),
+        ]),
+        textAlign: TextAlign.center,
+        softWrap: true,
+      ),
     );
   }
+
 
   Widget _single(BuildContext context, WidgetRef ref, AppSettings s) {
     final resolved = s.resolved;
@@ -149,7 +167,6 @@ class PreviewPane extends ConsumerWidget {
     final size = ref.watch(singleSizeProvider);
     final frac =
         (cfg.logoSideMm > 0 && size != null) ? _fracFor(cfg.logoSideMm, size) : 0.0;
-    final cap = s.data.caption();
     final is2D = cfg.symbology.is2D;
     final dispW = is2D ? 240.0 : 320.0;
     final dispH = is2D ? 240.0 : 120.0;
@@ -158,6 +175,7 @@ class PreviewPane extends ConsumerWidget {
     final ppmH = wmm > 0 ? dispW / wmm : 0.0;
     final ppmV = hmm > 0 ? dispH / hmm : 0.0;
     final symbol = _symbol(cfg, logoFraction: frac, logoPath: s.logoImagePath);
+    final hri = LabelCaption.hri(cfg.data);
 
     return _card(
       child: Column(
@@ -176,9 +194,9 @@ class PreviewPane extends ConsumerWidget {
               padding: const EdgeInsets.only(top: 12),
               child: RulerStrip(pxPerMm: ppmH, lengthPx: dispW),
             ),
-          if (cap.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            _caption(context, cap.prefix, cap.bold),
+          if (hri.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            _hri(context, hri, dispW + 40),
           ],
         ],
       ),
@@ -190,15 +208,28 @@ class PreviewPane extends ConsumerWidget {
     if (label == null) {
       return _message(context, 'Enter a valid GTIN and serial');
     }
-    final twoD = _symbol(label.twoD,
-        logoFraction: _fracFor(s.logoSideMm, label.twoDSize),
-        logoPath: s.logoImagePath);
-    final oneD = _symbol(label.oneD);
-    final gap = SizedBox(width: 16, height: 16);
+    Widget block(EncodeConfig cfg, Widget symbol) => Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            symbol,
+            const SizedBox(height: 6),
+            _hri(context, LabelCaption.hri(cfg.data), 260),
+          ],
+        );
+    final twoD = block(
+        label.twoD,
+        _symbol(label.twoD,
+            logoFraction: _fracFor(s.logoSideMm, label.twoDSize),
+            logoPath: s.logoImagePath));
+    final oneD = block(label.oneD, _symbol(label.oneD));
+    const gap = SizedBox(width: 20, height: 18);
     return _card(
       child: label.arrangement == LabelArrangement.stacked
           ? Column(mainAxisSize: MainAxisSize.min, children: [twoD, gap, oneD])
-          : Row(mainAxisSize: MainAxisSize.min, children: [twoD, gap, oneD]),
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [twoD, gap, oneD]),
     );
   }
 

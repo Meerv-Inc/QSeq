@@ -63,26 +63,32 @@ class SvgExporter {
     return svg;
   }
 
-  /// Wraps the barcode [inner] SVG (W×[h]) in an outer SVG with a caption band.
+  /// Wraps the barcode [inner] SVG (W×[h]) in an outer SVG with the full HRI
+  /// caption below it, broken onto as many lines as needed.
   static String _wrapWithCaption(
       String inner, double width, double h, LabelCaption cap) {
-    final band = (h * 0.16).clamp(14.0, 60.0);
+    final full = cap.text;
+    final fontSize = (width * 0.03).clamp(9.0, 20.0);
+    final charW = fontSize * 0.62;
+    final cpl = ((width * 0.96) / charW).floor().clamp(8, 99999);
+    final lines = <String>[];
+    for (var i = 0; i < full.length; i += cpl) {
+      lines.add(full.substring(i, (i + cpl).clamp(0, full.length)));
+    }
+    final lineH = fontSize * 1.4;
+    final gap = fontSize * 0.8;
+    final band = gap + lines.length * lineH + fontSize * 0.5;
     final total = h + band;
-    final fontSize = band * 0.62;
-    final y = h + band * 0.7;
-    final prefix = _esc(cap.prefix);
-    final bold = _esc(cap.bold);
-    final tspans = [
-      if (prefix.isNotEmpty) '<tspan>$prefix</tspan>',
-      if (bold.isNotEmpty) '<tspan font-weight="bold">$bold</tspan>',
-    ].join();
+    final texts = StringBuffer();
+    for (var k = 0; k < lines.length; k++) {
+      final y = h + gap + (k + 1) * lineH - lineH * 0.25;
+      texts.write('<text x="${width / 2}" y="$y" text-anchor="middle" '
+          'font-family="monospace" font-size="$fontSize" fill="#000000">'
+          '${_esc(lines[k])}</text>');
+    }
     return '<svg xmlns="http://www.w3.org/2000/svg" '
         'width="$width" height="$total" viewBox="0 0 $width $total">'
-        '$inner'
-        '<text x="${width / 2}" y="$y" text-anchor="middle" '
-        'font-family="monospace" font-size="$fontSize" fill="#000000">'
-        '$tspans</text>'
-        '</svg>';
+        '$inner$texts</svg>';
   }
 
   static String _esc(String s) => s
