@@ -23,7 +23,24 @@ class HomePage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return MacosWindow(
+    return PlatformMenuBar(
+      menus: [
+        PlatformMenu(label: 'QSeq', menus: [
+          PlatformMenuItem(
+            label: 'About QSeq',
+            onSelected: () => showAboutSheet(context),
+          ),
+          const PlatformProvidedMenuItem(
+              type: PlatformProvidedMenuItemType.servicesSubmenu),
+          const PlatformProvidedMenuItem(
+              type: PlatformProvidedMenuItemType.hide),
+          const PlatformProvidedMenuItem(
+              type: PlatformProvidedMenuItemType.hideOtherApplications),
+          const PlatformProvidedMenuItem(
+              type: PlatformProvidedMenuItemType.quit),
+        ]),
+      ],
+      child: MacosWindow(
       sidebar: Sidebar(
         minWidth: 320,
         maxWidth: 420,
@@ -102,6 +119,7 @@ class HomePage extends ConsumerWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }

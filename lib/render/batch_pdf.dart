@@ -12,6 +12,7 @@ import 'package:pdf/widgets.dart' as pw;
 import '../models/batch.dart';
 import 'barcode_factory.dart';
 import 'pdf_ruler.dart';
+import 'ruler.dart';
 
 /// Renders a [Batch] as a multi-page PDF: a grid of sequentially-numbered
 /// cells (a 2D code over a 1D code, either, or both), each captioned with its
@@ -23,13 +24,18 @@ class BatchPdf {
     final doc = pw.Document();
     final fmt =
         batch.page == PageFormat.a4 ? PdfPageFormat.a4 : PdfPageFormat.letter;
-    final margin = batch.marginMm * PdfPageFormat.mm;
     final cols = batch.columns;
     final dpi = (batch.twoDSample ?? batch.oneDSample)!.dpi;
 
-    // Page-edge measurement rulers (x and y) drawn on every page.
-    final contentWmm = batch.page.widthMm - 2 * batch.marginMm;
-    final contentHmm = batch.page.heightMm - 2 * batch.marginMm;
+    // Reserve a gutter on the right + bottom for the rulers so they never
+    // overlay the codes (3 mm gap between content and ruler). Total reserved
+    // width stays 2*marginMm so the grid (and batch.columns) still fits.
+    const mm = PdfPageFormat.mm;
+    final gutterMm = Ruler.bandMm + 3;
+    final innerMm = batch.marginMm - gutterMm / 2;
+    final outerMm = innerMm + gutterMm;
+    final contentWmm = batch.page.widthMm - innerMm - outerMm;
+    final contentHmm = batch.page.heightMm - innerMm - outerMm;
     final ruler = await PdfRuler.build(contentWmm, contentHmm, dpi);
 
     final twoDBarcode = batch.hasTwoD
@@ -111,17 +117,22 @@ class BatchPdf {
       );
     }
 
-    const mm = PdfPageFormat.mm;
     doc.addPage(
       pw.MultiPage(
         pageTheme: pw.PageTheme(
           pageFormat: fmt,
-          margin: pw.EdgeInsets.all(margin),
+          margin: pw.EdgeInsets.only(
+              left: innerMm * mm,
+              top: innerMm * mm,
+              right: outerMm * mm,
+              bottom: outerMm * mm),
           buildForeground: (context) => pw.Stack(children: [
             pw.Positioned(
-                left: margin, bottom: 2 * mm, child: ruler.horizontal),
-            pw.Positioned(top: margin, right: 2 * mm, child: ruler.vertical),
-            pw.Positioned(right: 2 * mm, bottom: 2 * mm, child: ruler.vernier),
+                left: innerMm * mm, bottom: innerMm * mm, child: ruler.horizontal),
+            pw.Positioned(
+                top: innerMm * mm, right: innerMm * mm, child: ruler.vertical),
+            pw.Positioned(
+                right: innerMm * mm, bottom: innerMm * mm, child: ruler.vernier),
           ]),
         ),
         build: (context) => [

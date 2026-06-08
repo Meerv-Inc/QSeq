@@ -92,8 +92,9 @@ class PdfExporter {
     final contentWmm = wMm;
     final contentHmm = hMm + captionMm;
     final ruler = await PdfRuler.build(contentWmm, contentHmm, cfg.dpi);
-    final pageWmm = contentWmm + ruler.bandMm;
-    final pageHmm = contentHmm + ruler.bandMm;
+    const gapMm = 3.0; // gap so rulers never touch the code
+    final pageWmm = contentWmm + gapMm + ruler.bandMm;
+    final pageHmm = contentHmm + gapMm + ruler.bandMm;
 
     final page = pw.Stack(children: [
       pw.Positioned(left: 0, top: 0, child: content),
