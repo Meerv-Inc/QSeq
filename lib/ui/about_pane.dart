@@ -1,5 +1,13 @@
+// QSeq — Sustainable Identity on Every Thing
+// Copyright (c) 2026 Meerv Inc.  Required Notice: https://qseq.app
+// Licensed under the PolyForm Noncommercial License 1.0.0 — noncommercial use
+// only; reuse requires attribution to Meerv Inc. See LICENSE for terms.
+// https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 import 'package:flutter/cupertino.dart';
 import 'package:macos_ui/macos_ui.dart';
+
+import '../version.dart';
 
 /// The development register: each entry is one milestone of QSeq's build.
 const List<(String, String)> _register = [
@@ -52,10 +60,24 @@ Future<void> showAboutSheet(BuildContext context) async {
                 const MacosIcon(CupertinoIcons.qrcode, size: 30),
                 const SizedBox(width: 12),
                 Text('QSeq', style: t.largeTitle.copyWith(fontWeight: FontWeight.bold)),
+                const SizedBox(width: 10),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: MacosColors.systemGrayColor.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text('v$kAppVersion',
+                      style: t.caption1.copyWith(fontWeight: FontWeight.w600)),
+                ),
                 const Spacer(),
                 Text('© 2026 Meerv Inc.',
                     style: t.caption1.copyWith(color: MacosColors.systemGrayColor)),
               ]),
+              const SizedBox(height: 4),
+              Text(kVersionLabel,
+                  style: t.caption1.copyWith(color: MacosColors.systemGrayColor)),
               const SizedBox(height: 8),
               Expanded(
                 child: SingleChildScrollView(
@@ -103,6 +125,19 @@ Future<void> showAboutSheet(BuildContext context) async {
                             TextSpan(text: _register[i].$2, style: t.body),
                           ])),
                         ),
+                      h('Why Flutter?'),
+                      p('QSeq is written in Flutter / Dart so a single codebase '
+                          'serves every surface. This macOS app is the first '
+                          'target; the same source compiles to a forthcoming '
+                          'Windows desktop build and to the web, and the '
+                          'companion website mirrors this exact logic. One '
+                          'implementation of the encoders, capacity tables, '
+                          'sizing and rendering means an identity minted on '
+                          'macOS, Windows or the browser is byte-for-byte the '
+                          'same. Sustainable Identity needs sustainable, '
+                          'portable tooling — a single, open, well-tested '
+                          'codebase across desktop and web is the cheapest path '
+                          'to keeping these tools alive and consistent.'),
                       h('Why this is open source'),
                       p('QSeq is released as open source to accelerate the transition '
                           'to Sustainable Identity on Every Thing (SIoT): a future in '

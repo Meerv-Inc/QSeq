@@ -1,3 +1,9 @@
+// QSeq — Sustainable Identity on Every Thing
+// Copyright (c) 2026 Meerv Inc.  Required Notice: https://qseq.app
+// Licensed under the PolyForm Noncommercial License 1.0.0 — noncommercial use
+// only; reuse requires attribution to Meerv Inc. See LICENSE for terms.
+// https://polyformproject.org/licenses/noncommercial/1.0.0/
+
 /// One square Data Matrix (ECC 200) symbol size.
 class DmSize {
   /// Modules along one side of the full symbol (includes finder/timing).
