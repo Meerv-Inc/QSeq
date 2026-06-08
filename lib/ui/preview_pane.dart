@@ -166,14 +166,14 @@ class PreviewPane extends ConsumerWidget {
           if (ppmH > 0 && ppmV > 0)
             Row(mainAxisSize: MainAxisSize.min, children: [
               symbol,
-              const SizedBox(width: 4),
+              const SizedBox(width: 16),
               RulerStrip(pxPerMm: ppmV, lengthPx: dispH, horizontal: false),
             ])
           else
             symbol,
           if (ppmH > 0)
             Padding(
-              padding: const EdgeInsets.only(top: 4),
+              padding: const EdgeInsets.only(top: 12),
               child: RulerStrip(pxPerMm: ppmH, lengthPx: dispW),
             ),
           if (cap.isNotEmpty) ...[
