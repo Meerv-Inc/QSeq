@@ -41,12 +41,12 @@ h1,h2,h3{line-height:1.1;letter-spacing:-0.02em}
 .btn.primary{background:linear-gradient(100deg,var(--accent),#67e6b4);color:#03130d;border:none;font-weight:600}
 .btn.primary:hover{filter:brightness(1.05)}
 
-.generator{display:grid;grid-template-columns:360px minmax(0,1fr) 320px;gap:22px;width:100%;margin:0;padding:30px 28px 70px}
+.generator{display:grid;grid-template-columns:340px minmax(280px,1fr) 460px;gap:22px;width:100%;margin:0;padding:30px 28px 70px}
 .log h2{margin:0 0 10px;font-size:1.15rem}
-.loglist{font-family:var(--mono);font-size:.74rem;line-height:1.5;max-height:560px;overflow:auto;
+.loglist{font-family:var(--mono);font-size:.74rem;line-height:1.5;max-height:640px;overflow-y:auto;overflow-x:hidden;
   border:1px solid var(--line);border-radius:8px;padding:10px;background:var(--panel2)}
-.loglist .row{display:flex;gap:8px;padding:2px 0;white-space:nowrap}
-.loglist .row .n{color:var(--muted);user-select:none}
+.loglist .row{display:flex;gap:8px;padding:3px 0;white-space:normal;word-break:break-all;align-items:flex-start}
+.loglist .row .n{color:var(--muted);user-select:none;flex:none}
 .loglist .row a{color:var(--accent);text-decoration:none}
 .loglist .row a:hover{text-decoration:underline}
 .loglist .empty{color:var(--muted)}
