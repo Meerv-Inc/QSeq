@@ -31,7 +31,16 @@ class PdfExporter {
     final wMm = size.outer.widthMm;
     final hMm = size.outer.heightMm;
     final hasCaption = caption != null && caption.isNotEmpty;
-    final captionMm = hasCaption ? 4.5 : 0.0;
+    // Wrap the full HRI to the code width; estimate the band height from the
+    // number of wrapped lines (monospace).
+    const fontPt = 6.0;
+    const charWmm = fontPt * 0.62 / 2.835;
+    const lineHmm = fontPt * 1.4 / 2.835;
+    final charsPerLine =
+        hasCaption ? (wMm / charWmm).floor().clamp(8, 9999) : 1;
+    final lines =
+        hasCaption ? (caption.text.length / charsPerLine).ceil().clamp(1, 99) : 0;
+    final captionMm = hasCaption ? lines * lineHmm + 2 : 0.0;
     final barcode = cfg.symbology == Symbology.qrCode
         ? BarcodeFactory.build(cfg.symbology, ecLevel: cfg.ecLevel)
         : BarcodeFactory.build(cfg.symbology);
@@ -68,20 +77,20 @@ class PdfExporter {
             height: hMm * PdfPageFormat.mm,
             child: content,
           ),
-          pw.SizedBox(
+          pw.Container(
+            width: wMm * PdfPageFormat.mm,
             height: captionMm * PdfPageFormat.mm,
-            child: pw.Center(
-              child: pw.RichText(
-                textAlign: pw.TextAlign.center,
-                text: pw.TextSpan(children: [
-                  if (caption.prefix.isNotEmpty)
-                    pw.TextSpan(text: caption.prefix),
-                  if (caption.bold.isNotEmpty)
-                    pw.TextSpan(
-                        text: caption.bold,
-                        style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                ], style: const pw.TextStyle(fontSize: 8)),
-              ),
+            alignment: pw.Alignment.topCenter,
+            child: pw.RichText(
+              textAlign: pw.TextAlign.center,
+              text: pw.TextSpan(children: [
+                if (caption.prefix.isNotEmpty)
+                  pw.TextSpan(text: caption.prefix),
+                if (caption.bold.isNotEmpty)
+                  pw.TextSpan(
+                      text: caption.bold,
+                      style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+              ], style: const pw.TextStyle(fontSize: fontPt)),
             ),
           ),
         ],

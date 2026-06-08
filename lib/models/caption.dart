@@ -13,6 +13,17 @@ class LabelCaption {
 
   const LabelCaption({this.prefix = '', this.bold = ''});
 
+  /// Human-readable interpretation: the full encoded string [data], with the
+  /// trailing [boldTail] (the incrementing serial, when serialized) in bold.
+  factory LabelCaption.hri(String data, {String? boldTail}) {
+    if (boldTail != null && boldTail.isNotEmpty && data.endsWith(boldTail)) {
+      return LabelCaption(
+          prefix: data.substring(0, data.length - boldTail.length),
+          bold: boldTail);
+    }
+    return LabelCaption(prefix: data);
+  }
+
   bool get isEmpty => prefix.isEmpty && bold.isEmpty;
   bool get isNotEmpty => !isEmpty;
 

@@ -93,50 +93,71 @@ function makeCanvas(s,text){
   return cv;
 }
 
-// Draw a caption (prefix normal + bold counter) onto a 2D canvas context.
-function drawCanvasCaption(ctx,prefix,bold,cx,y,fs){
-  ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillStyle='#000';
-  ctx.font=`${fs}px monospace`;const pw=ctx.measureText(prefix).width;
-  ctx.font=`bold ${fs}px monospace`;const bw=ctx.measureText(bold).width;
-  let tx=cx-(pw+bw)/2;if(tx<0)tx=0;
-  ctx.font=`${fs}px monospace`;if(prefix)ctx.fillText(prefix,tx,y);
-  ctx.font=`bold ${fs}px monospace`;if(bold)ctx.fillText(bold,tx+pw,y);
+// Wrap text to a pixel width (monospace).
+function wrapText(ctx,text,maxWidth,font){
+  ctx.font=font;const lines=[];let line='';
+  for(const ch of text){const t=line+ch;
+    if(ctx.measureText(t).width>maxWidth&&line){lines.push(line);line=ch;}else line=t;}
+  if(line)lines.push(line);return lines;
+}
+function hriHeight(text,maxWidth,fontPx){
+  const ctx=document.createElement('canvas').getContext('2d');
+  return wrapText(ctx,text,maxWidth,fontPx+'px monospace').length*fontPx*1.35;
+}
+// Draw the full encoded string (HRI), wrapped, centred under a code.
+function drawHri(ctx,text,cx,top,maxWidth,fontPx){
+  const font=fontPx+'px monospace';
+  const lines=wrapText(ctx,text,maxWidth,font);
+  const lineH=fontPx*1.35;
+  ctx.fillStyle='#000';ctx.textAlign='center';ctx.textBaseline='top';ctx.font=font;
+  let y=top;for(const ln of lines){ctx.fillText(ln,cx,y);y+=lineH;}
+  return lines.length*lineH;
 }
 
-// A single code with its caption underneath, on one canvas.
+// A single code with its full encoded string spelled out underneath.
 function composeSingle(s){
   const cv=makeCanvas(s,encode(s,null));
-  const cap=captionParts(s);
-  if(!(cap[0]||cap[1]))return cv;
-  const capH=Math.round(ppmm(s.dpi)*4.5);
+  const data=encode(s,null);
+  if(!data)return cv;
+  const fontPx=Math.max(11,Math.round(ppmm(s.dpi)*2.0));
+  const pad=Math.round(ppmm(s.dpi)*2),gap=Math.round(ppmm(s.dpi)*2.5);
+  const maxW=cv.width-2*pad;
+  const capH=Math.ceil(gap+hriHeight(data,maxW,fontPx)+fontPx*0.5);
   const out=document.createElement('canvas');out.width=cv.width;out.height=cv.height+capH;
   const ctx=out.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,out.width,out.height);
   ctx.drawImage(cv,0,0);
-  drawCanvasCaption(ctx,cap[0],cap[1],out.width/2,cv.height+capH*0.55,capH*0.46);
+  drawHri(ctx,data,out.width/2,cv.height+gap,maxW,fontPx);
   return out;
 }
 
-// The serialized sheet (a grid of captioned cells) on one canvas.
+// The serialized sheet — each cell shows its code with the full encoded
+// string spelled out below it.
 function composeSheet(s){
   const n=Math.min(s.scount,120);
-  const cells=[];
+  const items=[];
   for(let i=0;i<n;i++){
     const counter=String(s.sstart+i).padStart(s.spad,'0');
-    cells.push({cv:makeCanvas(s,encode(s,s.sprefix+counter)),prefix:s.sprefix,counter});
+    const data=encode(s,s.sprefix+counter);
+    items.push({cv:makeCanvas(s,data),data});
   }
-  const capH=Math.round(ppmm(s.dpi)*4.2);
-  const cw=Math.max(...cells.map(c=>c.cv.width));
-  const ch=Math.max(...cells.map(c=>c.cv.height))+capH;
-  const gap=Math.round(ppmm(s.dpi)*3);
+  const fontPx=Math.max(10,Math.round(ppmm(s.dpi)*1.7));
+  const cw=Math.max(...items.map(c=>c.cv.width));
+  const pad=Math.round(ppmm(s.dpi)*1.5),gap=Math.round(ppmm(s.dpi)*2);
+  const maxW=cw-2*pad;
+  let capH=0;items.forEach(it=>{capH=Math.max(capH,hriHeight(it.data,maxW,fontPx));});
+  capH=Math.ceil(gap+capH+fontPx*0.5);
+  const codeH=Math.max(...items.map(c=>c.cv.height));
+  const ch=codeH+capH;
+  const cgap=Math.round(ppmm(s.dpi)*3);
   const cols=Math.max(1,Math.floor(Math.sqrt(n*1.5)));
   const rows=Math.ceil(n/cols);
   const out=document.createElement('canvas');
-  out.width=cols*cw+(cols+1)*gap;out.height=rows*ch+(rows+1)*gap;
+  out.width=cols*cw+(cols+1)*cgap;out.height=rows*ch+(rows+1)*cgap;
   const ctx=out.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,out.width,out.height);
-  cells.forEach((c,i)=>{
-    const cx=gap+(i%cols)*(cw+gap),cy=gap+Math.floor(i/cols)*(ch+gap);
-    ctx.drawImage(c.cv,cx+(cw-c.cv.width)/2,cy);
-    drawCanvasCaption(ctx,c.prefix,c.counter,cx+cw/2,cy+c.cv.height+capH*0.55,capH*0.46);
+  items.forEach((it,i)=>{
+    const cx0=cgap+(i%cols)*(cw+cgap),cy0=cgap+Math.floor(i/cols)*(ch+cgap);
+    ctx.drawImage(it.cv,cx0+(cw-it.cv.width)/2,cy0);
+    drawHri(ctx,it.data,cx0+cw/2,cy0+codeH+gap,maxW,fontPx);
   });
   return out;
 }
@@ -377,6 +398,11 @@ function downloadPdf(){
   const J=window.jspdf&&window.jspdf.jsPDF;
   if(!J){$('err').textContent='PDF library still loading — try again.';return;}
   const mmpx=25.4/s.dpi,gutter=RBAND+RGAP;
+  const FPT=6, lineHmm=FPT*1.4/2.835, charWmm=FPT*0.6/2.835;
+  const hriLines=(text,wmm)=>{const cpl=Math.max(8,Math.floor(wmm/charWmm));
+    return text?Math.max(1,Math.ceil(text.length/cpl)):0;};
+  const drawHriPdf=(doc,text,cx,top,wmm)=>{doc.setFont('courier','normal');doc.setFontSize(FPT);
+    const lines=doc.splitTextToSize(text,wmm);doc.text(lines,cx,top+lineHmm*0.85,{align:'center'});};
   try{
     if(isSerial(s)){
       const n=Math.min(s.scount,2000);
@@ -389,15 +415,17 @@ function downloadPdf(){
       let col=0,x=m,y=m,rowH=0;
       for(let i=0;i<n;i++){
         const counter=String(s.sstart+i).padStart(s.spad,'0');
-        const cv=makeCanvas(s,encode(s,s.sprefix+counter));
+        const data=encode(s,s.sprefix+counter);
+        const cv=makeCanvas(s,data);
         const wmm=cv.width*mmpx,hmm=cv.height*mmpx;
-        if(y+hmm+5>m+contentH){doc.addPage();x=m;y=m;col=0;rowH=0;}
+        const capH=hriLines(data,cellW-1)*lineHmm+1.5;
+        const cellH=hmm+2+capH;
+        if(y+cellH>m+contentH){doc.addPage();x=m;y=m;col=0;rowH=0;}
         doc.addImage(cv.toDataURL('image/png'),'PNG',x,y,wmm,hmm);
-        pdfCaption(doc,s.sprefix,counter,x+wmm/2,y+hmm+3.5,7);
-        rowH=Math.max(rowH,hmm+5);
+        drawHriPdf(doc,data,x+wmm/2,y+hmm+2,cellW-1);
+        rowH=Math.max(rowH,cellH);
         col++;if(col>=cols){col=0;x=m;y+=rowH+gap;rowH=0;}else{x+=cellW+gap;}
       }
-      // rulers in the reserved bottom + right gutters of every page
       const pages=doc.getNumberOfPages();
       for(let p=1;p<=pages;p++){doc.setPage(p);
         pdfHRuler(doc,m,m+contentH+RGAP,contentW);
@@ -407,12 +435,13 @@ function downloadPdf(){
       doc.save('qseq-sheet.pdf');
     }else{
       const cv=makeCanvas(s,encode(s,null));
+      const data=encode(s,null);
       const wmm=cv.width*mmpx,hmm=cv.height*mmpx;
-      const cap=captionParts(s);const capH=(cap[0]||cap[1])?5:0;
-      const cH=hmm+capH;
+      const capH=data?hriLines(data,wmm-1)*lineHmm+1.5:0;
+      const cH=hmm+(capH?2+capH:0);
       const doc=new J({unit:'mm',format:[Math.max(wmm,10)+RGAP+RBAND,cH+RGAP+RBAND]});
       doc.addImage(cv.toDataURL('image/png'),'PNG',0,0,wmm,hmm);
-      if(capH)pdfCaption(doc,cap[0],cap[1],wmm/2,hmm+3.5,8);
+      if(capH)drawHriPdf(doc,data,wmm/2,hmm+2,wmm-1);
       pdfHRuler(doc,0,cH+RGAP,wmm);
       pdfVRuler(doc,wmm+RGAP,0,cH);
       pdfVernier(doc,wmm+RGAP,cH+RGAP);

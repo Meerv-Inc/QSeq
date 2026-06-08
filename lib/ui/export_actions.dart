@@ -11,6 +11,7 @@ import 'dart:ui' as ui;
 import 'package:file_selector/file_selector.dart';
 
 import '../encoders/sgtin.dart';
+import '../models/caption.dart';
 import '../models/combined_label.dart';
 import '../models/encode_config.dart';
 import '../models/size_result.dart';
@@ -56,7 +57,7 @@ class ExportActions {
     }
     if (s.resolved.data == null) return null;
     return RasterRenderer.render(s.singleConfig,
-        logo: logo, caption: s.data.caption());
+        logo: logo, caption: LabelCaption.hri(s.singleConfig.data));
   }
 
   static CombinedLabel? _combined(AppSettings s) {
@@ -111,7 +112,7 @@ class ExportActions {
       cfg,
       logoPng: logoPng,
       logoFraction: _logoFraction(size, cfg),
-      caption: s.data.caption(),
+      caption: LabelCaption.hri(s.singleConfig.data),
     );
     return _saveString(svg, 'code.svg', 'SVG image', ['svg']);
   }
@@ -146,7 +147,7 @@ class ExportActions {
         : null;
     bytes = await PdfExporter.export(s.singleConfig, size,
         logoPng: (logoPng != null && logoPng.isNotEmpty) ? logoPng : null,
-        caption: s.data.caption());
+        caption: LabelCaption.hri(s.singleConfig.data));
     return _save(bytes, 'code.pdf', 'PDF document', ['pdf']);
   }
 

@@ -57,6 +57,24 @@ class BatchPdf {
     pw.Widget cell(BatchItem it) {
       final children = <pw.Widget>[];
 
+      // Full HRI under a code: the whole encoded string, with the incrementing
+      // serial in bold, wrapped to the cell width.
+      pw.Widget hri(String data) {
+        final tail = data.endsWith(it.counter) ? it.counter : '';
+        final head =
+            tail.isEmpty ? data : data.substring(0, data.length - tail.length);
+        return pw.RichText(
+          textAlign: pw.TextAlign.center,
+          text: pw.TextSpan(children: [
+            pw.TextSpan(text: head),
+            if (tail.isNotEmpty)
+              pw.TextSpan(
+                  text: tail,
+                  style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+          ], style: const pw.TextStyle(fontSize: 5)),
+        );
+      }
+
       if (batch.hasTwoD && it.twoDData != null) {
         final s = batch.twoDSize!.outer;
         pw.Widget twoD = pw.BarcodeWidget(
@@ -79,13 +97,13 @@ class BatchPdf {
           ]);
         }
         children.add(twoD);
+        children.add(pw.SizedBox(height: 2 * PdfPageFormat.mm));
+        children.add(hri(it.twoDData!));
       }
 
       if (batch.hasOneD && it.oneDData != null) {
         final s = batch.oneDSize!.outer;
-        if (children.isNotEmpty) {
-          children.add(pw.SizedBox(height: batch.gapMm * PdfPageFormat.mm));
-        }
+        children.add(pw.SizedBox(height: 4 * PdfPageFormat.mm));
         children.add(pw.BarcodeWidget(
           barcode: oneDBarcode!,
           data: it.oneDData!,
@@ -93,22 +111,9 @@ class BatchPdf {
           height: s.heightMm * PdfPageFormat.mm,
           drawText: false,
         ));
+        children.add(pw.SizedBox(height: 2 * PdfPageFormat.mm));
+        children.add(hri(it.oneDData!));
       }
-
-      children.add(pw.SizedBox(height: 2));
-      children.add(pw.RichText(
-        textAlign: pw.TextAlign.center,
-        text: pw.TextSpan(children: [
-          pw.TextSpan(
-              text: it.prefix,
-              style: pw.TextStyle(
-                  fontSize: 8, fontWeight: pw.FontWeight.normal)),
-          pw.TextSpan(
-              text: it.counter,
-              style:
-                  pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
-        ]),
-      ));
 
       return pw.Container(
         width: batch.cellWidthMm * PdfPageFormat.mm,
