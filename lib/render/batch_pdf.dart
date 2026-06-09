@@ -22,8 +22,7 @@ class BatchPdf {
 
   static Future<Uint8List> build(Batch batch, {Uint8List? logoPng}) async {
     final doc = pw.Document();
-    final fmt =
-        batch.page == PageFormat.a4 ? PdfPageFormat.a4 : PdfPageFormat.letter;
+    final fmt = _pdfFormat(batch);
     final cols = batch.columns;
     final dpi = (batch.twoDSample ?? batch.oneDSample)!.dpi;
 
@@ -35,7 +34,8 @@ class BatchPdf {
     final innerMm = batch.marginMm - gutterMm / 2;
     final outerMm = innerMm + gutterMm;
     final contentWmm = batch.page.widthMm - innerMm - outerMm;
-    final contentHmm = batch.page.heightMm - innerMm - outerMm;
+    // pageHeightMm is the finite content length even for a continuous web.
+    final contentHmm = batch.pageHeightMm - innerMm - outerMm;
     final ruler = await PdfRuler.build(contentWmm, contentHmm, dpi);
 
     final twoDBarcode = batch.hasTwoD
@@ -150,5 +150,25 @@ class BatchPdf {
       ),
     );
     return doc.save();
+  }
+
+  /// Maps a [PageFormat] to a PDF page format. Cut sheets use the standard
+  /// constants; a flexographic continuous web becomes a custom page sized to its
+  /// web width × the finite length the codes actually occupy (one endless page).
+  static PdfPageFormat _pdfFormat(Batch batch) {
+    const mm = PdfPageFormat.mm;
+    switch (batch.page) {
+      case PageFormat.a4:
+        return PdfPageFormat.a4;
+      case PageFormat.letter:
+        return PdfPageFormat.letter;
+      case PageFormat.a3:
+        return PdfPageFormat.a3;
+      case PageFormat.legal:
+        return PdfPageFormat.legal;
+      default:
+        return PdfPageFormat(
+            batch.page.widthMm * mm, batch.pageHeightMm * mm);
+    }
   }
 }

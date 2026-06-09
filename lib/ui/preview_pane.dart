@@ -7,10 +7,12 @@
 import 'dart:io';
 
 import 'package:barcode_widget/barcode_widget.dart' as bw;
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:macos_ui/macos_ui.dart';
 
+import '../models/batch.dart';
 import '../models/caption.dart';
 import '../models/combined_label.dart';
 import '../models/encode_config.dart';
@@ -42,7 +44,18 @@ class PreviewPane extends ConsumerWidget {
     if (batch == null || batch.items.isEmpty) {
       return _message(context, 'Set a valid data source and count');
     }
-    final shown = batch.items.take(batch.perPage.clamp(1, 60)).toList();
+    // Page browser: slice the batch to the page being viewed, mirroring how the
+    // PDF paginates onto the chosen page size. A continuous web is one page.
+    final pageCount = batch.pageCount < 1 ? 1 : batch.pageCount;
+    final pageIndex = ref.watch(batchPageProvider).clamp(0, pageCount - 1);
+    final perPage = batch.perPage;
+    // Cap the on-screen cells per page so a long continuous web stays responsive;
+    // the exported PDF still emits every code.
+    const previewCap = 120;
+    final pageItems =
+        batch.items.skip(pageIndex * perPage).take(perPage).toList();
+    final shown = pageItems.take(previewCap).toList();
+    final hiddenOnPage = pageItems.length - shown.length;
     final cellW = batch.hasOneD ? 150.0 : 110.0;
     final twoW = batch.hasOneD ? 100.0 : cellW;
     // Scale reference: maps a displayed cell back to its physical mm.
@@ -54,6 +67,16 @@ class PreviewPane extends ConsumerWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          _pageBar(context, ref, s.pageFormat, pageIndex, pageCount,
+              batch.items.length, perPage),
+          if (hiddenOnPage > 0)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                'Showing first $previewCap of ${pageItems.length} on this page · all export to PDF',
+                style: MacosTheme.of(context).typography.caption2,
+              ),
+            ),
           Flexible(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 940, maxHeight: 700),
@@ -129,6 +152,42 @@ class PreviewPane extends ConsumerWidget {
                 ],
               ),
             ),
+        ],
+      ),
+    );
+  }
+
+  /// Prev/next page browser for the serialized sheet. Shows the page count and
+  /// per-page cell count; a continuous web reads as a single endless page.
+  Widget _pageBar(BuildContext context, WidgetRef ref, PageFormat fmt,
+      int pageIndex, int pageCount, int total, int perPage) {
+    final type = MacosTheme.of(context).typography;
+    void go(int delta) => ref
+        .read(batchPageProvider.notifier)
+        .set((pageIndex + delta).clamp(0, pageCount - 1));
+    final label = fmt.isContinuous
+        ? '${fmt.label} · $total codes on one endless page'
+        : 'Page ${pageIndex + 1} / $pageCount · ${fmt.label} · ~$perPage per page';
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (!fmt.isContinuous) ...[
+            MacosIconButton(
+              icon: const MacosIcon(CupertinoIcons.chevron_left),
+              onPressed: pageIndex > 0 ? () => go(-1) : null,
+            ),
+            const SizedBox(width: 4),
+          ],
+          Text(label, style: type.caption1),
+          if (!fmt.isContinuous) ...[
+            const SizedBox(width: 4),
+            MacosIconButton(
+              icon: const MacosIcon(CupertinoIcons.chevron_right),
+              onPressed: pageIndex < pageCount - 1 ? () => go(1) : null,
+            ),
+          ],
         ],
       ),
     );

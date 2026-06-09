@@ -193,6 +193,17 @@ class AppController extends Notifier<AppSettings> {
 final appControllerProvider =
     NotifierProvider<AppController, AppSettings>(AppController.new);
 
+/// Which printed page the serialized-sheet preview is showing (0-based). Read
+/// clamped to the live page count; stays put across edits unless out of range.
+class BatchPageController extends Notifier<int> {
+  @override
+  int build() => 0;
+  void set(int page) => state = page;
+}
+
+final batchPageProvider =
+    NotifierProvider<BatchPageController, int>(BatchPageController.new);
+
 /// Live size readout for a static single-symbol workspace (1D or 2D only).
 final singleSizeProvider = Provider<SizeResult?>((ref) {
   final s = ref.watch(appControllerProvider);

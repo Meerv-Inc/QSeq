@@ -58,7 +58,26 @@ const state=()=>({
   dpi:clampF('dpi',36,1200,300),xdim:clampF('xdim',0.05,5,0.5),logo:clampF('logo',0,1000,0),
   ecbudget:clampF('ecbudget',5,95,50),barh:clampF('barh',1,300,15),
   sprefix:val('sprefix'),sstart:clampI('sstart',0,1e9,1),scount:clampI('scount',1,5000,24),spad:clampI('spad',0,20,5),
+  pageformat:val('pageformat')||'a4',
 });
+
+// Page formats for serialized sheets (mm). h=Infinity → a flexographic
+// continuous web: codes flow down one endless page of the given width.
+const PAGE_FORMATS={
+  a4:{label:'A4',w:210,h:297},
+  letter:{label:'US Letter',w:215.9,h:279.4},
+  a3:{label:'A3',w:297,h:420},
+  legal:{label:'US Legal',w:215.9,h:355.6},
+  flexo12in:{label:'Flexo 12 in × continuous',w:304.8,h:Infinity},
+  flexo24in:{label:'Flexo 24 in × continuous',w:609.6,h:Infinity},
+  flexo36in:{label:'Flexo 36 in × continuous',w:914.4,h:Infinity},
+  flexo12cm:{label:'Flexo 12 cm × continuous',w:120,h:Infinity},
+  flexo24cm:{label:'Flexo 24 cm × continuous',w:240,h:Infinity},
+  flexo36cm:{label:'Flexo 36 cm × continuous',w:360,h:Infinity},
+};
+const pageFmt=s=>PAGE_FORMATS[s.pageformat]||PAGE_FORMATS.a4;
+// Which printed page the serialized preview is showing (0-based).
+let sheetPage=0;
 
 const is1D=s=>s.mode.startsWith('1d');
 const isSerial=s=>s.mode.endsWith('Serial');
@@ -153,11 +172,43 @@ function composeSingle(s){
 
 // The serialized sheet — each cell shows its code with the full encoded
 // string spelled out below it.
+// Pagination for a serialized sheet as a function of the chosen page size —
+// how many columns fit the page width and, for a cut sheet, how many rows fit
+// the height (a continuous web puts every code on one endless page). Mirrors the
+// PDF packing so the on-screen page browser matches the printed pages.
+function sheetLayout(s){
+  const fmt=pageFmt(s);
+  const mmpx=25.4/s.dpi, gutter=RBAND+RGAP, m=8, gap=3;
+  const contentW=fmt.w-m-(m+gutter);
+  const data0=encode(s,s.sprefix+String(s.sstart).padStart(s.spad,'0'));
+  const probe=makeCanvas(s,data0);
+  const cellWmm=probe.width*mmpx;
+  const FPT=6,lineHmm=FPT*1.4/2.835,charWmm=FPT*0.6/2.835;
+  const cpl=Math.max(8,Math.floor((cellWmm-1)/charWmm));
+  const capLines=data0?Math.max(1,Math.ceil(data0.length/cpl)):0;
+  const cellHmm=probe.height*mmpx+2+capLines*lineHmm+1.5;
+  const cols=Math.max(1,Math.floor((contentW+gap)/(cellWmm+gap)));
+  const n=Math.min(s.scount,2000);
+  let rows,perPage,pageCount;
+  if(fmt.h===Infinity){perPage=Math.max(1,n);rows=Math.ceil(n/cols);pageCount=1;}
+  else{
+    const contentH=fmt.h-m-(m+gutter);
+    rows=Math.max(1,Math.floor((contentH+gap)/(cellHmm+gap)));
+    perPage=cols*rows;pageCount=Math.max(1,Math.ceil(n/perPage));
+  }
+  return {fmt,cols,perPage,pageCount,n,continuous:fmt.h===Infinity};
+}
+
 function composeSheet(s){
-  const n=Math.min(s.scount,120);
+  const L=sheetLayout(s);
+  sheetPage=Math.min(Math.max(0,sheetPage),L.pageCount-1);
+  const start=sheetPage*L.perPage;
+  const itemsOnPage=L.continuous?L.n:Math.min(L.perPage,L.n-start);
+  const cap=120; // keep the on-screen render snappy; the PDF emits every code
+  const shownCount=Math.max(1,Math.min(itemsOnPage,cap));
   const items=[];
-  for(let i=0;i<n;i++){
-    const counter=String(s.sstart+i).padStart(s.spad,'0');
+  for(let i=0;i<shownCount;i++){
+    const counter=String(s.sstart+start+i).padStart(s.spad,'0');
     const data=encode(s,s.sprefix+counter);
     items.push({cv:makeCanvas(s,data),data});
   }
@@ -170,8 +221,8 @@ function composeSheet(s){
   const codeH=Math.max(...items.map(c=>c.cv.height));
   const ch=codeH+capH;
   const cgap=Math.round(ppmm(s.dpi)*3);
-  const cols=Math.max(1,Math.floor(Math.sqrt(n*1.5)));
-  const rows=Math.ceil(n/cols);
+  const cols=L.cols;
+  const rows=Math.max(1,Math.ceil(items.length/cols));
   const out=document.createElement('canvas');
   out.width=cols*cw+(cols+1)*cgap;out.height=rows*ch+(rows+1)*cgap;
   const ctx=out.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,out.width,out.height);
@@ -180,7 +231,28 @@ function composeSheet(s){
     ctx.drawImage(it.cv,cx0+(cw-it.cv.width)/2,cy0);
     drawHri(ctx,it.data,cx0+cw/2,cy0+codeH+gap,maxW,fontPx);
   });
+  out._layout={pageCount:L.pageCount,page:sheetPage,total:L.n,itemsOnPage,
+    shown:items.length,continuous:L.continuous,fmtLabel:L.fmt.label};
   return out;
+}
+
+function gotoPage(d){sheetPage=Math.max(0,sheetPage+d);render();}
+
+// Prev/next page browser shown above a serialized sheet.
+function pageControls(L){
+  const bar=document.createElement('div');bar.className='pagebar';
+  if(L.continuous){
+    const span=document.createElement('span');
+    span.textContent=`${L.fmtLabel} · ${L.total} code${L.total>1?'s':''} on one endless page`;
+    bar.appendChild(span);return bar;
+  }
+  const prev=document.createElement('button');prev.type='button';prev.textContent='‹';
+  prev.disabled=L.page<=0;prev.onclick=()=>gotoPage(-1);
+  const lbl=document.createElement('span');
+  lbl.textContent=`Page ${L.page+1} / ${L.pageCount} · ${L.fmtLabel}`;
+  const next=document.createElement('button');next.type='button';next.textContent='›';
+  next.disabled=L.page>=L.pageCount-1;next.onclick=()=>gotoPage(1);
+  bar.append(prev,lbl,next);return bar;
 }
 
 // Scale the preview card down (CSS zoom) so it never overflows the stage
@@ -300,13 +372,18 @@ function render(){
   const stage=$('stage');stage.innerHTML='';$('err').textContent='';
   try{
     const canvas=isSerial(s)?composeSheet(s):composeSingle(s);
+    if(isSerial(s)&&canvas._layout)stage.appendChild(pageControls(canvas._layout));
     const card=document.createElement('div');card.className='card';
     card.appendChild(wrapWithRulers(canvas,s.dpi));
     stage.appendChild(card);
     fitCardToStage(card,stage); // shrink the sheet to fit — no horizontal scroll
-    if(isSerial(s)&&s.scount>120){const note=document.createElement('div');note.className='cap';
-      note.style.color='#888';note.style.marginTop='8px';
-      note.textContent=`Showing first 120 of ${s.scount}`;stage.appendChild(note);}
+    if(isSerial(s)&&canvas._layout){
+      const L=canvas._layout;
+      if(L.shown<L.itemsOnPage){const note=document.createElement('div');note.className='cap';
+        note.style.color='#888';note.style.marginTop='8px';
+        note.textContent=`Showing first ${L.shown} of ${L.itemsOnPage} on this page · all ${L.total} export to PDF`;
+        stage.appendChild(note);}
+    }
   }catch(e){$('err').textContent=String(e);}
   renderReadout(s);
   renderLog(s);
@@ -427,22 +504,37 @@ function downloadPdf(){
     const lines=doc.splitTextToSize(text,wmm);doc.text(lines,cx,top+lineHmm*0.85,{align:'center'});};
   try{
     if(isSerial(s)){
-      const n=Math.min(s.scount,2000);
-      const doc=new J({unit:'mm',format:'a4'});
-      const pageW=210,pageH=297,m=8,gap=3;
-      const contentW=pageW-m-(m+gutter),contentH=pageH-m-(m+gutter);
-      const probe=makeCanvas(s,encode(s,s.sprefix+String(s.sstart).padStart(s.spad,'0')));
-      const cellW=probe.width*mmpx;
+      const fmt=pageFmt(s),continuous=fmt.h===Infinity;
+      const n=Math.min(s.scount,2000),m=8,gap=3;
+      const seed=i=>encode(s,s.sprefix+String(s.sstart+i).padStart(s.spad,'0'));
+      // Probe first & last serials (longest data → largest symbol) for the grid.
+      const pA=makeCanvas(s,seed(0)),pB=makeCanvas(s,seed(n-1));
+      const cellW=Math.max(pA.width,pB.width)*mmpx;
+      const codeHmm=Math.max(pA.height,pB.height)*mmpx;
+      const contentW=fmt.w-m-(m+gutter);
       const cols=Math.max(1,Math.floor((contentW+gap)/(cellW+gap)));
+      const cellHOf=data=>codeHmm+2+hriLines(data,cellW-1)*lineHmm+1.5;
+      let doc,contentH;
+      if(continuous){
+        // One endless page: sum packed row heights to size the page length.
+        let totalH=0,row=0,rowH=0;
+        for(let i=0;i<n;i++){rowH=Math.max(rowH,cellHOf(seed(i)));
+          if(++row>=cols){totalH+=rowH+gap;row=0;rowH=0;}}
+        if(row>0)totalH+=rowH+gap;
+        const pageH=m+totalH+(m+gutter);
+        doc=new J({unit:'mm',format:[fmt.w,pageH]});
+        contentH=pageH-m-(m+gutter);
+      }else{
+        doc=new J({unit:'mm',format:[fmt.w,fmt.h]});
+        contentH=fmt.h-m-(m+gutter);
+      }
       let col=0,x=m,y=m,rowH=0;
       for(let i=0;i<n;i++){
-        const counter=String(s.sstart+i).padStart(s.spad,'0');
-        const data=encode(s,s.sprefix+counter);
+        const data=seed(i);
         const cv=makeCanvas(s,data);
         const wmm=cv.width*mmpx,hmm=cv.height*mmpx;
-        const capH=hriLines(data,cellW-1)*lineHmm+1.5;
-        const cellH=hmm+2+capH;
-        if(y+cellH>m+contentH){doc.addPage();x=m;y=m;col=0;rowH=0;}
+        const cellH=codeHmm+2+hriLines(data,cellW-1)*lineHmm+1.5;
+        if(!continuous&&y+cellH>m+contentH){doc.addPage([fmt.w,fmt.h]);x=m;y=m;col=0;rowH=0;}
         doc.addImage(cv.toDataURL('image/png'),'PNG',x,y,wmm,hmm);
         drawHriPdf(doc,data,x+wmm/2,y+hmm+2,cellW-1);
         rowH=Math.max(rowH,cellH);
@@ -506,7 +598,7 @@ function downloadProject(){
     data:{kind:pick(KIND_TO,s.kind,'sgtin'),gtin:s.gtin,serial:s.serial,sgtinFormat:pick(FMT_TO,s.sgtinFormat,'digitalLink'),companyPrefixLength:s.cpl,digitalLinkDomain:s.domain,nsn:s.nsn,rawText:s.text},
     print:{dpi:s.dpi,xDimensionMm:s.xdim,barHeightMm:s.barh},
     logo:{sideMm:s.logo,ecBudget:s.ecbudget/100},
-    serialization:{prefix:s.sprefix,start:s.sstart,count:s.scount,padDigits:s.spad}};
+    serialization:{prefix:s.sprefix,start:s.sstart,count:s.scount,padDigits:s.spad,pageFormat:s.pageformat}};
   const blob=new Blob([JSON.stringify(proj,null,2)],{type:'application/json'});
   const a=document.createElement('a');a.download='design.qseq';a.href=URL.createObjectURL(blob);a.click();
 }
@@ -538,6 +630,7 @@ function applyProject(p){
   setv('logo',lg.sideMm);
   setv('ecbudget',lg.ecBudget!=null?Math.round(lg.ecBudget*100):(lg.ecBudgetPct!=null?lg.ecBudgetPct:50));
   setv('sprefix',sr.prefix);setv('sstart',sr.start);setv('scount',sr.count);setv('spad',sr.padDigits);
+  if(sr.pageFormat&&PAGE_FORMATS[sr.pageFormat])setv('pageformat',sr.pageFormat);
   render();
 }
 
@@ -547,8 +640,11 @@ function init(){
   // 'change' handler below must run first (a select fires 'input' before
   // 'change', and render() would otherwise snap the preset back to the still-old
   // domain before the change handler can copy the new value across).
+  // A field edit re-renders and snaps the page browser back to page 1, since the
+  // page set may have changed (count, page size, code dimensions…).
+  const onFieldInput=()=>{sheetPage=0;render();};
   document.querySelectorAll('input,select').forEach(el=>{
-    if(el.id!=='resolver')el.addEventListener('input',render);
+    if(el.id!=='resolver')el.addEventListener('input',onFieldInput);
   });
   $('dlPng').addEventListener('click',downloadPng);
   $('dlPdf').addEventListener('click',downloadPdf);
