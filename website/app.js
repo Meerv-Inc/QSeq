@@ -76,42 +76,6 @@ function captionParts(s){
 // ---- rendering -------------------------------------------------------------
 const ppmm=dpi=>dpi/25.4; // pixels per millimetre at a DPI
 
-// QR alignment-pattern centres per version (ISO/IEC 18004 Annex E); v1 has none.
-const QR_ALIGN=[[],[6,18],[6,22],[6,26],[6,30],[6,34],[6,22,38],[6,24,42],[6,26,46],
-  [6,28,50],[6,30,54],[6,32,58],[6,34,62],[6,26,46,66],[6,26,48,70],[6,26,50,74],
-  [6,30,54,78],[6,30,56,82],[6,30,58,86],[6,34,62,90],[6,28,50,72,94],[6,26,50,74,98],
-  [6,30,54,78,102],[6,28,54,80,106],[6,32,58,84,110],[6,30,58,86,114],[6,34,62,90,118],
-  [6,26,50,74,98,122],[6,30,54,78,102,126],[6,26,52,78,104,130],[6,30,56,82,108,134],
-  [6,34,60,86,112,138],[6,30,58,86,114,142],[6,34,62,90,118,146],[6,30,54,78,102,126,150],
-  [6,24,50,76,102,128,154],[6,28,54,80,106,132,158],[6,32,58,84,110,136,162],
-  [6,26,54,82,110,138,166],[6,30,58,86,114,142,170]];
-
-// True if QR module (row,col) is a function pattern — finder/separator, timing,
-// format/version info, or an alignment pattern. These are NOT recoverable by
-// error correction, so a centre-logo knockout must preserve them (mirrors the
-// Flutter QrStructure.isFunction). n = modules per side = 17 + 4*version.
-function qrIsFunction(version,n,row,col){
-  const inBox=(r,c,top,left,h,w)=>r>=top&&r<top+h&&c>=left&&c<left+w;
-  // Finder patterns + 1-module separators (8×8 at three corners).
-  if(inBox(row,col,0,0,8,8)||inBox(row,col,0,n-8,8,8)||inBox(row,col,n-8,0,8,8))return true;
-  // Timing patterns: full row 6 and column 6.
-  if(row===6||col===6)return true;
-  // Format information (rows/cols 8 by the finders) + always-dark module.
-  if(row===8&&(col<=8||col>=n-8))return true;
-  if(col===8&&(row<=8||row>=n-7))return true;
-  // Version information (v≥7): two 6×3 / 3×6 blocks by the finders.
-  if(version>=7&&(inBox(row,col,0,n-11,6,3)||inBox(row,col,n-11,0,3,6)))return true;
-  // Alignment patterns: 5×5 centred on each pair, except the three finder corners.
-  const centres=QR_ALIGN[version-1]||[];
-  const last=centres.length?centres[centres.length-1]:-1,first=6;
-  const isFinderCorner=(r,c)=>(r===first&&c===first)||(r===first&&c===last)||(r===last&&c===first);
-  for(const r of centres)for(const c of centres){
-    if(isFinderCorner(r,c))continue;
-    if(row>=r-2&&row<=r+2&&col>=c-2&&col<=c+2)return true;
-  }
-  return false;
-}
-
 // Render one barcode to a NEW canvas (with centre logo knockout for 2D).
 function makeCanvas(s,text){
   const opts={bcid:bcid(s),text:text,scale:Math.max(2,moduleDots(s.xdim,s.dpi)),
@@ -126,26 +90,17 @@ function makeCanvas(s,text){
     const scale=Math.max(2,moduleDots(s.xdim,s.dpi));
     const modules=Math.max(1,Math.round(sym/scale));
     const cell=sym/modules;                       // pixels per module
-    const side=sym*logoFrac(s);
-    // Knockout = logo square inflated by one module (matches Flutter dst.inflate).
-    const cx=cv.width/2,cy=cv.height/2,half=side/2;
-    const kL=cx-half-cell,kT=cy-half-cell,kR=cx+half+cell,kB=cy+half+cell;
-    // Structure-aware: white out only data/EC cells under the knockout; preserve
-    // function patterns (finder/timing/alignment/format/version) so they show
-    // through. QR uses the full map; Data Matrix function patterns are its
-    // perimeter (solid left/bottom, dashed top/right).
-    const isFn=s.twoD==='qrcode'
-      ? (r,c)=>qrIsFunction((modules-17)/4,modules,r,c)
-      : (r,c)=>r===0||c===0||r===modules-1||c===modules-1;
-    const firstCol=Math.max(0,Math.floor(kL/cell)),lastCol=Math.min(modules-1,Math.ceil(kR/cell));
-    const firstRow=Math.max(0,Math.floor(kT/cell)),lastRow=Math.min(modules-1,Math.ceil(kB/cell));
-    ctx.fillStyle='#fff';
-    for(let r=firstRow;r<=lastRow;r++)for(let c=firstCol;c<=lastCol;c++){
-      if(isFn(r,c))continue;                       // keep function modules
-      const x=c*cell,y=r*cell;                     // clip the cell to the knockout
-      const ix=Math.max(x,kL),iy=Math.max(y,kT);
-      const iw=Math.min(x+cell,kR)-ix,ih=Math.min(y+cell,kB)-iy;
-      if(iw>0&&ih>0)ctx.fillRect(ix,iy,iw,ih);
+    // Reserve a clean square at the centre, sized to the logo and snapped to
+    // whole modules, so the centre is 100% free of code: no data, no EC and no
+    // function patterns. Everything inside is blanked; the symbol's content
+    // sits entirely around it (recovered on scan by error correction).
+    let n=Math.round(modules*logoFrac(s));
+    if(n>0){
+      if((modules-n)%2!==0)n++;                   // keep the hole centred on the grid
+      n=Math.min(n,modules);
+      const off=(modules-n)/2*cell;
+      ctx.fillStyle='#fff';
+      ctx.fillRect(off,off,n*cell,n*cell);
     }
   }
   return cv;

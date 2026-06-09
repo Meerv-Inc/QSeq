@@ -17,7 +17,6 @@ import '../models/symbology.dart';
 import '../sizing/dpi.dart';
 import '../sizing/qr_capacity.dart';
 import 'barcode_factory.dart';
-import 'qr_structure.dart';
 
 /// Renders a symbol to a pixel-exact [ui.Image] and to PNG bytes carrying the
 /// correct physical-resolution (pHYs) metadata, so print software reports the
@@ -135,17 +134,14 @@ class RasterRenderer {
       final center = fullPx / 2;
       final dst = Rect.fromCenter(
           center: Offset(center, center), width: logoPx, height: logoPx);
-      final knockout = dst.inflate(dots.toDouble());
 
-      // Structure-aware: never erase function-pattern modules (finder, timing,
-      // alignment, format/version). Build a clip = knockout MINUS the function
-      // cells that fall inside it, so those modules show through the logo.
-      final isFunction = _functionPredicate(cfg, typeNumber, modules);
-      final clip = _deadSpaceClip(
-          knockout, isFunction, modules, dots.toDouble(), pad);
+      // Reserve a clean square at the centre, sized to the logo and snapped to
+      // whole modules, so the centre is 100% free of code: no data, no EC and
+      // no function patterns. The symbol's content sits entirely around it
+      // (the covered codewords are recovered on scan by error correction).
+      final knockout =
+          _centredModuleHole(logoPx, modules, dots.toDouble(), pad);
 
-      canvas.save();
-      canvas.clipPath(clip);
       // White knockout reserves the dead-space even when no logo image is set.
       canvas.drawRect(knockout, paintWhite);
       if (logo != null) {
@@ -155,45 +151,24 @@ class RasterRenderer {
             dst,
             Paint());
       }
-      canvas.restore();
     }
 
     final picture = recorder.endRecording();
     return picture.toImage(fullPx.round(), fullPx.round());
   }
 
-  /// Predicate telling whether matrix module (row, col) is a function pattern
-  /// that must survive the dead-space. QR uses the full structure map; Data
-  /// Matrix function patterns (L finder + timing) live on the perimeter.
-  static bool Function(int row, int col) _functionPredicate(
-      EncodeConfig cfg, int? qrVersion, int modules) {
-    if (cfg.symbology == Symbology.qrCode && qrVersion != null) {
-      final s = QrStructure(qrVersion);
-      return s.isFunction;
-    }
-    // Data Matrix: solid left column + bottom row, dashed top row + right col.
-    return (row, col) =>
-        row == 0 || col == 0 || row == modules - 1 || col == modules - 1;
-  }
-
-  /// Builds a clip path covering [knockout] minus every function-pattern cell
-  /// that intersects it (cells are in content space offset by [pad]).
-  static ui.Path _deadSpaceClip(Rect knockout, bool Function(int, int) isFn,
-      int modules, double dots, double pad) {
-    var clip = ui.Path()..addRect(knockout);
-    final firstCol = (((knockout.left - pad) / dots).floor()).clamp(0, modules - 1);
-    final lastCol = (((knockout.right - pad) / dots).ceil()).clamp(0, modules - 1);
-    final firstRow = (((knockout.top - pad) / dots).floor()).clamp(0, modules - 1);
-    final lastRow = (((knockout.bottom - pad) / dots).ceil()).clamp(0, modules - 1);
-    for (var r = firstRow; r <= lastRow; r++) {
-      for (var c = firstCol; c <= lastCol; c++) {
-        if (!isFn(r, c)) continue;
-        final cell = Rect.fromLTWH(pad + c * dots, pad + r * dots, dots, dots);
-        final hole = ui.Path()..addRect(cell);
-        clip = ui.Path.combine(ui.PathOperation.difference, clip, hole);
-      }
-    }
-    return clip;
+  /// A clean square hole at the symbol's centre, sized to [logoPx] but snapped
+  /// to a whole, odd-offset number of [modules] so it lands exactly on module
+  /// boundaries (no half-erased modules at its edge) and stays centred on the
+  /// grid. Returned in canvas space, offset by the quiet-zone [pad].
+  static Rect _centredModuleHole(
+      double logoPx, int modules, double dots, double pad) {
+    var n = (logoPx / dots).round();
+    if (n < 1) n = 1;
+    if ((modules - n) % 2 != 0) n++; // keep the hole centred on the grid
+    if (n > modules) n = modules;
+    final off = pad + ((modules - n) / 2) * dots;
+    return Rect.fromLTWH(off, off, n * dots, n * dots);
   }
 
   static Future<ui.Image> _render1d(EncodeConfig cfg, int dots) async {
