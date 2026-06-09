@@ -35,6 +35,10 @@ enum PageFormat {
   bool get isContinuous => !heightMm.isFinite;
 }
 
+/// Portrait (default) or landscape. Landscape swaps a cut sheet's width and
+/// height; it has no effect on a continuous web (its length is already endless).
+enum PageOrientation { portrait, landscape }
+
 /// One sequentially-numbered cell in a batch. [prefix] renders in a normal
 /// weight and [counter] (the incrementing digits) renders in bold. A cell can
 /// carry a 1D payload, a 2D payload, or both (stacked 2D over 1D).
@@ -67,6 +71,7 @@ class Batch {
   final SizeResult? oneDSize;
   final SizeResult? twoDSize;
   final PageFormat page;
+  final PageOrientation orientation;
   final double marginMm;
   final double gapMm; // gap between the 2D and 1D within a cell
   final double cellGapMm; // gap between cells on the sheet
@@ -80,6 +85,7 @@ class Batch {
     required this.oneDSize,
     required this.twoDSize,
     required this.page,
+    required this.orientation,
     required this.marginMm,
     required this.gapMm,
     required this.cellGapMm,
@@ -108,6 +114,7 @@ class Batch {
     required double logoSideMm,
     required double logoEcBudget,
     required PageFormat page,
+    PageOrientation orientation = PageOrientation.portrait,
     double marginMm = 16, // leaves room for the edge measurement rulers
     double gapMm = 2,
     double cellGapMm = 4,
@@ -159,6 +166,7 @@ class Batch {
       oneDSize: oneDSample == null ? null : Sizer.compute(oneDSample),
       twoDSize: twoDSample == null ? null : Sizer.compute(twoDSample),
       page: page,
+      orientation: orientation,
       marginMm: marginMm,
       gapMm: gapMm,
       cellGapMm: cellGapMm,
@@ -179,9 +187,24 @@ class Batch {
     return twoH + oneH + innerGap + captionMm;
   }
 
+  /// Landscape applies only to finite cut sheets — a continuous web has no
+  /// second finite dimension to swap.
+  bool get _landscape =>
+      orientation == PageOrientation.landscape && !page.isContinuous;
+
+  /// Page width after applying the chosen orientation.
+  double get effectiveWidthMm => _landscape ? page.heightMm : page.widthMm;
+
+  /// Page height after orientation (unchanged for a continuous web).
+  double get effectiveHeightMm => _landscape ? page.widthMm : page.heightMm;
+
   int get columns {
     if (columnsOverride > 0) return columnsOverride;
-    final usable = page.widthMm - 2 * marginMm + cellGapMm;
+    // Each cell is rendered with a half-gap margin on every side, so a column
+    // occupies cellWidth + cellGap of the content width. Pack only as many as
+    // fit fully inside the content area, leaving the ruler gutter clear (codes
+    // were spilling onto the rulers when one extra column was assumed).
+    final usable = effectiveWidthMm - 2 * marginMm;
     final n = (usable / (cellWidthMm + cellGapMm)).floor();
     return n < 1 ? 1 : n;
   }
@@ -192,7 +215,9 @@ class Batch {
       final c = columns;
       return items.isEmpty ? 1 : (items.length / c).ceil();
     }
-    final usable = page.heightMm - 2 * marginMm + cellGapMm;
+    // Same full-footprint packing vertically, so the bottom row never rides
+    // onto the horizontal ruler.
+    final usable = effectiveHeightMm - 2 * marginMm;
     final n = (usable / (cellHeightMm + cellGapMm)).floor();
     return n < 1 ? 1 : n;
   }
@@ -211,7 +236,7 @@ class Batch {
   /// the content actually occupies (margins + stacked rows + gaps) rather than
   /// an infinite sheet, so exporters and rulers have a finite extent to draw.
   double get pageHeightMm {
-    if (!page.isContinuous) return page.heightMm;
+    if (!page.isContinuous) return effectiveHeightMm;
     // Each cell reserves cellGapMm of vertical margin (half top, half bottom),
     // so budget a full gap per row to guarantee everything lands on one page.
     return 2 * marginMm + rows * (cellHeightMm + cellGapMm);

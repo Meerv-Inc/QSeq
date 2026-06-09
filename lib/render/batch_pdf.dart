@@ -33,7 +33,7 @@ class BatchPdf {
     final gutterMm = Ruler.bandMm + 3;
     final innerMm = batch.marginMm - gutterMm / 2;
     final outerMm = innerMm + gutterMm;
-    final contentWmm = batch.page.widthMm - innerMm - outerMm;
+    final contentWmm = batch.effectiveWidthMm - innerMm - outerMm;
     // pageHeightMm is the finite content length even for a continuous web.
     final contentHmm = batch.pageHeightMm - innerMm - outerMm;
     final ruler = await PdfRuler.build(contentWmm, contentHmm, dpi);
@@ -157,18 +157,20 @@ class BatchPdf {
   /// web width × the finite length the codes actually occupy (one endless page).
   static PdfPageFormat _pdfFormat(Batch batch) {
     const mm = PdfPageFormat.mm;
-    switch (batch.page) {
-      case PageFormat.a4:
-        return PdfPageFormat.a4;
-      case PageFormat.letter:
-        return PdfPageFormat.letter;
-      case PageFormat.a3:
-        return PdfPageFormat.a3;
-      case PageFormat.legal:
-        return PdfPageFormat.legal;
-      default:
-        return PdfPageFormat(
-            batch.page.widthMm * mm, batch.pageHeightMm * mm);
+    // A continuous web is sized to its web width × the finite length the codes
+    // occupy; orientation does not apply (its length is already endless).
+    if (batch.page.isContinuous) {
+      return PdfPageFormat(batch.effectiveWidthMm * mm, batch.pageHeightMm * mm);
     }
+    final base = switch (batch.page) {
+      PageFormat.a4 => PdfPageFormat.a4,
+      PageFormat.letter => PdfPageFormat.letter,
+      PageFormat.a3 => PdfPageFormat.a3,
+      PageFormat.legal => PdfPageFormat.legal,
+      _ => PdfPageFormat(batch.page.widthMm * mm, batch.page.heightMm * mm),
+    };
+    return batch.orientation == PageOrientation.landscape
+        ? base.landscape
+        : base;
   }
 }

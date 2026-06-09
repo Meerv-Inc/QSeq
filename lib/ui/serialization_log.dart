@@ -15,14 +15,40 @@ import 'package:macos_ui/macos_ui.dart';
 import '../state/app_controller.dart';
 
 /// The far-right panel enumerating every serial in the current workspace.
-class SerializationLog extends ConsumerWidget {
+class SerializationLog extends ConsumerStatefulWidget {
   const SerializationLog({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SerializationLog> createState() => _SerializationLogState();
+}
+
+class _SerializationLogState extends ConsumerState<SerializationLog> {
+  final _scroll = ScrollController();
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final serials = ref.watch(serialLogProvider);
     final theme = MacosTheme.of(context);
-    final shown = serials.take(300).toList();
+    // Show every code (the batch is already capped at 2000); the ListView is
+    // lazy, so rendering the full run stays cheap.
+    final shown = serials;
+    // When the serialized sheet spans multiple printed pages, each row carries a
+    // "Page: # of Y" link that jumps the on-screen preview to the page holding
+    // that code. Uses the live pagination, so it tracks the page tabs and PDF.
+    final s = ref.watch(appControllerProvider);
+    final batch = s.mode.isSerialized ? ref.watch(batchProvider) : null;
+    final perPage = batch?.perPage ?? 0;
+    final pageCount = batch?.pageCount ?? 0;
+    final multiPage = batch != null &&
+        !batch.page.isContinuous &&
+        pageCount > 1 &&
+        perPage > 0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -46,18 +72,47 @@ class SerializationLog extends ConsumerWidget {
         ),
         const SizedBox(height: 8),
         Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: RawScrollbar(
+            controller: _scroll,
+            thumbVisibility: true,
+            interactive: true,
+            thumbColor: const Color(0x88888888),
+            radius: const Radius.circular(6),
+            thickness: 9,
+            child: ListView.builder(
+            controller: _scroll,
+            padding: const EdgeInsets.fromLTRB(16, 0, 22, 0),
             itemCount: shown.length,
-            itemBuilder: (context, i) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 1.5),
-              child: Text(
-                '${(i + 1).toString().padLeft(shown.length.toString().length)}.  ${shown[i]}',
-                style: theme.typography.caption1
-                    .copyWith(fontFamily: 'monospace'),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
+            itemBuilder: (context, i) {
+              final num =
+                  (i + 1).toString().padLeft(shown.length.toString().length);
+              final page = multiPage ? i ~/ perPage : 0;
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 1.5),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '$num.  ${shown[i]}',
+                        style: theme.typography.caption1
+                            .copyWith(fontFamily: 'monospace'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (multiPage) ...[
+                      const SizedBox(width: 8),
+                      _JumpLink(
+                        label: 'Page: ${page + 1} of $pageCount',
+                        onTap: () =>
+                            ref.read(batchPageProvider.notifier).set(page),
+                      ),
+                    ],
+                  ],
+                ),
+              );
+            },
             ),
           ),
         ),
@@ -149,6 +204,31 @@ Future<void> showSerialLogDialog(
       ),
     ),
   );
+}
+
+/// A small tappable "Page: # of Y" link that jumps the preview to a page.
+class _JumpLink extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+
+  const _JumpLink({required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Text(
+          label,
+          style: MacosTheme.of(context).typography.caption1.copyWith(
+                fontFamily: 'monospace',
+                color: const Color(0xFF0A84FF),
+              ),
+        ),
+      ),
+    );
+  }
 }
 
 Future<void> _saveTxt(String text) async {

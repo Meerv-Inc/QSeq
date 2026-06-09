@@ -70,6 +70,7 @@ class AppSettings {
   final int batchPadding;
   final int batchColumns; // 0 = auto-fit
   final PageFormat pageFormat;
+  final PageOrientation pageOrientation;
 
   const AppSettings({
     this.mode = AppMode.twoD,
@@ -92,6 +93,7 @@ class AppSettings {
     this.batchPadding = 5,
     this.batchColumns = 0,
     this.pageFormat = PageFormat.a4,
+    this.pageOrientation = PageOrientation.portrait,
   });
 
   AppSettings copyWith({
@@ -115,6 +117,7 @@ class AppSettings {
     int? batchPadding,
     int? batchColumns,
     PageFormat? pageFormat,
+    PageOrientation? pageOrientation,
   }) {
     return AppSettings(
       mode: mode ?? this.mode,
@@ -139,6 +142,7 @@ class AppSettings {
       batchPadding: batchPadding ?? this.batchPadding,
       batchColumns: batchColumns ?? this.batchColumns,
       pageFormat: pageFormat ?? this.pageFormat,
+      pageOrientation: pageOrientation ?? this.pageOrientation,
     );
   }
 
@@ -204,6 +208,18 @@ class BatchPageController extends Notifier<int> {
 final batchPageProvider =
     NotifierProvider<BatchPageController, int>(BatchPageController.new);
 
+/// On-screen zoom for the serialized-sheet preview. 0 means "auto-fit" (the
+/// whole printed sheet is scaled to fit the stage); any positive value is an
+/// explicit zoom where 1.0 is true physical scale.
+class BatchZoomController extends Notifier<double> {
+  @override
+  double build() => 0;
+  void set(double z) => state = z <= 0 ? 0 : z.clamp(0.1, 2.0);
+}
+
+final batchZoomProvider =
+    NotifierProvider<BatchZoomController, double>(BatchZoomController.new);
+
 /// Live size readout for a static single-symbol workspace (1D or 2D only).
 final singleSizeProvider = Provider<SizeResult?>((ref) {
   final s = ref.watch(appControllerProvider);
@@ -268,6 +284,7 @@ Batch? buildBatchFor(AppSettings s) {
       logoSideMm: s.safeLogoSideMm,
       logoEcBudget: s.safeLogoEcBudget,
       page: s.pageFormat,
+      orientation: s.pageOrientation,
       gapMm: s.safeLabelGapMm,
       columnsOverride: s.batchColumns,
     );
