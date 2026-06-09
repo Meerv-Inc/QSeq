@@ -32,9 +32,9 @@ const List<String> _releaseNotes = [
   'Encode SGTINs as GS1 element strings, EPC Tag URIs, or GS1 Digital Links.',
   'Choose your Digital Link resolver — GS1 (id.gs1.org) or QDat.io (tapdpp.qdat.io).',
   'Encode NATO Stock Numbers.',
-  'Build serialized sheets of sequentially-numbered codes, with a full serial log of every encoded link.',
+  'Build serialized sheets and page through them by page size — A4, Letter, A3, Legal, or a flexographic continuous web — with a full serial log of every encoded link.',
   'See the exact printed size live, with mm/inch/vernier rulers on screen and in exports.',
-  'Add a centre logo without breaking the code (structure-aware dead-space).',
+  'Reserve a clean centre zone for a logo — a square free of all code, sized within the error-correction budget.',
   'Export PNG (exact DPI), SVG and PDF; save and open designs as JSON projects.',
 ];
 
