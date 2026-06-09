@@ -219,7 +219,7 @@ class PreviewPane extends ConsumerWidget {
     final twoD = block(
         label.twoD,
         _symbol(label.twoD,
-            logoFraction: _fracFor(s.logoSideMm, label.twoDSize),
+            logoFraction: _fracFor(s.safeLogoSideMm, label.twoDSize),
             logoPath: s.logoImagePath));
     final oneD = block(label.oneD, _symbol(label.oneD));
     const gap = SizedBox(width: 20, height: 18);

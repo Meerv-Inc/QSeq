@@ -66,14 +66,14 @@ class ExportActions {
         sgtin: Sgtin(gtin: s.data.gtin, serial: s.data.serial),
         twoDSymbology: s.twoDSymbology,
         digitalLinkDomain: s.data.digitalLinkDomain,
-        dpi: s.dpi,
-        xDimensionMm: s.xDimensionMm,
-        barHeightMm: s.barHeightMm,
+        dpi: s.safeDpi,
+        xDimensionMm: s.safeXDimensionMm,
+        barHeightMm: s.safeBarHeightMm,
         ecLevel: s.ecLevel,
         arrangement: s.arrangement,
-        gapMm: s.labelGapMm,
-        paddingMm: s.labelPaddingMm,
-        logoSideMm: s.logoSideMm,
+        gapMm: s.safeLabelGapMm,
+        paddingMm: s.safeLabelPaddingMm,
+        logoSideMm: s.safeLogoSideMm,
       );
     } catch (_) {
       return null;
@@ -83,16 +83,16 @@ class ExportActions {
   static Future<bool> exportPng(AppSettings s) async {
     var image = await renderImage(s);
     if (image == null) return false;
-    image = await Ruler.addRulers(image, s.dpi);
-    final bytes = await RasterRenderer.toPng(image, s.dpi);
+    image = await Ruler.addRulers(image, s.safeDpi);
+    final bytes = await RasterRenderer.toPng(image, s.safeDpi);
     return _save(bytes, 'code.png', 'PNG image', ['png']);
   }
 
   static Future<bool> copyPng(AppSettings s) async {
     var image = await renderImage(s);
     if (image == null) return false;
-    image = await Ruler.addRulers(image, s.dpi);
-    final bytes = await RasterRenderer.toPng(image, s.dpi);
+    image = await Ruler.addRulers(image, s.safeDpi);
+    final bytes = await RasterRenderer.toPng(image, s.safeDpi);
     return ClipboardExport.copyPng(bytes);
   }
 
@@ -136,8 +136,8 @@ class ExportActions {
     if (s.mode.isCombo) {
       var image = await renderImage(s);
       if (image == null) return false;
-      image = await Ruler.addRulers(image, s.dpi);
-      bytes = await RasterRenderer.toPng(image, s.dpi);
+      image = await Ruler.addRulers(image, s.safeDpi);
+      bytes = await RasterRenderer.toPng(image, s.safeDpi);
       // A combined label is rasterised; save as PNG at its physical size.
       return _save(bytes, 'label.png', 'PNG image', ['png']);
     }

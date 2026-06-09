@@ -149,16 +149,32 @@ class AppSettings {
   /// The resolved encodable string (or an error) for a static single workspace.
   ResolvedData get resolved => data.resolve();
 
+  // Sanitised views of the free-entry numeric settings, each clamped to a range
+  // the render/size engine can handle without crashing — a zero/negative size
+  // or an absurd DPI would otherwise yield an empty or memory-exhausting image.
+  // The raw fields are left exactly as typed so the input controls never fight
+  // the user mid-edit; only these consumption-side getters clamp.
+  static double _safe(double v, double lo, double hi, double fallback) =>
+      v.isFinite ? v.clamp(lo, hi).toDouble() : fallback;
+
+  double get safeDpi => _safe(dpi, 36, 1200, 300);
+  double get safeXDimensionMm => _safe(xDimensionMm, 0.05, 5, 0.5);
+  double get safeBarHeightMm => _safe(barHeightMm, 1, 300, 15);
+  double get safeLogoSideMm => _safe(logoSideMm, 0, 1000, 0);
+  double get safeLogoEcBudget => _safe(logoEcBudget, 0.05, 0.95, 0.5);
+  double get safeLabelGapMm => _safe(labelGapMm, 0, 100, 3);
+  double get safeLabelPaddingMm => _safe(labelPaddingMm, 0, 100, 2);
+
   /// The static single-symbol [EncodeConfig] (1D-only or 2D-only, not serial).
   EncodeConfig get singleConfig => EncodeConfig(
         symbology: activeSymbology,
         data: resolved.data ?? '',
         ecLevel: ecLevel,
-        dpi: dpi,
-        xDimensionMm: xDimensionMm,
-        barHeightMm: barHeightMm,
-        logoSideMm: logoSideMm,
-        logoSafetyMargin: logoEcBudget,
+        dpi: safeDpi,
+        xDimensionMm: safeXDimensionMm,
+        barHeightMm: safeBarHeightMm,
+        logoSideMm: safeLogoSideMm,
+        logoSafetyMargin: safeLogoEcBudget,
       );
 }
 
@@ -195,14 +211,14 @@ final combinedLabelProvider = Provider<CombinedLabel?>((ref) {
       sgtin: sgtin,
       twoDSymbology: s.twoDSymbology,
       digitalLinkDomain: s.data.digitalLinkDomain,
-      dpi: s.dpi,
-      xDimensionMm: s.xDimensionMm,
-      barHeightMm: s.barHeightMm,
+      dpi: s.safeDpi,
+      xDimensionMm: s.safeXDimensionMm,
+      barHeightMm: s.safeBarHeightMm,
       ecLevel: s.ecLevel,
       arrangement: s.arrangement,
-      gapMm: s.labelGapMm,
-      paddingMm: s.labelPaddingMm,
-      logoSideMm: s.logoSideMm,
+      gapMm: s.safeLabelGapMm,
+      paddingMm: s.safeLabelPaddingMm,
+      logoSideMm: s.safeLogoSideMm,
     );
   } on FormatException {
     return null;
@@ -235,13 +251,13 @@ Batch? buildBatchFor(AppSettings s) {
           ? s.data.encodeWith(format: SgtinFormat.digitalLink, serial: serial)
           : s.data.encodeWith(serial: serial),
       ecLevel: s.ecLevel,
-      dpi: s.dpi,
-      xDimensionMm: s.xDimensionMm,
-      barHeightMm: s.barHeightMm,
-      logoSideMm: s.logoSideMm,
-      logoEcBudget: s.logoEcBudget,
+      dpi: s.safeDpi,
+      xDimensionMm: s.safeXDimensionMm,
+      barHeightMm: s.safeBarHeightMm,
+      logoSideMm: s.safeLogoSideMm,
+      logoEcBudget: s.safeLogoEcBudget,
       page: s.pageFormat,
-      gapMm: s.labelGapMm,
+      gapMm: s.safeLabelGapMm,
       columnsOverride: s.batchColumns,
     );
   } catch (_) {
