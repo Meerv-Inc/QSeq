@@ -291,6 +291,20 @@ class InputsPanel extends ConsumerWidget {
           onChanged: (v) => update((x) => x.copyWith(pageFormat: v)),
         ),
       ),
+      // Orientation only applies to finite cut sheets; a continuous web has no
+      // second dimension to rotate.
+      if (!s.pageFormat.isContinuous)
+        LabeledField(
+          label: 'Orientation',
+          child: _dropdown<PageOrientation>(
+            value: s.pageOrientation,
+            items: const {
+              PageOrientation.portrait: 'Portrait',
+              PageOrientation.landscape: 'Landscape',
+            },
+            onChanged: (v) => update((x) => x.copyWith(pageOrientation: v)),
+          ),
+        ),
       LabeledField(
         label: 'Columns (0 = auto-fit)',
         child: NumberField(

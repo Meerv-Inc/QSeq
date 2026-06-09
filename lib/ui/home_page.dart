@@ -30,14 +30,17 @@ class HomePage extends ConsumerWidget {
             label: 'About QSeq',
             onSelected: () => showAboutSheet(context),
           ),
-          const PlatformProvidedMenuItem(
-              type: PlatformProvidedMenuItemType.servicesSubmenu),
-          const PlatformProvidedMenuItem(
-              type: PlatformProvidedMenuItemType.hide),
-          const PlatformProvidedMenuItem(
-              type: PlatformProvidedMenuItemType.hideOtherApplications),
-          const PlatformProvidedMenuItem(
-              type: PlatformProvidedMenuItemType.quit),
+          // The Services / Hide / Quit items are macOS-only platform-provided
+          // menus; instantiating them on Windows throws. Include each only where
+          // the running platform actually provides it.
+          for (final type in const [
+            PlatformProvidedMenuItemType.servicesSubmenu,
+            PlatformProvidedMenuItemType.hide,
+            PlatformProvidedMenuItemType.hideOtherApplications,
+            PlatformProvidedMenuItemType.quit,
+          ])
+            if (PlatformProvidedMenuItem.hasMenu(type))
+              PlatformProvidedMenuItem(type: type),
         ]),
       ],
       child: MacosWindow(

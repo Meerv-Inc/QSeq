@@ -69,6 +69,7 @@ class ProjectIo {
         'padDigits': s.batchPadding,
         'columns': s.batchColumns,
         'pageFormat': s.pageFormat.name,
+        'pageOrientation': s.pageOrientation.name,
       },
     };
   }
@@ -126,6 +127,8 @@ class ProjectIo {
       batchPadding: integer(sr['padDigits'], def.batchPadding),
       batchColumns: integer(sr['columns'], def.batchColumns),
       pageFormat: _byName(PageFormat.values, sr['pageFormat'], def.pageFormat),
+      pageOrientation: _byName(
+          PageOrientation.values, sr['pageOrientation'], def.pageOrientation),
     );
   }
 
