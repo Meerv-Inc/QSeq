@@ -274,7 +274,7 @@ class InputsPanel extends ConsumerWidget {
         child: NumberField(
             value: s.batchCount.toDouble(),
             onChanged: (v) => update(
-                (x) => x.copyWith(batchCount: v.round().clamp(1, 5000)))),
+                (x) => x.copyWith(batchCount: v.round().clamp(1, 2000)))),
       ),
       LabeledField(
         label: 'Zero-pad digits',

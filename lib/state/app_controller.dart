@@ -241,7 +241,7 @@ final combinedLabelProvider = Provider<CombinedLabel?>((ref) {
 /// Builds the serialized sheet for the current settings (or null).
 Batch? buildBatchFor(AppSettings s) {
   if (!s.mode.isSerialized) return null;
-  final count = s.batchCount.clamp(1, 5000);
+  final count = s.batchCount.clamp(1, 2000);
   final padding = s.batchPadding.clamp(0, 12);
   try {
     return Batch.build(

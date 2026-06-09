@@ -57,7 +57,7 @@ const state=()=>({
   nsn:val('nsn'),text:val('text'),twoD:val('twoD'),ec:val('ec'),oneD:val('oneD'),
   dpi:clampF('dpi',36,1200,300),xdim:clampF('xdim',0.05,5,0.5),logo:clampF('logo',0,1000,0),
   ecbudget:clampF('ecbudget',5,95,50),barh:clampF('barh',1,300,15),
-  sprefix:val('sprefix'),sstart:clampI('sstart',0,1e9,1),scount:clampI('scount',1,5000,24),spad:clampI('spad',0,20,5),
+  sprefix:val('sprefix'),sstart:clampI('sstart',0,1e9,1),scount:clampI('scount',1,2000,24),spad:clampI('spad',0,20,5),
   pageformat:val('pageformat')||'a4',
 });
 
