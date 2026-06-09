@@ -81,6 +81,15 @@ class PreviewPane extends ConsumerWidget {
     final cellWpx = batch.cellWidthMm * trueScale;
     final twoWpx = (batch.twoDSize?.outer.widthMm ?? 0) * trueScale;
     final twoHpx = (batch.twoDSize?.outer.heightMm ?? 0) * trueScale;
+    // Centre logo dead-space as a fraction of the 2D symbol's outer width, so the
+    // serialized preview shows the same knockout (and picked logo image) that the
+    // exported PDF prints — matching the single/combined previews.
+    final twoOuterMm = batch.twoDSize?.outer.widthMm ?? 0;
+    final twoLogoFrac = (batch.hasTwoD &&
+            (batch.twoDSample?.logoSideMm ?? 0) > 0 &&
+            twoOuterMm > 0)
+        ? batch.twoDSample!.logoSideMm / twoOuterMm
+        : 0.0;
     final oneWpx = (batch.oneDSize?.outer.widthMm ?? 0) * trueScale;
     final oneHpx = (batch.oneDSize?.outer.heightMm ?? 0) * trueScale;
     // One sheet cell: the 2D and/or 1D code with its HRI underneath, every
@@ -91,16 +100,21 @@ class PreviewPane extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (batch.hasTwoD && it.twoDData != null) ...[
-                bw.BarcodeWidget(
-                  barcode: batch.twoDSample!.symbology.supportsEcLevel
-                      ? BarcodeFactory.build(batch.twoDSample!.symbology,
-                          ecLevel: batch.twoDSample!.ecLevel)
-                      : BarcodeFactory.build(batch.twoDSample!.symbology),
-                  data: it.twoDData!,
-                  width: twoWpx,
-                  height: twoHpx,
-                  drawText: false,
-                  errorBuilder: (c, e) => _inlineError(e),
+                _logoOverlay(
+                  bw.BarcodeWidget(
+                    barcode: batch.twoDSample!.symbology.supportsEcLevel
+                        ? BarcodeFactory.build(batch.twoDSample!.symbology,
+                            ecLevel: batch.twoDSample!.ecLevel)
+                        : BarcodeFactory.build(batch.twoDSample!.symbology),
+                    data: it.twoDData!,
+                    width: twoWpx,
+                    height: twoHpx,
+                    drawText: false,
+                    errorBuilder: (c, e) => _inlineError(e),
+                  ),
+                  twoWpx,
+                  twoLogoFrac,
+                  s.logoImagePath,
                 ),
                 const SizedBox(height: 6),
                 _hri(context,
@@ -465,12 +479,21 @@ class PreviewPane extends ConsumerWidget {
       errorBuilder: (context, error) => _inlineError(error),
     );
     if (!is2D || logoFraction <= 0) return widget;
+    return _logoOverlay(widget, side, logoFraction, logoPath);
+  }
 
-    final logoSide = side * logoFraction.clamp(0.0, 0.5);
+  /// Overlays the centre logo dead-space on a 2D code: a white knockout square
+  /// sized to [logoFraction] of [codePx], holding the picked logo image when
+  /// one is set. Shared by the single, combined and serialized previews so all
+  /// three match the exported PDF.
+  Widget _logoOverlay(
+      Widget code, double codePx, double logoFraction, String? logoPath) {
+    if (logoFraction <= 0) return code;
+    final logoSide = codePx * logoFraction.clamp(0.0, 0.5);
     return Stack(
       alignment: Alignment.center,
       children: [
-        widget,
+        code,
         Container(
           width: logoSide + 6,
           height: logoSide + 6,

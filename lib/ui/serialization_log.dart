@@ -25,10 +25,60 @@ class SerializationLog extends ConsumerStatefulWidget {
 class _SerializationLogState extends ConsumerState<SerializationLog> {
   final _scroll = ScrollController();
 
+  /// Fixed height of one log row, so a single-step scroll advances exactly one
+  /// code and the list lays out cheaply.
+  static const double _rowExtent = 20;
+
   @override
   void dispose() {
     _scroll.dispose();
     super.dispose();
+  }
+
+  /// Scroll the log by [delta] logical pixels, clamped to the scrollable range.
+  void _scrollBy(double delta) {
+    if (!_scroll.hasClients) return;
+    final pos = _scroll.position;
+    final target = (pos.pixels + delta)
+        .clamp(pos.minScrollExtent, pos.maxScrollExtent);
+    _scroll.animateTo(target,
+        duration: const Duration(milliseconds: 160), curve: Curves.easeOut);
+  }
+
+  /// One viewport-worth of scroll (a little overlap keeps a row of context).
+  double get _pageDelta {
+    if (!_scroll.hasClients) return _rowExtent * 10;
+    final vp = _scroll.position.viewportDimension;
+    return (vp - _rowExtent).clamp(_rowExtent, double.infinity).toDouble();
+  }
+
+  /// Arrow controls pinned under the list — line up/down and page up/down —
+  /// replacing the unreliable drag scrollbar.
+  Widget _navBar(MacosThemeData theme, bool disabled) {
+    Widget btn(IconData icon, String tip, VoidCallback onTap) => MacosTooltip(
+          message: tip,
+          child: MacosIconButton(
+            icon: MacosIcon(icon, size: 16),
+            boxConstraints:
+                const BoxConstraints(minWidth: 34, minHeight: 26),
+            onPressed: disabled ? null : onTap,
+          ),
+        );
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          btn(CupertinoIcons.arrow_up_to_line, 'Page up',
+              () => _scrollBy(-_pageDelta)),
+          btn(CupertinoIcons.chevron_up, 'Up one', () => _scrollBy(-_rowExtent)),
+          btn(CupertinoIcons.chevron_down, 'Down one',
+              () => _scrollBy(_rowExtent)),
+          btn(CupertinoIcons.arrow_down_to_line, 'Page down',
+              () => _scrollBy(_pageDelta)),
+        ],
+      ),
+    );
   }
 
   @override
@@ -72,32 +122,24 @@ class _SerializationLogState extends ConsumerState<SerializationLog> {
         ),
         const SizedBox(height: 8),
         Expanded(
-          // macos_ui's Sidebar wraps this content in its own (non-interactive)
-          // MacosScrollbar driven by the list's scroll notifications. Swallow
-          // those notifications so that phantom bar never appears and blocks the
-          // grabbable RawScrollbar below — the RawScrollbar still works because
-          // it reads the shared controller, not the bubbling notifications.
+          // Drag-thumb scrollbars proved unreliable across platforms (the
+          // macos_ui Sidebar overlays its own non-interactive bar), so the list
+          // is driven by the arrow buttons below instead. Swallow the list's
+          // scroll notifications so that phantom sidebar bar never renders;
+          // wheel/trackpad scrolling still works via the shared controller.
           child: NotificationListener<ScrollNotification>(
             onNotification: (_) => true,
-            child: RawScrollbar(
-            controller: _scroll,
-            thumbVisibility: true,
-            interactive: true,
-            thumbColor: const Color(0x88888888),
-            radius: const Radius.circular(6),
-            thickness: 9,
             child: ListView.builder(
-            controller: _scroll,
-            padding: const EdgeInsets.fromLTRB(16, 0, 22, 0),
-            itemCount: shown.length,
-            itemBuilder: (context, i) {
-              final num =
-                  (i + 1).toString().padLeft(shown.length.toString().length);
-              final page = multiPage ? i ~/ perPage : 0;
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 1.5),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              controller: _scroll,
+              itemExtent: _rowExtent,
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+              itemCount: shown.length,
+              itemBuilder: (context, i) {
+                final num =
+                    (i + 1).toString().padLeft(shown.length.toString().length);
+                final page = multiPage ? i ~/ perPage : 0;
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Expanded(
                       child: Text(
@@ -117,13 +159,12 @@ class _SerializationLogState extends ConsumerState<SerializationLog> {
                       ),
                     ],
                   ],
-                ),
-              );
-            },
+                );
+              },
             ),
           ),
-          ),
         ),
+        _navBar(theme, serials.isEmpty),
         Padding(
           padding: const EdgeInsets.all(12),
           child: PushButton(
