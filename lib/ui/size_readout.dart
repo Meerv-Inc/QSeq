@@ -31,7 +31,7 @@ class SizeReadout extends ConsumerWidget {
       final batch = ref.watch(batchProvider);
       final sample = batch?.sampleSize;
       if (batch != null && batch.items.isNotEmpty && sample != null) {
-        final dpi = s.dpi;
+        final dpi = s.safeDpi;
         outer = PhysicalSize(
           widthMm: batch.page.widthMm,
           heightMm: batch.page.heightMm,

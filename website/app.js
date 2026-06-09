@@ -44,12 +44,20 @@ const val=id=>$(id)?.value ?? '';
 const num=id=>parseFloat(val(id));
 function show(sel,on){document.querySelectorAll(`[data-when~="${sel}"]`).forEach(e=>e.hidden=!on);}
 
+// Clamp numeric inputs to safe ranges so out-of-bound or empty values (negative,
+// NaN, or absurdly large — e.g. a huge zero-pad would blow up padStart, a huge
+// DPI would exhaust canvas memory) can never crash rendering. Falls back to
+// [def] when the field is blank or non-numeric.
+const clampF=(id,lo,hi,def)=>{const n=parseFloat(val(id));return Number.isFinite(n)?Math.min(hi,Math.max(lo,n)):def;};
+const clampI=(id,lo,hi,def)=>{const n=parseInt(val(id),10);return Number.isFinite(n)?Math.min(hi,Math.max(lo,n)):def;};
+
 const state=()=>({
   mode:val('mode'),kind:val('kind'),gtin:val('gtin'),serial:val('serial'),
-  sgtinFormat:val('sgtinFormat'),cpl:num('cpl'),domain:val('domain'),
+  sgtinFormat:val('sgtinFormat'),cpl:clampI('cpl',6,12,7),domain:val('domain'),
   nsn:val('nsn'),text:val('text'),twoD:val('twoD'),ec:val('ec'),oneD:val('oneD'),
-  dpi:num('dpi'),xdim:num('xdim'),logo:num('logo'),ecbudget:num('ecbudget'),barh:num('barh'),
-  sprefix:val('sprefix'),sstart:parseInt(val('sstart'))||0,scount:parseInt(val('scount'))||1,spad:parseInt(val('spad'))||0,
+  dpi:clampF('dpi',36,1200,300),xdim:clampF('xdim',0.05,5,0.5),logo:clampF('logo',0,1000,0),
+  ecbudget:clampF('ecbudget',5,95,50),barh:clampF('barh',1,300,15),
+  sprefix:val('sprefix'),sstart:clampI('sstart',0,1e9,1),scount:clampI('scount',1,5000,24),spad:clampI('spad',0,20,5),
 });
 
 const is1D=s=>s.mode.startsWith('1d');
@@ -535,7 +543,13 @@ function applyProject(p){
 
 // ---- wire ------------------------------------------------------------------
 function init(){
-  document.querySelectorAll('input,select').forEach(el=>el.addEventListener('input',render));
+  // Every control re-renders on input — except the resolver preset, whose own
+  // 'change' handler below must run first (a select fires 'input' before
+  // 'change', and render() would otherwise snap the preset back to the still-old
+  // domain before the change handler can copy the new value across).
+  document.querySelectorAll('input,select').forEach(el=>{
+    if(el.id!=='resolver')el.addEventListener('input',render);
+  });
   $('dlPng').addEventListener('click',downloadPng);
   $('dlPdf').addEventListener('click',downloadPdf);
   $('dlSvg').addEventListener('click',downloadSvg);
