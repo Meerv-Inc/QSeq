@@ -78,6 +78,9 @@ const PAGE_FORMATS={
 const pageFmt=s=>PAGE_FORMATS[s.pageformat]||PAGE_FORMATS.a4;
 // Which printed page the serialized preview is showing (0-based).
 let sheetPage=0;
+// Last computed sheet pagination, so the serialization log can map a code to its
+// page without recomputing.
+let lastSheetLayout=null;
 
 const is1D=s=>s.mode.startsWith('1d');
 const isSerial=s=>s.mode.endsWith('Serial');
@@ -201,6 +204,7 @@ function sheetLayout(s){
 
 function composeSheet(s){
   const L=sheetLayout(s);
+  lastSheetLayout=L;
   sheetPage=Math.min(Math.max(0,sheetPage),L.pageCount-1);
   const start=sheetPage*L.perPage;
   const itemsOnPage=L.continuous?L.n:Math.min(L.perPage,L.n-start);
@@ -236,23 +240,36 @@ function composeSheet(s){
   return out;
 }
 
-function gotoPage(d){sheetPage=Math.max(0,sheetPage+d);render();}
+function gotoPage(p){sheetPage=Math.max(0,p);render();}
 
-// Prev/next page browser shown above a serialized sheet.
+// Jump the preview to a given page (used by the serialization-log count links)
+// and bring the sheet into view.
+function jumpToPage(p){
+  sheetPage=Math.max(0,p);render();
+  const st=$('stage');if(st)st.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+// Bottom page browser for a serialized sheet: one tab per printed page (a
+// continuous web is a single endless page). The strip scrolls horizontally and
+// keeps the active page tab in view.
 function pageControls(L){
-  const bar=document.createElement('div');bar.className='pagebar';
+  const bar=document.createElement('div');bar.className='pagetabs';
+  const lbl=document.createElement('span');lbl.className='pageinfo';
   if(L.continuous){
-    const span=document.createElement('span');
-    span.textContent=`${L.fmtLabel} · ${L.total} code${L.total>1?'s':''} on one endless page`;
-    bar.appendChild(span);return bar;
+    lbl.textContent=`${L.fmtLabel} · ${L.total} code${L.total>1?'s':''} on one endless page`;
+    bar.appendChild(lbl);return bar;
   }
-  const prev=document.createElement('button');prev.type='button';prev.textContent='‹';
-  prev.disabled=L.page<=0;prev.onclick=()=>gotoPage(-1);
-  const lbl=document.createElement('span');
-  lbl.textContent=`Page ${L.page+1} / ${L.pageCount} · ${L.fmtLabel}`;
-  const next=document.createElement('button');next.type='button';next.textContent='›';
-  next.disabled=L.page>=L.pageCount-1;next.onclick=()=>gotoPage(1);
-  bar.append(prev,lbl,next);return bar;
+  lbl.textContent=`${L.fmtLabel} · ${L.pageCount} pages`;
+  bar.appendChild(lbl);
+  for(let p=0;p<L.pageCount;p++){
+    const t=document.createElement('button');t.type='button';
+    t.className='ptab'+(p===L.page?' active':'');
+    t.textContent=p+1;
+    t.onclick=()=>gotoPage(p);
+    if(p===L.page)requestAnimationFrame(()=>t.scrollIntoView({inline:'center',block:'nearest'}));
+    bar.appendChild(t);
+  }
+  return bar;
 }
 
 // Scale the preview card down (CSS zoom) so it never overflows the stage
@@ -372,7 +389,6 @@ function render(){
   const stage=$('stage');stage.innerHTML='';$('err').textContent='';
   try{
     const canvas=isSerial(s)?composeSheet(s):composeSingle(s);
-    if(isSerial(s)&&canvas._layout)stage.appendChild(pageControls(canvas._layout));
     const card=document.createElement('div');card.className='card';
     card.appendChild(wrapWithRulers(canvas,s.dpi));
     stage.appendChild(card);
@@ -383,6 +399,7 @@ function render(){
         note.style.color='#888';note.style.marginTop='8px';
         note.textContent=`Showing first ${L.shown} of ${L.itemsOnPage} on this page · all ${L.total} export to PDF`;
         stage.appendChild(note);}
+      stage.appendChild(pageControls(L)); // page tabs pinned to the bottom
     }
   }catch(e){$('err').textContent=String(e);}
   renderReadout(s);
@@ -410,12 +427,17 @@ function renderLog(s){
   cnt.textContent=`${entries.length} code${entries.length>1?'s':''} · full encoded link`;
   const isLink=v=>/^https?:\/\//.test(v);
   const w=String(entries.length).length;
+  // When the sheet spans multiple pages, the count links to the page holding it.
+  const L=lastSheetLayout;
+  const multi=isSerial(s)&&L&&!L.continuous&&L.pageCount>1&&L.perPage>0;
   log.innerHTML=entries.map((v,i)=>{
     const num=String(i+1).padStart(w,' ');
     const cell=isLink(v)
       ? `<a href="${escapeHtml(v)}" target="_blank" rel="noopener">${escapeHtml(v)}</a>`
       : escapeHtml(v);
-    return `<div class="row"><span class="n">${num}</span><span>${cell}</span></div>`;
+    const page=multi?Math.floor(i/L.perPage):0;
+    const numCell=multi?`<a class="n jump" title="Jump to page ${page+1}" onclick="jumpToPage(${page})">${num}</a>`:`<span class="n">${num}</span>`;
+    return `<div class="row">${numCell}<span>${cell}</span></div>`;
   }).join('');
 }
 
