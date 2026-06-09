@@ -72,7 +72,14 @@ class _SerializationLogState extends ConsumerState<SerializationLog> {
         ),
         const SizedBox(height: 8),
         Expanded(
-          child: RawScrollbar(
+          // macos_ui's Sidebar wraps this content in its own (non-interactive)
+          // MacosScrollbar driven by the list's scroll notifications. Swallow
+          // those notifications so that phantom bar never appears and blocks the
+          // grabbable RawScrollbar below — the RawScrollbar still works because
+          // it reads the shared controller, not the bubbling notifications.
+          child: NotificationListener<ScrollNotification>(
+            onNotification: (_) => true,
+            child: RawScrollbar(
             controller: _scroll,
             thumbVisibility: true,
             interactive: true,
@@ -114,6 +121,7 @@ class _SerializationLogState extends ConsumerState<SerializationLog> {
               );
             },
             ),
+          ),
           ),
         ),
         Padding(
