@@ -11,15 +11,28 @@ import 'size_result.dart';
 import 'symbology.dart';
 import '../sizing/sizer.dart';
 
-/// Paper sizes for batch sheets.
+/// Paper sizes for batch sheets. Cut sheets have a finite height; flexographic
+/// continuous webs have an infinite height ([heightMm] = `double.infinity`) —
+/// codes flow down one endless page of the given web width.
 enum PageFormat {
   a4('A4', 210, 297),
-  letter('US Letter', 215.9, 279.4);
+  letter('US Letter', 215.9, 279.4),
+  a3('A3', 297, 420),
+  legal('US Legal', 215.9, 355.6),
+  flexo12in('Flexo 12 in × continuous', 304.8, double.infinity),
+  flexo24in('Flexo 24 in × continuous', 609.6, double.infinity),
+  flexo36in('Flexo 36 in × continuous', 914.4, double.infinity),
+  flexo12cm('Flexo 12 cm × continuous', 120, double.infinity),
+  flexo24cm('Flexo 24 cm × continuous', 240, double.infinity),
+  flexo36cm('Flexo 36 cm × continuous', 360, double.infinity);
 
   const PageFormat(this.label, this.widthMm, this.heightMm);
   final String label;
   final double widthMm;
   final double heightMm;
+
+  /// True for a flexographic continuous web (endless length).
+  bool get isContinuous => !heightMm.isFinite;
 }
 
 /// One sequentially-numbered cell in a batch. [prefix] renders in a normal
@@ -174,14 +187,35 @@ class Batch {
   }
 
   int get rows {
+    // A continuous web has no page break, so every cell stacks down one page.
+    if (page.isContinuous) {
+      final c = columns;
+      return items.isEmpty ? 1 : (items.length / c).ceil();
+    }
     final usable = page.heightMm - 2 * marginMm + cellGapMm;
     final n = (usable / (cellHeightMm + cellGapMm)).floor();
     return n < 1 ? 1 : n;
   }
 
-  int get perPage => columns * rows;
+  /// Cells per printed page — all of them on a continuous web (one endless page).
+  int get perPage =>
+      page.isContinuous ? (items.isEmpty ? 1 : items.length) : columns * rows;
 
-  int get pageCount => items.isEmpty ? 0 : (items.length / perPage).ceil();
+  int get pageCount => items.isEmpty
+      ? 0
+      : page.isContinuous
+          ? 1
+          : (items.length / perPage).ceil();
+
+  /// Physical height of one page in mm. For a continuous web this is the height
+  /// the content actually occupies (margins + stacked rows + gaps) rather than
+  /// an infinite sheet, so exporters and rulers have a finite extent to draw.
+  double get pageHeightMm {
+    if (!page.isContinuous) return page.heightMm;
+    // Each cell reserves cellGapMm of vertical margin (half top, half bottom),
+    // so budget a full gap per row to guarantee everything lands on one page.
+    return 2 * marginMm + rows * (cellHeightMm + cellGapMm);
+  }
 
   /// A representative size result for the cell (the 2D if present, else 1D).
   SizeResult? get sampleSize => twoDSize ?? oneDSize;
