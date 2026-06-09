@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "qr_studio" "\0"
+            VALUE "CompanyName", "Meerv Inc." "\0"
+            VALUE "FileDescription", "QSeq" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "qr_studio" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.example. All rights reserved." "\0"
-            VALUE "OriginalFilename", "qr_studio.exe" "\0"
-            VALUE "ProductName", "qr_studio" "\0"
+            VALUE "InternalName", "QSeq" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 Meerv Inc. All rights reserved." "\0"
+            VALUE "OriginalFilename", "QSeq.exe" "\0"
+            VALUE "ProductName", "QSeq" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END
