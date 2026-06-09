@@ -6,6 +6,33 @@ releases.
 
 © 2026 Meerv Inc. — PolyForm Noncommercial License 1.0.0.
 
+## [1.1.0] — 2026-06-09
+
+Serialized-sheet pagination, flexographic page sizes, a cleaner centre-logo
+zone, and input hardening — across both the macOS app and the web app.
+
+### Added
+- **Page sizes for serialized sheets** — choose the printed page: **A4, US
+  Letter, A3, US Legal**, or a **flexographic continuous web** (12/24/36 inch or
+  12/24/36 cm wide), which lays every code down one endless page.
+- **Page browser** — the serialized preview now pages through the sheet exactly
+  as it will print, with a page selector and a per-page count. On the web, the
+  serialization log links each code to the page that holds it.
+
+### Changed
+- **Centre-logo zone is now fully cleared.** A logo reserves a clean square,
+  snapped to whole modules, that is free of *all* code — data, error correction
+  and function patterns alike — instead of preserving function patterns through
+  the logo. Keep the logo within the EC budget the size readout shows.
+- The serial **item count is capped at 2000**, the real render/PDF limit.
+
+### Fixed
+- **Resolver presets now update the Digital Link domain** on the web — switching
+  to QDat.io rewrites the domain instead of snapping back to GS1.
+- **Out-of-range inputs can no longer crash either app** — negative, empty or
+  absurd values (DPI, X-dimension, logo size, zero-pad, count…) are clamped to
+  safe ranges.
+
 ## [1.0.0] — 2026-06-07
 
 First public release. Native macOS app (Apple silicon) plus a companion web app

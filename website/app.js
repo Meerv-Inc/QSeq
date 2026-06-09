@@ -8,7 +8,7 @@
    © 2026 Meerv Inc. Rendering via bwip-js. */
 'use strict';
 
-const APP_VERSION='1.0.0';
+const APP_VERSION='1.1.0';
 
 // ---- encoders --------------------------------------------------------------
 function gtinCheck(data){let s=0,n=data.length;for(let i=0;i<n;i++){const d=+data[i];s+=d*(((n-1-i)%2===0)?3:1);}return (10-(s%10))%10;}
