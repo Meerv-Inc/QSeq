@@ -4,7 +4,7 @@
 ;   "%LOCALAPPDATA%\Programs\Inno Setup 6\ISCC.exe" installer\qseq.iss
 
 #define AppName "QSeq"
-#define AppVersion "1.2.0"
+#define AppVersion "1.2.1"
 #define AppPublisher "Meerv Inc."
 #define AppExe "QSeq.exe"
 
