@@ -51,6 +51,8 @@ h1,h2,h3{line-height:1.1;letter-spacing:-0.02em}
 .loglist .row a:hover{text-decoration:underline}
 .loglist .row a.jump{cursor:pointer}
 .loglist .row a.jump:hover{color:var(--accent);text-decoration:underline}
+.loglist .row .pglink{margin-left:8px;white-space:nowrap;color:var(--muted);font-size:.92em}
+.loglist .row .pglink:hover{color:var(--accent);text-decoration:underline}
 .loglist .empty{color:var(--muted)}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px}
 .inputs h2,.preview h2{margin:0 0 16px;font-size:1.15rem}

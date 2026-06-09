@@ -437,7 +437,8 @@ function renderLog(s){
       : escapeHtml(v);
     const page=multi?Math.floor(i/L.perPage):0;
     const numCell=multi?`<a class="n jump" title="Jump to page ${page+1}" onclick="jumpToPage(${page})">${num}</a>`:`<span class="n">${num}</span>`;
-    return `<div class="row">${numCell}<span>${cell}</span></div>`;
+    const pageTag=multi?` <a class="pglink jump" title="Jump to page ${page+1}" onclick="jumpToPage(${page})">Page: ${page+1} of ${L.pageCount}</a>`:'';
+    return `<div class="row">${numCell}<span>${cell}${pageTag}</span></div>`;
   }).join('');
 }
 
