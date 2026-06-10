@@ -131,13 +131,16 @@ class BatchPdf {
               top: innerMm * mm,
               right: outerMm * mm,
               bottom: outerMm * mm),
+          // Bleed the ruler bands to the very right and bottom edges of the
+          // sheet — past a normal printer's margin — so they sit clear of the
+          // codes instead of riding the inner gutter. Only the cross-axis
+          // offset (left for the bottom ruler, top for the right ruler) stays
+          // pinned to the content so each scale still aligns with the grid.
           buildForeground: (context) => pw.Stack(children: [
             pw.Positioned(
-                left: innerMm * mm, bottom: innerMm * mm, child: ruler.horizontal),
-            pw.Positioned(
-                top: innerMm * mm, right: innerMm * mm, child: ruler.vertical),
-            pw.Positioned(
-                right: innerMm * mm, bottom: innerMm * mm, child: ruler.vernier),
+                left: innerMm * mm, bottom: 0, child: ruler.horizontal),
+            pw.Positioned(top: innerMm * mm, right: 0, child: ruler.vertical),
+            pw.Positioned(right: 0, bottom: 0, child: ruler.vernier),
           ]),
         ),
         build: (context) => [
