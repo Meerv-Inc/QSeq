@@ -146,6 +146,11 @@
       <label>Logo size (mm)<input id="logo" type="number" min="0" max="1000" step="0.5" value="0" /></label>
       <label>Logo ≤ % of EC<input id="ecbudget" type="number" min="5" max="95" value="50" /></label>
     </div>
+    <div class="downloads" data-when="2d">
+      <button type="button" id="openLogo" class="btn">Open logo image…</button>
+      <button type="button" id="clearLogo" class="btn">Remove logo</button>
+      <span id="logoName" class="muted small" style="align-self:center">No logo image</span>
+    </div>
     <label data-when="1d">Bar height (mm)<input id="barh" type="number" min="1" max="300" value="15" /></label>
 
     <div class="serial-block" data-when="serial">
