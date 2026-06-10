@@ -196,7 +196,7 @@ Future<void> showSerialLogDialog(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Serialization Log — ${serials.length} codes (full GS1 Digital Link)',
+            Text('Serialization Log — ${serials.length} codes (full encoded payload)',
                 style: MacosTheme.of(context)
                     .typography
                     .title2

@@ -214,7 +214,9 @@ final batchPageProvider =
 class BatchZoomController extends Notifier<double> {
   @override
   double build() => 0;
-  void set(double z) => state = z <= 0 ? 0 : z.clamp(0.1, 2.0);
+  // Cap matches the auto-fit zoom ceiling (3.0) so an explicit zoom can always
+  // reach what auto-fit shows for a small sheet.
+  void set(double z) => state = z <= 0 ? 0 : z.clamp(0.1, 3.0);
 }
 
 final batchZoomProvider =

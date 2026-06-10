@@ -2,13 +2,13 @@
 
 *© 2026 Meerv Inc.*
 
-A native **macOS** (Flutter) generator for Barcodes, QR Codes and Data Matrix
-codes, built for GS1 supply-chain and defense logistics use. Its defining
+A native **macOS and Windows** (Flutter) generator for Barcodes, QR Codes and
+Data Matrix codes, built for GS1 supply-chain and defense logistics use. Its defining
 feature is a **live physical-size calculator**: the printed outer perimeter is
 shown as a function of the centre logo dead-space, the byte count, the printing
 resolution (DPI) and the error-correction level.
 
-Download the macOS app and try the browser version at **[qseq.app](https://qseq.app)**.
+Download the macOS or Windows app and try the browser version at **[qseq.app](https://qseq.app)**.
 
 ## Purpose
 
@@ -40,7 +40,7 @@ read, verify and build upon — without proprietary lock-in. Durable, interopera
 identity is the foundation of the circular economy (reuse, repair, recall,
 provenance, end-of-life), and the tools that *mint* those identities should stay
 a public good. It is written in Flutter so a **single codebase** serves macOS,
-Windows (forthcoming) and the web identically.
+Windows and the web identically.
 
 ## Features
 
@@ -61,9 +61,10 @@ Windows (forthcoming) and the web identically.
 - **Structure-aware dead-space:** the centre knockout never erases QR function
   patterns (finder, timing, alignment, format/version) — they show through the
   logo, so a centred logo can't destroy a central alignment pattern.
-- **Batch sheets:** fill a page (A4 / US Letter) with sequentially-numbered
-  codes, each captioned with its serial — the **incrementing digits in bold** —
-  auto-tiled into a grid and exported as a multi-page PDF.
+- **Batch sheets:** fill a page (A4 / US Letter / A3 / US Legal, or a
+  flexographic continuous web) with sequentially-numbered codes, each captioned
+  with its serial — the **incrementing digits in bold** — auto-tiled into a grid
+  and exported as a multi-page PDF.
 - **Combined 1D + 2D label:** pairs a GS1-128 (SGTIN element string) with a
   QR/Data Matrix (GS1 Digital Link) for the same item on one larger label,
   stacked or side-by-side, with the combined outer size computed.
@@ -92,7 +93,7 @@ sizing engine is a pure function `Sizer.compute(EncodeConfig) -> SizeResult`.
 
 ```bash
 flutter pub get
-flutter test          # 34 tests: encoders, sizing, render pipeline, providers
+flutter test          # 59 tests: encoders, sizing, render pipeline, providers
 flutter run -d macos  # requires CocoaPods (brew install cocoapods)
 ```
 

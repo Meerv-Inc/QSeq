@@ -6,6 +6,53 @@ releases.
 
 © 2026 Meerv Inc. — PolyForm Noncommercial License 1.0.0.
 
+## [1.2.2] — 2026-06-10
+
+Print-true fixes and a friendlier web app.
+
+### Fixed
+- **Measurement rulers no longer overlay the code** in single-code PDF exports.
+  The symbol is now pinned to its exact physical size, so it can never expand
+  into the reserved ruler gutter.
+
+### Added
+- **Centre-logo image overlay (web)** — open a PNG/JPEG/SVG logo into the
+  cleared 2D dead-space, or remove it; the knockout still protects the symbol's
+  finder, timing and alignment patterns.
+- **Serialization-log buttons (web)** — the log scrolls with up / down /
+  page-up / page-down buttons, since the macOS overlay scrollbar auto-hides and
+  is hard to grab.
+- **Support page** (support@meerv.com) and in-page **release notes** on the
+  website.
+
+## [1.2.1] — 2026-06-09
+
+### Added
+- **Centre logo in the serialized preview**, and **arrow-button navigation**
+  for the serialization log.
+
+### Changed
+- The **macOS build is now signed & notarized** — open it without Gatekeeper
+  prompts.
+- A **Windows installer** (Inno Setup) branded as QSeq; About / Flutter
+  sections credit both macOS and Windows.
+
+### Fixed
+- The **ungrabbable serialization-log scrollbar** in the macos_ui sidebar.
+
+## [1.2.0] — 2026-06-09
+
+First **Windows desktop** release, plus a serialized-sheet overhaul.
+
+### Added
+- **Native Windows desktop build** from the same Dart codebase, shipped as a
+  portable ZIP and an installer.
+- **Portrait / landscape** label orientation and a **zoom-to-fit** preview.
+
+### Changed
+- **Serialized-sheet overhaul** — packing and pagination reworked across the
+  app and the web so the preview tracks the printed pages.
+
 ## [1.1.0] — 2026-06-09
 
 Serialized-sheet pagination, flexographic page sizes, a cleaner centre-logo

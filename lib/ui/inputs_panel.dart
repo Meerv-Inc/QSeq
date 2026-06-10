@@ -266,8 +266,10 @@ class InputsPanel extends ConsumerWidget {
         label: 'Start number (printed bold)',
         child: NumberField(
             value: s.batchStart.toDouble(),
-            onChanged: (v) =>
-                update((x) => x.copyWith(batchStart: v.round()))),
+            // Clamp to ≥ 0 to match the web (a negative start would pad/format
+            // into nonsense serials); cap matches the web's range.
+            onChanged: (v) => update(
+                (x) => x.copyWith(batchStart: v.round().clamp(0, 1000000000)))),
       ),
       LabeledField(
         label: 'Count',

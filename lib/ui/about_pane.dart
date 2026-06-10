@@ -24,10 +24,19 @@ const List<(String, String)> _register = [
       '1D / 2D / combined, each as a single design or a serialized sheet, with a live Serialization Log.'),
   ('Project files', 'All raw parameters saved as well-formatted, externally-editable JSON.'),
   ('Print-true rulers', 'mm + inch scales with vernier ticks on every sheet, at exact DPI.'),
+  ('Cross-platform desktop',
+      'Native macOS (signed & notarized) and Windows builds from one Dart codebase, alongside the web app.'),
+  ('Layout controls',
+      'Portrait / landscape orientation and a zoom-to-fit preview for serialized sheets.'),
 ];
 
 /// End-user Release Notes — an excerpt of CHANGELOG.md relevant to users.
 const List<String> _releaseNotes = [
+  'Run on Windows too — a native desktop build alongside the signed & notarized macOS app.',
+  'Choose portrait or landscape orientation for serialized cut-sheet layouts, with a zoom-to-fit preview.',
+  'Serialized sheets reworked so the on-screen preview tracks the printed pages.',
+  'Place a centre logo as an image in the cleared 2D dead-space (web), or remove it.',
+  'Measurement rulers stay clear of the code in single-code PDF exports.',
   'Generate QR Code, Data Matrix and 1D barcodes (GS1-128, Code 128, Code 39, EAN-13, UPC-A).',
   'Encode SGTINs as GS1 element strings, EPC Tag URIs, or GS1 Digital Links.',
   'Choose your Digital Link resolver — GS1 (id.gs1.org) or QDat.io (tapdpp.qdat.io).',
@@ -111,6 +120,11 @@ Future<void> showAboutSheet(BuildContext context) async {
                             style: t.caption1.copyWith(
                                 color: MacosColors.systemGrayColor)),
                       ),
+                      h('Support'),
+                      p('Questions, bug reports or feature requests? Email '
+                          'support@meerv.com and include your version (shown '
+                          'above) and platform — macOS, Windows or web. We read '
+                          'every message.'),
                       h('Why “QSeq”?'),
                       p('Seq is sequence — QSeq mints ordered, serialized '
                           'identities. The Q is chosen deliberately; every '
@@ -132,13 +146,14 @@ Future<void> showAboutSheet(BuildContext context) async {
                           'resolvable sequence of identity codes. That is QSeq.'),
                       h('How it was built'),
                       p('QSeq was designed and written collaboratively with Claude '
-                          '(Anthropic) in a single continuous pair-programming session '
-                          'on 7 June 2026 — from an empty directory to a tested, '
-                          'native macOS application. Every feature below was added '
-                          'iteratively, each verified with automated tests and a real '
-                          'build before moving on. The domain core (encoders, capacity '
-                          'tables, sizing and rendering) is covered by 50+ unit and '
-                          'rendering tests.'),
+                          '(Anthropic) over a few focused pair-programming sessions '
+                          'in June 2026 — from an empty directory to tested, native '
+                          'macOS and Windows desktop applications and a companion '
+                          'website. Every feature below was added iteratively, each '
+                          'verified with automated tests and a real build before '
+                          'moving on. The domain core (encoders, capacity tables, '
+                          'sizing and rendering) is covered by 60+ unit and rendering '
+                          'tests.'),
                       h('Development register'),
                       for (var i = 0; i < _register.length; i++)
                         Padding(
@@ -154,10 +169,10 @@ Future<void> showAboutSheet(BuildContext context) async {
                         ),
                       h('Why Flutter?'),
                       p('QSeq is written in Flutter / Dart so a single codebase '
-                          'serves every surface. This macOS app is the first '
-                          'target; the same source compiles to a forthcoming '
-                          'Windows desktop build and to the web, and the '
-                          'companion website mirrors this exact logic. One '
+                          'serves every surface. The macOS and Windows desktop '
+                          'apps are built from it, and the same source compiles '
+                          'to the web — the companion website mirrors this exact '
+                          'logic. One '
                           'implementation of the encoders, capacity tables, '
                           'sizing and rendering means an identity minted on '
                           'macOS, Windows or the browser is byte-for-byte the '

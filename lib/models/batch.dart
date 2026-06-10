@@ -180,11 +180,41 @@ class Batch {
         twoDSize?.outer.widthMm ?? 0,
       );
 
+  // HRI caption metrics — these must track batch_pdf.dart, which renders the
+  // full encoded string under each code at 5 pt, wrapped to the cell width.
+  // rows/perPage/pageCount all derive from cellHeightMm, so a flat caption
+  // budget (the old behaviour) badly under-counted multi-line Digital Links and
+  // made the on-screen page count, the page-browser slicing and the
+  // serialization-log page labels disagree with the exported PDF.
+  static const double _hriPt = 5.0;
+  static const double _hriLineMm = _hriPt * 1.4 / 2.835; // ≈ 2.47 mm per line
+  static const double _hriCharMm = _hriPt * 0.62 / 2.835; // ≈ 1.09 mm per char
+
+  /// Estimated wrapped-HRI line count for [data] at the cell width, mirroring
+  /// the 5 pt caption batch_pdf renders. Slightly conservative (rounds up) so
+  /// the estimate never under-fills relative to the PDF.
+  int _hriLines(String? data) {
+    if (data == null || data.isEmpty) return 0;
+    final cpl = math.max(8, (cellWidthMm / _hriCharMm).floor());
+    return math.max(1, (data.length / cpl).ceil());
+  }
+
+  // MultiPage flows on the tallest cell in each row and serials vary in length
+  // (e.g. 0009 → 0010 adds a digit), so size the caption bands from the longest
+  // payload in the whole run rather than just the first item.
+  int get _maxTwoDLines =>
+      hasTwoD ? items.fold(0, (m, it) => math.max(m, _hriLines(it.twoDData))) : 0;
+  int get _maxOneDLines =>
+      hasOneD ? items.fold(0, (m, it) => math.max(m, _hriLines(it.oneDData))) : 0;
+
   double get cellHeightMm {
     final twoH = twoDSize?.outer.heightMm ?? 0;
     final oneH = oneDSize?.outer.heightMm ?? 0;
-    final innerGap = (hasOneD && hasTwoD) ? gapMm : 0;
-    return twoH + oneH + innerGap + captionMm;
+    // Mirror batch_pdf.dart's per-band gaps exactly: 2 mm before the 2D HRI;
+    // 4 mm before the 1D code and 2 mm before its HRI.
+    final twoCap = hasTwoD ? 2 + _maxTwoDLines * _hriLineMm : 0.0;
+    final oneCap = hasOneD ? 4 + 2 + _maxOneDLines * _hriLineMm : 0.0;
+    return twoH + twoCap + oneH + oneCap;
   }
 
   /// Landscape applies only to finite cut sheets — a continuous web has no

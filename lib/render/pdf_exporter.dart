@@ -51,10 +51,10 @@ class PdfExporter {
       drawText: !cfg.symbology.is2D,
     );
 
-    pw.Widget content = barcodeWidget;
+    pw.Widget symbol = barcodeWidget;
     if (cfg.symbology.is2D && logoPng != null && cfg.logoSideMm > 0) {
       final logoMm = cfg.logoSideMm;
-      content = pw.Stack(
+      symbol = pw.Stack(
         alignment: pw.Alignment.center,
         children: [
           barcodeWidget,
@@ -68,15 +68,22 @@ class PdfExporter {
       );
     }
 
+    // Always pin the symbol to its exact physical size. A bare BarcodeWidget
+    // (or a Stack around one) carries no intrinsic size, so when dropped into
+    // the page Stack's Positioned(left:0, top:0) it would expand to fill the
+    // whole page — overrunning the reserved ruler gutters and overlaying the
+    // rulers. The fixed SizedBox bounds it to exactly wMm × hMm.
+    pw.Widget content = pw.SizedBox(
+      width: wMm * PdfPageFormat.mm,
+      height: hMm * PdfPageFormat.mm,
+      child: symbol,
+    );
+
     if (hasCaption) {
       content = pw.Column(
         mainAxisSize: pw.MainAxisSize.min,
         children: [
-          pw.SizedBox(
-            width: wMm * PdfPageFormat.mm,
-            height: hMm * PdfPageFormat.mm,
-            child: content,
-          ),
+          content,
           pw.Container(
             width: wMm * PdfPageFormat.mm,
             height: captionMm * PdfPageFormat.mm,

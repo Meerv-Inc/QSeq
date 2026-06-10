@@ -5,7 +5,6 @@
 // https://polyformproject.org/licenses/noncommercial/1.0.0/
 
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:macos_ui/macos_ui.dart';

@@ -32,11 +32,17 @@ class SizeReadout extends ConsumerWidget {
       final sample = batch?.sampleSize;
       if (batch != null && batch.items.isNotEmpty && sample != null) {
         final dpi = s.safeDpi;
+        // Use the orientation-adjusted width and the *finite* page height
+        // (pageHeightMm is the content length a continuous web actually
+        // occupies — batch.page.heightMm is double.infinity for a flexo web,
+        // and .round() on infinity throws, crashing the whole readout).
+        final pageWmm = batch.effectiveWidthMm;
+        final pageHmm = batch.pageHeightMm;
         outer = PhysicalSize(
-          widthMm: batch.page.widthMm,
-          heightMm: batch.page.heightMm,
-          widthPx: (Dpi.mmToInch(batch.page.widthMm) * dpi).round(),
-          heightPx: (Dpi.mmToInch(batch.page.heightMm) * dpi).round(),
+          widthMm: pageWmm,
+          heightMm: pageHmm,
+          widthPx: (Dpi.mmToInch(pageWmm) * dpi).round(),
+          heightPx: (Dpi.mmToInch(pageHmm) * dpi).round(),
           dpi: dpi,
         );
         final per = batch.hasOneD && batch.hasTwoD

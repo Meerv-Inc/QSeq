@@ -34,6 +34,7 @@
     <a href="#generator">Generator</a>
     <a href="#mission">Mission</a>
     <a href="#about">About</a>
+    <a href="#support">Support</a>
     <a class="ghost" href="https://github.com/meerv-fmenard/qseq" target="_blank" rel="noopener">Source</a>
   </nav>
 </header>
@@ -201,6 +202,14 @@
     <h2>Serialization Log</h2>
     <p id="logCount" class="muted small"></p>
     <div id="log" class="loglist"></div>
+    <!-- The native overlay scrollbar auto-hides and is near-impossible to grab,
+         so the list is driven by these buttons (wheel/trackpad still works). -->
+    <div id="logNav" class="lognav" hidden>
+      <button type="button" class="lnav" data-act="pgup" title="Page up" aria-label="Page up">⇞</button>
+      <button type="button" class="lnav" data-act="up" title="Up one" aria-label="Up one">▲</button>
+      <button type="button" class="lnav" data-act="down" title="Down one" aria-label="Down one">▼</button>
+      <button type="button" class="lnav" data-act="pgdn" title="Page down" aria-label="Page down">⇟</button>
+    </div>
   </aside>
 </section>
 
@@ -246,7 +255,61 @@
   <p>QSeq is written in <b>Flutter / Dart</b> so a <b>single codebase</b> serves every surface. The <b>macOS and Windows</b> desktop apps you can download today are built from it, and the same Dart source compiles to the web — this site's generator mirrors that exact logic. One implementation of the encoders, capacity tables, sizing math and rendering means an identity minted on macOS, Windows or the browser is byte-for-byte the same.</p>
   <p>For infrastructure meant to outlive any one platform, that matters: <b>Sustainable Identity</b> needs sustainable, portable tooling. A single, open, well-tested codebase across desktop and web is the cheapest path to keeping these tools alive, auditable and consistent for the long haul.</p>
 
+  <h2 id="releases" style="margin-top:48px">Release notes</h2>
+  <div class="releases">
+    <div class="rel">
+      <div class="relv">v1.2.2 <span class="reld">· 2026-06-10</span></div>
+      <ul>
+        <li><b>Fixed:</b> measurement rulers no longer overlay the code in single-code PDF exports — the symbol is pinned to its exact physical size, clear of the reserved ruler gutter.</li>
+        <li><b>Centre-logo image overlay (web)</b> — open a PNG/JPEG/SVG logo into the cleared 2D dead-space, or remove it; the knockout still protects the symbol's function patterns.</li>
+        <li><b>Serialization log buttons</b> — the log now scrolls with up / down / page-up / page-down buttons, since the auto-hiding scrollbar was hard to grab.</li>
+        <li>New Support page and these in-page release notes.</li>
+      </ul>
+    </div>
+    <div class="rel">
+      <div class="relv">v1.2.1 <span class="reld">· 2026-06-09</span></div>
+      <ul>
+        <li>Windows installer (Inno Setup) with full QSeq branding; the <b>macOS build is now signed &amp; notarized</b> — just open it.</li>
+        <li>Serialized preview shows the centre logo; the serialization log gains arrow-button navigation.</li>
+      </ul>
+    </div>
+    <div class="rel">
+      <div class="relv">v1.2.0 <span class="reld">· 2026-06-09</span></div>
+      <ul>
+        <li>Native <b>Windows desktop</b> build from the same Dart codebase.</li>
+        <li>Portrait / landscape label orientation and a zoom-to-fit preview.</li>
+        <li>Serialized-sheet overhaul — packing and pagination reworked across the app and the web.</li>
+      </ul>
+    </div>
+    <div class="rel">
+      <div class="relv">v1.1.0 <span class="reld">· 2026-06-09</span></div>
+      <ul>
+        <li>Page sizes for serialized sheets — A4, US Letter, A3, US Legal, or a flexographic continuous web — with a page browser.</li>
+        <li>Centre-logo zone fully cleared to whole modules; out-of-range inputs clamped so neither app can crash.</li>
+        <li>Resolver presets now correctly rewrite the Digital Link domain on the web.</li>
+      </ul>
+    </div>
+    <div class="rel">
+      <div class="relv">v1.0.0 <span class="reld">· 2026-06-07</span></div>
+      <ul>
+        <li>First release — QR, Data Matrix and 1D barcodes for SGTINs, GS1 Digital Links, EPC Tag URIs and NATO Stock Numbers.</li>
+        <li>Print-true size calculator, structure-aware logo dead-space, mm/inch/vernier rulers, and PNG / SVG / PDF / JSON export.</li>
+      </ul>
+    </div>
+  </div>
+
   <p class="muted">QSeq <span id="ver"></span> · © 2026 Meerv Inc. · Licensed under the PolyForm Noncommercial License 1.0.0 — released as source-available in service of Sustainable Identity on Every Thing.</p>
+</section>
+
+<!-- SUPPORT -->
+<section id="support" class="support">
+  <h2>Support</h2>
+  <p>Questions, bug reports or feature requests? We read every message — QSeq is built in the open and we want it to work for you.</p>
+  <p>Email <a class="mail" href="mailto:support@meerv.com?subject=QSeq%20support">support@meerv.com</a> and we'll get back to you. Telling us your <b>QSeq version</b> (shown in the About panel of the app, or above in these release notes) and your <b>platform</b> — macOS, Windows or web — helps us help you faster.</p>
+  <div class="cta">
+    <a class="btn primary" href="mailto:support@meerv.com?subject=QSeq%20support">Email support@meerv.com</a>
+    <a class="btn" href="https://github.com/meerv-fmenard/qseq/issues" target="_blank" rel="noopener">Open a GitHub issue →</a>
+  </div>
 </section>
 
 <footer>
