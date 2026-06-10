@@ -173,8 +173,11 @@ class RasterRenderer {
 
   static Future<ui.Image> _render1d(EncodeConfig cfg, int dots) async {
     final barcode = BarcodeFactory.build(cfg.symbology);
-    final qz = cfg.symbology.quietZoneModules;
-    final pad = (qz * dots).toDouble();
+    // Horizontal quiet zones can be asymmetric (EAN-13: 11 left, 7 right);
+    // vertical whitespace matches the leading zone.
+    final padL = (cfg.symbology.quietZoneModules * dots).toDouble();
+    final padR = (cfg.symbology.quietZoneRightModules * dots).toDouble();
+    final padV = padL;
 
     // Probe to find the natural module width of the encoded data.
     final probe = barcode
@@ -189,8 +192,8 @@ class RasterRenderer {
     final fontHeight = barHeightPx * 0.18;
     final textPad = barHeightPx * 0.04;
     final contentHeight = barHeightPx + fontHeight + textPad;
-    final fullW = contentPx + 2 * pad;
-    final fullH = contentHeight + 2 * pad;
+    final fullW = contentPx + padL + padR;
+    final fullH = contentHeight + 2 * padV;
 
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
@@ -199,7 +202,7 @@ class RasterRenderer {
     canvas.drawRect(Rect.fromLTWH(0, 0, fullW, fullH), paintWhite);
 
     canvas.save();
-    canvas.translate(pad, pad);
+    canvas.translate(padL, padV);
     for (final e in barcode.make(cfg.data,
         width: contentPx,
         height: contentHeight,

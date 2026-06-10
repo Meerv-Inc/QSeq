@@ -72,6 +72,31 @@ class Sgtin {
     final companyPrefix = gtin14.substring(1, 1 + companyPrefixLength);
     final itemRef = gtin14.substring(1 + companyPrefixLength, 13);
     final indicatorAndItemRef = '$indicator$itemRef';
-    return 'urn:epc:id:sgtin:$companyPrefix.$indicatorAndItemRef.$serial';
+    return 'urn:epc:id:sgtin:$companyPrefix.$indicatorAndItemRef.'
+        '${_escapeEpcComponent(serial)}';
+  }
+
+  /// Percent-escapes the characters the EPC Tag Data Standard reserves inside a
+  /// URI component — `"`, `%`, `&`, `/`, `<`, `>`, `?` — so a serial carrying one
+  /// of them yields a well-formed URN instead of a structurally invalid one
+  /// (e.g. a `/` in the serial would otherwise break the three-field grammar).
+  /// Other GS1 AI-21 characters (including `.`) are left as-is: the SGTIN URI
+  /// has a fixed three-field layout, so a literal dot in the trailing serial is
+  /// unambiguous.
+  static String _escapeEpcComponent(String s) {
+    const escapes = {
+      '"': '%22',
+      '%': '%25',
+      '&': '%26',
+      '/': '%2F',
+      '<': '%3C',
+      '>': '%3E',
+      '?': '%3F',
+    };
+    final out = StringBuffer();
+    for (final ch in s.split('')) {
+      out.write(escapes[ch] ?? ch);
+    }
+    return out.toString();
   }
 }

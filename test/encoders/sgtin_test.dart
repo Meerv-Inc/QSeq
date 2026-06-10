@@ -61,6 +61,14 @@ void main() {
           'urn:epc:id:sgtin:0614141.812345.6789');
     });
 
+    test('EPC Tag URI percent-escapes reserved chars in the serial', () {
+      // A '/' (and '&', '%' …) in a serial would otherwise break the URN's
+      // three-field grammar; they must be escaped per EPC TDS. A '.' stays as-is.
+      final s = Sgtin(gtin: '80614141123458', serial: 'A/B&C%D.9');
+      expect(s.toEpcTagUri(companyPrefixLength: 7),
+          'urn:epc:id:sgtin:0614141.812345.A%2FB%26C%25D.9');
+    });
+
     test('EPC Tag URI rejects out-of-range company prefix length', () {
       expect(() => sgtin.toEpcTagUri(companyPrefixLength: 5),
           throwsArgumentError);

@@ -98,7 +98,11 @@ class Sizer {
         cfg.symbology == Symbology.ean13 || cfg.symbology == Symbology.upcA;
     final modWidth = LinearMetrics.moduleWidth(cfg.symbology, cfg.data);
     final dots = Dpi.moduleDots(cfg.xDimensionMm, cfg.dpi);
-    final totalWidthModules = modWidth + 2 * cfg.symbology.quietZoneModules;
+    // Quiet zones can be asymmetric (EAN-13: 11 left, 7 right), so sum the two
+    // sides rather than doubling one.
+    final totalWidthModules = modWidth +
+        cfg.symbology.quietZoneModules +
+        cfg.symbology.quietZoneRightModules;
     final widthPx = totalWidthModules * dots;
     final heightPx = (Dpi.mmToInch(cfg.barHeightMm) * cfg.dpi).round();
     final outer = PhysicalSize(

@@ -8,7 +8,7 @@
    © 2026 Meerv Inc. Rendering via bwip-js. */
 'use strict';
 
-const APP_VERSION='1.2.1';
+const APP_VERSION='1.2.2';
 
 // ---- encoders --------------------------------------------------------------
 function gtinCheck(data){let s=0,n=data.length;for(let i=0;i<n;i++){const d=+data[i];s+=d*(((n-1-i)%2===0)?3:1);}return (10-(s%10))%10;}
@@ -128,7 +128,12 @@ function makeCanvas(s,text){
     // whole modules, so the centre is 100% free of code: no data, no EC and no
     // function patterns. Everything inside is blanked; the symbol's content
     // sits entirely around it (recovered on scan by error correction).
-    let n=Math.round(modules*logoFrac(s));
+    // Size the hole from the logo's physical size in whole modules, matching the
+    // desktop (_centredModuleHole): logo mm → px → modules. The old logoFrac
+    // divided by the OUTER (quiet-zone-inclusive) width and capped at 0.5, so the
+    // web hole came out smaller than the desktop and clipped the logo image.
+    const logoPx=s.logo/25.4*s.dpi;
+    let n=Math.round(logoPx/cell);
     if(n>0){
       if((modules-n)%2!==0)n++;                   // keep the hole centred on the grid
       n=Math.min(n,modules);
@@ -199,15 +204,22 @@ function sheetLayout(s){
   const fmt=pageFmt(s);
   const mmpx=25.4/s.dpi, gutter=RBAND+RGAP, m=8, gap=3;
   const contentW=fmt.w-m-(m+gutter);
-  const data0=encode(s,s.sprefix+String(s.sstart).padStart(s.spad,'0'));
-  const probe=makeCanvas(s,data0);
-  const cellWmm=probe.width*mmpx;
+  // Probe BOTH the first and last serial (the longest data makes the largest
+  // cell), mirroring the PDF packing in downloadPdf, so the page browser and the
+  // serialization-log page links agree with what actually prints.
+  const n=Math.min(s.scount,2000);
+  const seed=i=>encode(s,s.sprefix+String(s.sstart+i).padStart(s.spad,'0'));
+  const dataA=seed(0),dataB=seed(n-1);
+  const pA=makeCanvas(s,dataA),pB=makeCanvas(s,dataB);
+  const cellWmm=Math.max(pA.width,pB.width)*mmpx;
+  const codeHmm=Math.max(pA.height,pB.height)*mmpx;
   const FPT=6,lineHmm=FPT*1.4/2.835,charWmm=FPT*0.6/2.835;
   const cpl=Math.max(8,Math.floor((cellWmm-1)/charWmm));
-  const capLines=data0?Math.max(1,Math.ceil(data0.length/cpl)):0;
-  const cellHmm=probe.height*mmpx+2+capLines*lineHmm+1.5;
+  const capLines=Math.max(
+    dataA?Math.max(1,Math.ceil(dataA.length/cpl)):0,
+    dataB?Math.max(1,Math.ceil(dataB.length/cpl)):0);
+  const cellHmm=codeHmm+2+capLines*lineHmm+1.5;
   const cols=Math.max(1,Math.floor((contentW+gap)/(cellWmm+gap)));
-  const n=Math.min(s.scount,2000);
   let rows,perPage,pageCount;
   if(fmt.h===Infinity){perPage=Math.max(1,n);rows=Math.ceil(n/cols);pageCount=1;}
   else{
@@ -354,19 +366,18 @@ function vernierSVG(dpi,band){
   return svg;
 }
 
-function logoFrac(s){ // logo side / symbol side, from the computed outer size
-  const info=size(s);
-  if(!info||s.logo<=0)return 0;
-  return Math.min(0.5,s.logo/info.outerWmm);
-}
-
 function size(s){
   try{
     const bytes=utf8len(encode(s,isSerial(s)?(s.sprefix+String(s.sstart).padStart(s.spad,'0')):null));
     const dots=moduleDots(s.xdim,s.dpi);
     if(is1D(s)){
-      // approximate width via a probe render is overkill; report module + DPI only
-      return {label:`${bcid(s).toUpperCase()}`,outerWmm:0,outerHmm:s.barh,dots,bytes,cap:null,fits:true,budget:null};
+      // Probe the actual rendered 1D symbol for its true printed width (the same
+      // canvas the PNG export uses) and report the module count as the geometry.
+      const data1=isSerial(s)?(s.sprefix+String(s.sstart).padStart(s.spad,'0')):encode(s,null);
+      const probe=makeCanvas(s,data1);
+      const modulesWide=Math.round(probe.width/Math.max(2,dots));
+      return {label:`${bcid(s).toUpperCase()}`,geometry:`${modulesWide} modules wide`,
+        outerWmm:mm(probe.width/s.dpi),outerHmm:s.barh,dots,bytes,cap:null,fits:true,budget:null};
     }
     if(s.twoD==='qrcode'){
       const v=qrMinVersion(bytes,s.ec);if(!v)return {fits:false,msg:`Data exceeds QR capacity at EC ${s.ec}`};
@@ -439,7 +450,7 @@ function renderLog(s){
       entries=[encode(s,null)];
     }
   }catch(e){entries=[];}
-  if(!entries.length){cnt.textContent='';log.innerHTML='<div class="empty">No codes.</div>';return;}
+  if(!entries.length){cnt.textContent='';log.innerHTML='<div class="empty">No codes.</div>';updateLogNav();return;}
   cnt.textContent=`${entries.length} code${entries.length>1?'s':''} · full encoded link`;
   const isLink=v=>/^https?:\/\//.test(v);
   const w=String(entries.length).length;
@@ -456,6 +467,32 @@ function renderLog(s){
     const pageTag=multi?` <a class="pglink jump" title="Jump to page ${page+1}" onclick="jumpToPage(${page})">Page: ${page+1} of ${L.pageCount}</a>`:'';
     return `<div class="row">${numCell}<span>${cell}${pageTag}</span></div>`;
   }).join('');
+  updateLogNav();
+}
+
+// ---- serialization-log button nav ------------------------------------------
+// The serialization log scrolls a tall list; the native overlay scrollbar
+// auto-hides and is near-impossible to grab on macOS, so up / down / page-up /
+// page-down buttons drive it instead (wheel/trackpad still works). Approximate
+// height of one log row, used for the single-step buttons.
+const LOG_ROW=22;
+function logPageDelta(){const el=$('log');return el?Math.max(LOG_ROW,el.clientHeight-LOG_ROW):200;}
+function logScrollBy(delta){const el=$('log');if(!el)return;
+  const max=el.scrollHeight-el.clientHeight;
+  const top=Math.min(max,Math.max(0,el.scrollTop+delta));
+  el.scrollTo({top,behavior:'smooth'});}
+// Show the nav only when the list overflows, and grey out the up buttons at the
+// top / the down buttons at the bottom so the controls reflect the position.
+function updateLogNav(){
+  const el=$('log'),nav=$('logNav');if(!el||!nav)return;
+  const overflow=el.scrollHeight-el.clientHeight>1;
+  nav.hidden=!overflow;
+  if(!overflow)return;
+  const atTop=el.scrollTop<=0,atBottom=el.scrollTop>=el.scrollHeight-el.clientHeight-1;
+  nav.querySelectorAll('.lnav').forEach(b=>{
+    const a=b.dataset.act;
+    b.disabled=((a==='up'||a==='pgup')&&atTop)||((a==='down'||a==='pgdn')&&atBottom);
+  });
 }
 
 function renderReadout(s){
@@ -465,11 +502,13 @@ function renderReadout(s){
   if(!is1D(s)){
     cells.push(kv('Outer size',`${info.outerWmm.toFixed(1)} × ${info.outerHmm.toFixed(1)} mm`));
     cells.push(kv('',`${(info.outerWmm/25.4).toFixed(2)} × ${(info.outerHmm/25.4).toFixed(2)} in`));
+    cells.push(kv('Geometry',info.label));
   }else{
     cells.push(kv('Symbology',info.label));
+    cells.push(kv('Outer width',`${info.outerWmm.toFixed(1)} mm · ${(info.outerWmm/25.4).toFixed(2)} in`));
     cells.push(kv('Bar height',`${s.barh} mm`));
+    cells.push(kv('Geometry',info.geometry||info.label));
   }
-  cells.push(kv('Geometry',info.label));
   cells.push(kv('Bytes',info.cap!=null?`${info.bytes} / ${info.cap}`:`${info.bytes}`));
   if(info.note)cells.push(`<div class="full warn">${escapeHtml(info.note)} — not adjustable.</div>`);
   if(info.budget){const bd=info.budget;
@@ -711,6 +750,13 @@ function init(){
   $('openProj').addEventListener('click',openProject);
   $('openLogo').addEventListener('click',openLogo);
   $('clearLogo').addEventListener('click',clearLogo);
+  // Serialization-log nav buttons + keep their enabled state in sync on scroll.
+  const lnav=$('logNav');
+  if(lnav)lnav.querySelectorAll('.lnav').forEach(b=>b.addEventListener('click',()=>{
+    const a=b.dataset.act;
+    if(a==='up')logScrollBy(-LOG_ROW);else if(a==='down')logScrollBy(LOG_ROW);
+    else if(a==='pgup')logScrollBy(-logPageDelta());else if(a==='pgdn')logScrollBy(logPageDelta());}));
+  const logEl=$('log');if(logEl)logEl.addEventListener('scroll',updateLogNav,{passive:true});
   $('resolver').addEventListener('change',()=>{const v=$('resolver').value;
     if(v!=='custom')$('domain').value=v;render();});
   const ver=$('ver');if(ver)ver.textContent='v'+APP_VERSION;

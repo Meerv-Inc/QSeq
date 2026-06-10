@@ -12,13 +12,15 @@ enum Symbology {
   gs1_128('GS1-128', is2D: false, quietZoneModules: 10),
   code128('Code 128', is2D: false, quietZoneModules: 10),
   code39('Code 39', is2D: false, quietZoneModules: 10),
-  ean13('EAN-13', is2D: false, quietZoneModules: 11),
+  // EAN-13's quiet zones are asymmetric per GS1: 11 modules left, 7 right.
+  ean13('EAN-13', is2D: false, quietZoneModules: 11, quietZoneRightOverride: 7),
   upcA('UPC-A', is2D: false, quietZoneModules: 9);
 
   const Symbology(
     this.displayName, {
     required this.is2D,
     required this.quietZoneModules,
+    this.quietZoneRightOverride,
   });
 
   final String displayName;
@@ -28,9 +30,19 @@ enum Symbology {
   /// bars.
   final bool is2D;
 
-  /// Quiet-zone width in modules applied to each side when computing the outer
-  /// perimeter. For 1D this is the horizontal quiet zone.
+  /// Quiet-zone width in modules on the leading (left) edge — and the symmetric
+  /// per-side value for symbologies whose two quiet zones are equal. For 2D this
+  /// is applied to all four sides.
   final int quietZoneModules;
+
+  /// Set only when the trailing (right) quiet zone differs from the leading one
+  /// — EAN-13 (11 left, 7 right). Null means symmetric. Read via
+  /// [quietZoneRightModules].
+  final int? quietZoneRightOverride;
+
+  /// Quiet-zone width in modules on the trailing (right) edge. Equal to
+  /// [quietZoneModules] unless the symbology declares an asymmetric zone.
+  int get quietZoneRightModules => quietZoneRightOverride ?? quietZoneModules;
 
   /// Only QR exposes a user-selectable error-correction level.
   bool get supportsEcLevel => this == Symbology.qrCode;

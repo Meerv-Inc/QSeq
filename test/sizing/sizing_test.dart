@@ -126,5 +126,19 @@ void main() {
       expect(r.logoBudget, isNull);
       expect(r.warnings.any((w) => w.contains('1D code')), isTrue);
     });
+
+    test('EAN-13 uses asymmetric quiet zones (11 left + 7 right)', () {
+      const cfg = EncodeConfig(
+        symbology: Symbology.ean13,
+        data: '4006381333931',
+        dpi: 300,
+        xDimensionMm: 0.33,
+      );
+      final r = Sizer.compute(cfg);
+      final dots = Dpi.moduleDots(0.33, 300);
+      // 95 symbol modules + 11 left + 7 right = 113 modules (GS1), not the
+      // symmetric 95 + 2*11 = 117 the old single-quiet-zone code produced.
+      expect(r.outer.widthPx, 113 * dots);
+    });
   });
 }
