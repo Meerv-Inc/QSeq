@@ -81,6 +81,10 @@ let sheetPage=0;
 // Last computed sheet pagination, so the serialization log can map a code to its
 // page without recomputing.
 let lastSheetLayout=null;
+// The picked centre-logo image (an HTMLImageElement), drawn into the 2D
+// dead-space knockout. Null until the user opens one. Mirrors the desktop
+// "Pick logo" action.
+let logoImage=null;
 
 const is1D=s=>s.mode.startsWith('1d');
 const isSerial=s=>s.mode.endsWith('Serial');
@@ -131,6 +135,18 @@ function makeCanvas(s,text){
       const off=(modules-n)/2*cell;
       ctx.fillStyle='#fff';
       ctx.fillRect(off,off,n*cell,n*cell);
+      // Draw the picked logo image centred inside the cleared square (contain
+      // fit, small inset). The white knockout still bounds it, so the symbol's
+      // function patterns stay clear and the data is recovered by EC on scan.
+      if(logoImage){
+        const box=n*cell,pad=cell*0.6;
+        const iw=logoImage.naturalWidth||logoImage.width;
+        const ih=logoImage.naturalHeight||logoImage.height;
+        const avail=Math.max(1,box-2*pad);
+        const k=Math.min(avail/iw,avail/ih);
+        const dw=iw*k,dh=ih*k;
+        ctx.drawImage(logoImage,off+(box-dw)/2,off+(box-dh)/2,dw,dh);
+      }
     }
   }
   return cv;
@@ -637,6 +653,25 @@ function openProject(){
   inp.click();
 }
 
+// Open a centre-logo image (PNG/JPEG/SVG) and overlay it in the 2D dead-space.
+// A logo only appears once "Logo size (mm)" is > 0, matching the desktop app.
+function openLogo(){
+  const inp=document.createElement('input');
+  inp.type='file';inp.accept='image/png,image/jpeg,image/svg+xml,image/*';
+  inp.onchange=()=>{const f=inp.files&&inp.files[0];if(!f)return;
+    const r=new FileReader();
+    r.onload=()=>{const img=new Image();
+      img.onload=()=>{logoImage=img;setLogoName(f.name);
+        if(num('logo')<=0){const el=$('logo');if(el)el.value='6';} // make it visible
+        $('err').textContent='';render();};
+      img.onerror=()=>{$('err').textContent='Could not load that logo image.';};
+      img.src=r.result;};
+    r.readAsDataURL(f);};
+  inp.click();
+}
+function clearLogo(){logoImage=null;setLogoName('');render();}
+function setLogoName(name){const el=$('logoName');if(el)el.textContent=name?('Logo: '+name):'No logo image';}
+
 const setv=(id,v)=>{const el=$(id);if(el&&v!=null&&v!=='')el.value=v;};
 function applyProject(p){
   const w=p.workspace||{},d=p.data||{},pr=p.print||{},lg=p.logo||{},sr=p.serialization||{};
@@ -674,6 +709,8 @@ function init(){
   $('dlSvg').addEventListener('click',downloadSvg);
   $('dlProj').addEventListener('click',downloadProject);
   $('openProj').addEventListener('click',openProject);
+  $('openLogo').addEventListener('click',openLogo);
+  $('clearLogo').addEventListener('click',clearLogo);
   $('resolver').addEventListener('change',()=>{const v=$('resolver').value;
     if(v!=='custom')$('domain').value=v;render();});
   const ver=$('ver');if(ver)ver.textContent='v'+APP_VERSION;
