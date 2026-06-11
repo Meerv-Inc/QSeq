@@ -10,11 +10,11 @@ dependencies:
   # Single source of truth for encoders + sizing, shared with the desktop app.
   qseq_core:
     path: ../packages/qseq_core
-  # Pure-Dart barcode + PDF rendering (same packages the desktop app uses),
-  # replacing the JS bwip-js / jsPDF.
+  # Pure-Dart barcode rendering (same package the desktop app uses), replacing
+  # JS bwip-js. NOTE: the `pdf` package is intentionally NOT a client dependency
+  # — it OOMs dart2js. PDF export will come via a lighter path or a server route.
   barcode: ^2.2.9
-  pdf: ^3.12.0
-  # Browser APIs (canvas, blobs, downloads) for client-only export code.
+  # Browser APIs (blobs, downloads) for client-only export code.
   web: ^1.1.0
 
 dev_dependencies:

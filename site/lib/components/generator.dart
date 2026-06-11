@@ -6,6 +6,7 @@ import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 import 'package:qseq_core/qseq_core.dart';
 
+import '../qseq/download.dart';
 import '../qseq/generate.dart';
 
 /// The interactive QSeq generator. Marked @client so it hydrates in the browser,
@@ -43,6 +44,13 @@ class GeneratorState extends State<Generator> {
   void _set(void Function() fn) => setState(fn);
   void _d(DataSourceInput Function(DataSourceInput) f) =>
       setState(() => data = f(data));
+
+  void _downloadSvg(GenOutput out) {
+    if (out.svg != null) {
+      downloadText('qseq-code.svg', out.svg!, 'image/svg+xml');
+    }
+  }
+
 
   @override
   Component build(BuildContext context) {
@@ -110,6 +118,12 @@ class GeneratorState extends State<Generator> {
           _num('X-dimension (mm)', xdim, (v) => _set(() => xdim = v)),
         ]),
         if (oneD) _num('Bar height (mm)', barh, (v) => _set(() => barh = v)),
+        div(classes: 'downloads', [
+          button([text('Download SVG')],
+              classes: 'btn primary',
+              disabled: out.svg == null,
+              onClick: () => _downloadSvg(out)),
+        ]),
         if (out.error != null) p(classes: 'err', [text(out.error!)]),
       ]),
       // ---- preview ----
