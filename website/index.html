@@ -230,7 +230,15 @@
     <div><h3>Print-true</h3><p>Exact-DPI sizing with mm + inch + vernier rulers so the print matches the intent.</p></div>
     <div><h3>Yours to fork</h3><p>Raw parameters export to editable JSON. Generate designs from your own pipelines.</p></div>
   </div>
-  <p class="repo-url">Source code: <a href="https://github.com/meerv-fmenard/qseq" target="_blank" rel="noopener"><strong>github.com/meerv-fmenard/qseq</strong></a></p>
+  <div class="copyrow">
+    <span class="copylabel">Source code</span>
+    <div class="copybox">
+      <code id="repoUrl">https://github.com/meerv-fmenard/qseq</code>
+      <button type="button" class="copybtn" data-copy-target="repoUrl" aria-label="Copy repository URL" title="Copy">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      </button>
+    </div>
+  </div>
 </section>
 
 <!-- ABOUT -->
@@ -329,5 +337,19 @@
 <script src="https://cdn.jsdelivr.net/npm/bwip-js@4.5.1/dist/bwip-js-min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
 <script src="/app.js"></script>
+<script>
+  document.querySelectorAll('.copybtn').forEach(function(btn){
+    var original = btn.innerHTML;
+    btn.addEventListener('click', function(){
+      var el = document.getElementById(btn.getAttribute('data-copy-target'));
+      var text = el ? el.textContent.trim() : '';
+      navigator.clipboard.writeText(text).then(function(){
+        btn.classList.add('copied');
+        btn.innerHTML = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>';
+        setTimeout(function(){ btn.classList.remove('copied'); btn.innerHTML = original; }, 1400);
+      });
+    });
+  });
+</script>
 </body>
 </html>
