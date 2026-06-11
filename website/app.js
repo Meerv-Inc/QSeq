@@ -111,6 +111,11 @@ let logoImage=null;
 const is1D=s=>s.mode.startsWith('1d');
 const isSerial=s=>s.mode.endsWith('Serial');
 const bcid=s=>is1D(s)?s.oneD:s.twoD;
+// The Label designer is a separate workspace (combined 1D/2D on a sized label
+// with a background and a dashed frame). Its behaviour lives in label-editor.js;
+// app.js only routes to it. A 'label' mode is neither 1D nor serial; 'labelSerial'
+// is serial. See window.LabelEditor.
+const isLabel=s=>s.mode.startsWith('label');
 
 // Build the encoded payload for a given serial (or the static serial).
 function encode(s,serialOverride){
@@ -133,11 +138,14 @@ function captionParts(s){
 const ppmm=dpi=>dpi/25.4; // pixels per millimetre at a DPI
 
 // Render one barcode to a NEW canvas (with centre logo knockout for 2D).
-function makeCanvas(s,text){
+function makeCanvas(s,text,override){
   const opts={bcid:bcid(s),text:text,scale:Math.max(2,moduleDots(s.xdim,s.dpi)),
     paddingwidth:0,paddingheight:0};
   if(!is1D(s)&&s.twoD==='qrcode')opts.eclevel=s.ec;
   if(is1D(s)){opts.height=Math.max(6,s.barh);opts.includetext=true;}
+  // The Label designer renders the 1D with its own HRI suppressed
+  // (override={includetext:false}) so the label shows a single shared line.
+  if(override)Object.assign(opts,override);
   const cv=document.createElement('canvas');
   window.bwipjs.toCanvas(cv,opts);
   if(!is1D(s)&&s.logo>0){
@@ -424,16 +432,27 @@ function budget(s,symMm,frac){
 // ---- main render -----------------------------------------------------------
 function render(){
   const s=state();
+  const labelOn=isLabel(s);
   // toggle field visibility
   show('sgtin',s.kind==='sgtin');show('nsn',s.kind==='nsn');show('text',s.kind==='text');
   show('static',!isSerial(s));show('serial',isSerial(s));
-  show('2d',!is1D(s));show('1d',is1D(s));show('qr',!is1D(s)&&s.twoD==='qrcode');
+  // A label carries BOTH a 2D and a 1D, so it shows both symbology groups; a plain
+  // 2D/1D workspace shows just one. The 'label' panel only appears in label modes.
+  if(labelOn){show('2d',true);show('1d',true);show('qr',s.twoD==='qrcode');}
+  else{show('2d',!is1D(s));show('1d',is1D(s));show('qr',!is1D(s)&&s.twoD==='qrcode');}
+  show('label',labelOn);
   show('epc',s.kind==='sgtin'&&s.sgtinFormat==='epc');
   show('dl',s.kind==='sgtin'&&s.sgtinFormat==='dl');
   // reflect the current resolver in the preset selector
   const rsel=$('resolver');
   if(rsel){const known=['https://id.gs1.org','https://tapdpp.qdat.io'];
     rsel.value=known.includes(s.domain)?s.domain:'custom';}
+
+  // The Label designer owns its own preview (canvas editor), readout and log.
+  if(labelOn){
+    if(window.LabelEditor){try{LabelEditor.render(s);}catch(e){$('err').textContent=String(e);}}
+    return;
+  }
 
   const stage=$('stage');stage.innerHTML='';$('err').textContent='';
   try{
@@ -545,6 +564,7 @@ const escapeHtml=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':
 // ---- downloads -------------------------------------------------------------
 function downloadPng(){
   const s=state();
+  if(isLabel(s)&&window.LabelEditor)return LabelEditor.downloadPng(s);
   try{
     const cv=isSerial(s)?composeSheet(s):composeSingle(s);
     saveCanvas(cv,isSerial(s)?'qseq-sheet.png':'qseq-code.png');
@@ -594,6 +614,7 @@ function pdfVernier(doc,x0,y0){
 
 function downloadPdf(){
   const s=state();
+  if(isLabel(s)&&window.LabelEditor)return LabelEditor.downloadPdf(s);
   const J=window.jspdf&&window.jspdf.jsPDF;
   if(!J){$('err').textContent='PDF library still loading — try again.';return;}
   const mmpx=25.4/s.dpi,gutter=RBAND+RGAP;
@@ -666,6 +687,7 @@ function downloadPdf(){
 
 function downloadSvg(){
   const s=state();
+  if(isLabel(s)){$('err').textContent='SVG export for labels is coming soon — use PNG or PDF.';return;}
   try{
     const opts={bcid:bcid(s),text:encode(s,isSerial(s)?(s.sprefix+String(s.sstart).padStart(s.spad,'0')):null)};
     if(!is1D(s)&&s.twoD==='qrcode')opts.eclevel=s.ec;
@@ -699,6 +721,9 @@ function downloadProject(){
     print:{dpi:s.dpi,xDimensionMm:s.xdim,barHeightMm:s.barh},
     logo:{sideMm:s.logo,ecBudget:s.ecbudget/100},
     serialization:{prefix:s.sprefix,start:s.sstart,count:s.scount,padDigits:s.spad,pageFormat:s.pageformat}};
+  // Label designer layout (web-only; desktop opens the workspace.mode fallback and
+  // ignores this block). Stores the web mode so reopening restores the label.
+  if(isLabel(s)&&window.LabelEditor)proj.label=LabelEditor.toJSON(s);
   const blob=new Blob([JSON.stringify(proj,null,2)],{type:'application/json'});
   const a=document.createElement('a');a.download='design.qseq';a.href=URL.createObjectURL(blob);a.click();
 }
@@ -751,6 +776,8 @@ function applyProject(p){
   {const el=$('logoOn');if(el)el.checked=(parseFloat(lg.sideMm)||0)>0;}
   setv('sprefix',sr.prefix);setv('sstart',sr.start);setv('scount',sr.count);setv('spad',sr.padDigits);
   if(sr.pageFormat&&PAGE_FORMATS[sr.pageFormat])setv('pageformat',sr.pageFormat);
+  // Restore the Label designer layout + web mode if this file carries one.
+  if(p.label&&window.LabelEditor)LabelEditor.fromJSON(p.label);
   render();
 }
 

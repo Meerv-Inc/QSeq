@@ -73,6 +73,8 @@
         <option value="2dSerial">2D — Serialized sheet</option>
         <option value="1d">1D</option>
         <option value="1dSerial">1D — Serialized sheet</option>
+        <option value="label">Label designer</option>
+        <option value="labelSerial">Label — Serialized sheet</option>
       </select>
     </label>
 
@@ -160,6 +162,46 @@
       <span id="logoName" class="muted small" style="align-self:center">No logo image</span>
     </div>
     <label data-when="1d">Bar height (mm)<input id="barh" type="number" min="1" max="300" value="15" /></label>
+
+    <div class="label-block" data-when="label">
+      <h3>Label</h3>
+      <p class="hint">Click a code or the title to select it, then drag to move or drag its corner handle to resize. The <b>2D carries the Digital Link URL</b>, the <b>1D carries the GS1 element string</b>, and one shared human-readable line spans the label.</p>
+      <label>Label size
+        <select id="lblPreset">
+          <option value="90x50">90 × 50 mm</option>
+          <option value="100x50">100 × 50 mm</option>
+          <option value="100x70">100 × 70 mm</option>
+          <option value="76x51">76 × 51 mm (3 × 2 in)</option>
+          <option value="50x25">50 × 25 mm</option>
+          <option value="custom">Custom…</option>
+        </select>
+      </label>
+      <div class="grid2">
+        <label>Width (mm)<input id="lblW" type="number" min="5" max="2000" value="90" /></label>
+        <label>Height (mm)<input id="lblH" type="number" min="5" max="2000" value="50" /></label>
+      </div>
+      <div class="label-toggles">
+        <label class="check"><input id="lblTwoD" type="checkbox" checked /> 2D code</label>
+        <label class="check"><input id="lblOneD" type="checkbox" checked /> 1D barcode</label>
+        <label class="check"><input id="lblTitleOn" type="checkbox" checked /> Title</label>
+        <label class="check"><input id="lblHriOn" type="checkbox" checked /> Shared text (HRI)</label>
+      </div>
+      <label>Title text<input id="lblTitle" value="" placeholder="e.g. ACME WIDGET · LOT 7" /></label>
+      <div class="label-toggles">
+        <label class="check"><input id="lblFrameShow" type="checkbox" checked /> Show label frame</label>
+        <label class="check"><input id="lblFramePrint" type="checkbox" /> Print frame (cut guide)</label>
+        <label class="check"><input id="lblSnap" type="checkbox" checked /> Snap to grid</label>
+      </div>
+      <div class="downloads">
+        <button type="button" id="lblArrange" class="btn">Auto-arrange</button>
+        <button type="button" id="lblTemplate" class="btn">Export label template</button>
+      </div>
+      <div class="downloads">
+        <button type="button" id="lblBgOpen" class="btn">Import background…</button>
+        <button type="button" id="lblBgClear" class="btn">Remove background</button>
+      </div>
+      <p id="lblBgHint" class="muted small">Tip: export the template, design your background to the size shown, then import it — QSeq overlays the codes on top.</p>
+    </div>
 
     <div class="serial-block" data-when="serial">
       <h3>Serialization</h3>
@@ -337,6 +379,7 @@
 <script src="https://cdn.jsdelivr.net/npm/bwip-js@4.5.1/dist/bwip-js-min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
 <script src="/app.js"></script>
+<script src="/label-editor.js"></script>
 <script>
   document.querySelectorAll('.copybtn').forEach(function(btn){
     var original = btn.innerHTML;

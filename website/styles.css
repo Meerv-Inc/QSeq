@@ -156,4 +156,17 @@ footer{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;max-wid
 .copybtn.copied{color:#03130d;background:var(--accent);border-color:var(--accent)}
 footer a{color:var(--accent);font-family:var(--mono);text-decoration:none;user-select:all;-webkit-user-select:all}
 footer a:hover{text-decoration:underline}
+
+/* Label designer */
+.label-block{border-top:1px solid #1e252c;margin-top:14px;padding-top:12px}
+.label-block h3{margin:0 0 6px}
+.label-toggles{display:flex;flex-wrap:wrap;gap:8px 16px;margin:8px 0}
+.label-toggles .check{margin:0}
+.label-card{display:inline-block;background:#fff;padding:10px;border-radius:8px}
+.label-canvas{display:block;background:#fff;border-radius:4px;touch-action:none;
+  image-rendering:pixelated;image-rendering:crisp-edges;cursor:grab}
+.label-canvas:active{cursor:grabbing}
+.label-sheet{display:grid;gap:6px;background:#fff;padding:8px;border-radius:8px}
+.label-sheet canvas{background:#fff;outline:1px solid #e6e6e6}
+
 [hidden]{display:none!important}
