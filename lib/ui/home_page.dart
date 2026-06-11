@@ -62,54 +62,38 @@ class HomePage extends ConsumerWidget {
           title: const Text('QSeq'),
           titleWidth: 180,
           actions: [
-            ToolBarIconButton(
-              label: 'Open',
-              icon: const MacosIcon(CupertinoIcons.folder),
-              showLabel: true,
-              onPressed: () => _openProject(ref),
-            ),
-            ToolBarIconButton(
-              label: 'Save',
-              icon: const MacosIcon(CupertinoIcons.floppy_disk),
-              showLabel: true,
-              onPressed: () => _saveProject(ref),
-            ),
-            ToolBarIconButton(
-              label: 'Pick logo',
-              icon: const MacosIcon(CupertinoIcons.photo),
-              showLabel: true,
-              onPressed: () => _pickLogo(ref),
-            ),
-            ToolBarIconButton(
-              label: 'Copy',
-              icon: const MacosIcon(CupertinoIcons.doc_on_clipboard),
-              showLabel: true,
-              onPressed: () => _run(context, ref, ExportActions.copyPng),
-            ),
-            ToolBarIconButton(
-              label: 'PNG',
-              icon: const MacosIcon(CupertinoIcons.photo_fill),
-              showLabel: true,
-              onPressed: () => _run(context, ref, ExportActions.exportPng),
-            ),
-            ToolBarIconButton(
-              label: 'SVG',
-              icon: const MacosIcon(CupertinoIcons.doc_text),
-              showLabel: true,
-              onPressed: () => _runSvg(context, ref),
-            ),
-            ToolBarIconButton(
-              label: 'PDF',
-              icon: const MacosIcon(CupertinoIcons.doc_richtext),
-              showLabel: true,
-              onPressed: () => _runPdf(context, ref),
-            ),
-            ToolBarIconButton(
-              label: 'About',
-              icon: const MacosIcon(CupertinoIcons.info_circle),
-              showLabel: true,
-              onPressed: () => showAboutSheet(context),
-            ),
+            _toolButton(
+                label: 'Open',
+                icon: CupertinoIcons.folder,
+                onPressed: () => _openProject(ref)),
+            _toolButton(
+                label: 'Save',
+                icon: CupertinoIcons.floppy_disk,
+                onPressed: () => _saveProject(ref)),
+            _toolButton(
+                label: 'Pick logo',
+                icon: CupertinoIcons.photo,
+                onPressed: () => _pickLogo(ref)),
+            _toolButton(
+                label: 'Copy',
+                icon: CupertinoIcons.doc_on_clipboard,
+                onPressed: () => _run(context, ref, ExportActions.copyPng)),
+            _toolButton(
+                label: 'PNG',
+                icon: CupertinoIcons.photo_fill,
+                onPressed: () => _run(context, ref, ExportActions.exportPng)),
+            _toolButton(
+                label: 'SVG',
+                icon: CupertinoIcons.doc_text,
+                onPressed: () => _runSvg(context, ref)),
+            _toolButton(
+                label: 'PDF',
+                icon: CupertinoIcons.doc_richtext,
+                onPressed: () => _runPdf(context, ref)),
+            _toolButton(
+                label: 'About',
+                icon: CupertinoIcons.info_circle,
+                onPressed: () => showAboutSheet(context)),
           ],
         ),
         children: [
@@ -124,6 +108,63 @@ class HomePage extends ConsumerWidget {
         ],
       ),
       ),
+    );
+  }
+
+  /// A toolbar button whose entire footprint — the icon *and* the label
+  /// beneath it — is one tap target. The stock [ToolBarIconButton] only makes
+  /// the glyph clickable (the label is a bare [Text]), so clicking "PDF" under
+  /// the icon did nothing. [CustomToolbarItem] lets us hand the whole column to
+  /// a single [MacosIconButton], and still degrades to an overflow-menu entry
+  /// when the toolbar runs out of room.
+  ToolbarItem _toolButton({
+    required String label,
+    required IconData icon,
+    required VoidCallback onPressed,
+  }) {
+    return CustomToolbarItem(
+      inToolbarBuilder: (context) {
+        final brightness = MacosTheme.of(context).brightness;
+        return MacosIconButton(
+          disabledColor: const Color(0x00000000),
+          onPressed: onPressed,
+          mouseCursor: SystemMouseCursors.click,
+          boxConstraints: const BoxConstraints(
+            minWidth: 20,
+            minHeight: 20,
+            maxWidth: 84,
+            maxHeight: 46,
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+          icon: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              MacosIconTheme(
+                data: MacosTheme.of(context).iconTheme.copyWith(
+                      color: brightness.resolve(
+                        const Color.fromRGBO(0, 0, 0, 0.5),
+                        const Color.fromRGBO(255, 255, 255, 0.5),
+                      ),
+                      size: 16.0,
+                    ),
+                child: MacosIcon(icon),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 4.0),
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 11.0,
+                    color: MacosColors.systemGrayColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+      inOverflowedBuilder: (context) =>
+          ToolbarOverflowMenuItem(label: label, onPressed: onPressed),
     );
   }
 

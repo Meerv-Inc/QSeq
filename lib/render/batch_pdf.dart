@@ -131,17 +131,27 @@ class BatchPdf {
               top: innerMm * mm,
               right: outerMm * mm,
               bottom: outerMm * mm),
-          // Bleed the ruler bands to the very right and bottom edges of the
-          // sheet — past a normal printer's margin — so they sit clear of the
-          // codes instead of riding the inner gutter. Only the cross-axis
-          // offset (left for the bottom ruler, top for the right ruler) stays
-          // pinned to the content so each scale still aligns with the grid.
-          buildForeground: (context) => pw.Stack(children: [
-            pw.Positioned(
-                left: innerMm * mm, bottom: 0, child: ruler.horizontal),
-            pw.Positioned(top: innerMm * mm, right: 0, child: ruler.vertical),
-            pw.Positioned(right: 0, bottom: 0, child: ruler.vernier),
-          ]),
+          // Bleed the ruler bands clear off the right and bottom edges of the
+          // sheet — past a normal printer's margin. The foreground stack is
+          // laid out *inside* the page margins (its box is the content area,
+          // its local origin the content's bottom-left), so a plain right:0 /
+          // bottom:0 only reaches the content edge — still `outerMm` shy of the
+          // paper. Allow the stack to overflow and push each band out by that
+          // outer margin so it lands on the true page edge; the cross-axis
+          // offset stays at 0 so each scale still aligns with the grid.
+          buildForeground: (context) => pw.Stack(
+            overflow: pw.Overflow.visible,
+            children: [
+              pw.Positioned(
+                  left: 0, bottom: -outerMm * mm, child: ruler.horizontal),
+              pw.Positioned(
+                  top: 0, right: -outerMm * mm, child: ruler.vertical),
+              pw.Positioned(
+                  right: -outerMm * mm,
+                  bottom: -outerMm * mm,
+                  child: ruler.vernier),
+            ],
+          ),
         ),
         build: (context) => [
           for (final row in rows)

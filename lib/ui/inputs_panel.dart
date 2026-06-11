@@ -33,7 +33,7 @@ class InputsPanel extends ConsumerWidget {
         if (s.mode.isCombo) _comboLayoutSection(s, update),
         if (s.mode.isSerialized) _batchSection(s, update),
         _printSection(s, update),
-        if (s.mode.use2D) _logoSection(context, s, update),
+        if (s.mode.use2D) _logoSection(context, ref, s, update),
         Padding(
           padding: const EdgeInsets.only(top: 4, bottom: 8),
           child: Text(
@@ -345,27 +345,40 @@ class InputsPanel extends ConsumerWidget {
     ]);
   }
 
-  Widget _logoSection(BuildContext context, AppSettings s,
+  Widget _logoSection(BuildContext context, WidgetRef ref, AppSettings s,
       void Function(AppSettings Function(AppSettings)) update) {
-    return SectionCard(title: 'Logo dead-space', children: [
-      LabeledField(
-        label: 'Logo size (square side)',
-        child: NumberField(
-            value: s.logoSideMm,
-            suffix: 'mm',
-            onChanged: (v) => update((x) => x.copyWith(logoSideMm: v))),
+    final on = s.logoSideMm > 0;
+    final sharePct = (kLogoAutoEcShare * 100).round();
+    return SectionCard(title: 'Logo', children: [
+      Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          MacosCheckbox(
+            value: on,
+            // Ticking it auto-sizes the dead-space to a fixed share of the EC
+            // budget; clearing it removes the logo entirely (size 0).
+            onChanged: (checked) => update((x) => x.copyWith(
+                  logoSideMm: checked ? ref.read(autoLogoSideProvider) : 0,
+                  logoEcBudget:
+                      checked ? kLogoAutoEcShare : x.logoEcBudget,
+                )),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text('Reserve a centre logo dead-space',
+                style: MacosTheme.of(context).typography.body),
+          ),
+        ],
       ),
-      LabeledField(
-        label: 'Logo may use this share of EC capacity',
-        child: NumberField(
-            value: (s.logoEcBudget * 100).roundToDouble(),
-            suffix: '%',
-            onChanged: (v) => update((x) =>
-                x.copyWith(logoEcBudget: (v / 100).clamp(0.05, 0.95)))),
-      ),
+      const SizedBox(height: 8),
       Text(
-        'Lower = smaller, safer logo (more error-correction kept in reserve). '
-        'Higher = larger logo, less tolerant of print defects/damage.',
+        on
+            ? 'Auto-sized to $sharePct% of the symbol’s error-correction '
+                'capacity (≈ ${s.logoSideMm.toStringAsFixed(1)} mm). Pick an '
+                'image from the toolbar to fill it.'
+            : 'Reserves a clean centre square sized to $sharePct% of the '
+                'error-correction budget — finder, timing and alignment '
+                'patterns always show through.',
         style: MacosTheme.of(context)
             .typography
             .caption2
