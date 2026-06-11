@@ -1,0 +1,27 @@
+name: site
+description: QSeq — Sustainable Identity on Every Thing (Jaspr web app)
+version: 1.2.2
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  jaspr: ^0.23.1
+  # Single source of truth for encoders + sizing, shared with the desktop app.
+  qseq_core:
+    path: ../packages/qseq_core
+  # Pure-Dart barcode + PDF rendering (same packages the desktop app uses),
+  # replacing the JS bwip-js / jsPDF.
+  barcode: ^2.2.9
+  pdf: ^3.12.0
+  # Browser APIs (canvas, blobs, downloads) for client-only export code.
+  web: ^1.1.0
+
+dev_dependencies:
+  build_runner: ^2.10.0
+  build_web_compilers: ^4.8.0
+  jaspr_builder: ^0.23.1
+  lints: ^5.0.0
+
+jaspr:
+  mode: static
