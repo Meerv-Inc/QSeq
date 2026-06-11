@@ -69,6 +69,9 @@ h1,h2,h3{line-height:1.1;letter-spacing:-0.02em}
   color:var(--ink);border-radius:9px;padding:9px 11px;font-size:.92rem;font-family:var(--mono)}
 .inputs input:focus,.inputs select:focus{outline:none;border-color:var(--accent2)}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.inputs label.check{display:flex;align-items:flex-start;gap:9px;text-transform:none;letter-spacing:0;
+  cursor:pointer;font-size:.85rem;color:var(--ink);line-height:1.35}
+.inputs label.check input{width:auto;flex:none;margin:2px 0 0}
 .serial-block{border-top:1px solid var(--line);margin-top:6px;padding-top:14px}
 .serial-block h3,h3{font-size:.95rem;margin:0 0 10px}
 .downloads{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}

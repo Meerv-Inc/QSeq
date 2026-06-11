@@ -40,6 +40,10 @@ enum AppMode {
 /// Sentinel so copyWith can distinguish "leave logoImagePath" from "clear it".
 const Object _unset = Object();
 
+/// Share of a 2D symbol's error-correction capacity a centre logo is auto-sized
+/// to consume when the "Logo" checkbox is ticked.
+const double kLogoAutoEcShare = 0.15;
+
 /// Immutable snapshot of every user-controlled setting.
 class AppSettings {
   final AppMode mode;
@@ -92,7 +96,7 @@ class AppSettings {
     this.batchCount = 24,
     this.batchPadding = 5,
     this.batchColumns = 0,
-    this.pageFormat = PageFormat.a4,
+    this.pageFormat = PageFormat.letter,
     this.pageOrientation = PageOrientation.portrait,
   });
 
@@ -299,6 +303,31 @@ Batch? buildBatchFor(AppSettings s) {
 final batchProvider = Provider<Batch?>((ref) {
   final s = ref.watch(appControllerProvider);
   return buildBatchFor(s);
+});
+
+/// The centre-logo side (mm) that consumes exactly [kLogoAutoEcShare] of the
+/// active 2D symbol's error-correction capacity. Drives the "Logo" checkbox:
+/// ticking it sizes the dead-space to this. 0 when there is no 2D symbol to
+/// host one (a 1D-only workspace, or no valid data yet).
+final autoLogoSideProvider = Provider<double>((ref) {
+  final s = ref.watch(appControllerProvider);
+  if (!s.mode.use2D) return 0;
+  EncodeConfig? twoD;
+  if (s.mode.isSerialized) {
+    twoD = ref.watch(batchProvider)?.twoDSample;
+  } else if (s.mode.isCombo) {
+    twoD = ref.watch(combinedLabelProvider)?.twoD;
+  } else if (s.resolved.data != null) {
+    twoD = s.singleConfig;
+  }
+  if (twoD == null) return 0;
+  // A symbol's size is independent of its centre logo, so probe the sizer with
+  // a token logo at the auto share — the max-safe side it reports back is
+  // exactly the dead-space that fills [kLogoAutoEcShare] of the EC budget.
+  final budget = Sizer.compute(
+          twoD.copyWith(logoSideMm: 1, logoSafetyMargin: kLogoAutoEcShare))
+      .logoBudget;
+  return budget?.maxSafeLogoMm ?? 0;
 });
 
 /// Every encoded payload in the current workspace — drives the Serialization

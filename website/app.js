@@ -42,7 +42,12 @@ const mm=px_dpi=>px_dpi*25.4;
 const $=id=>document.getElementById(id);
 const val=id=>$(id)?.value ?? '';
 const num=id=>parseFloat(val(id));
+const checked=id=>{const el=$(id);return !!(el&&el.checked);};
 function show(sel,on){document.querySelectorAll(`[data-when~="${sel}"]`).forEach(e=>e.hidden=!on);}
+
+// Share of a 2D symbol's error-correction capacity the auto centre logo fills
+// when the "Logo" checkbox is ticked. Mirrors kLogoAutoEcShare in the desktop app.
+const LOGO_EC_SHARE=0.15;
 
 // Clamp numeric inputs to safe ranges so out-of-bound or empty values (negative,
 // NaN, or absurdly large — e.g. a huge zero-pad would blow up padStart, a huge
@@ -51,15 +56,32 @@ function show(sel,on){document.querySelectorAll(`[data-when~="${sel}"]`).forEach
 const clampF=(id,lo,hi,def)=>{const n=parseFloat(val(id));return Number.isFinite(n)?Math.min(hi,Math.max(lo,n)):def;};
 const clampI=(id,lo,hi,def)=>{const n=parseInt(val(id),10);return Number.isFinite(n)?Math.min(hi,Math.max(lo,n)):def;};
 
-const state=()=>({
-  mode:val('mode'),kind:val('kind'),gtin:val('gtin'),serial:val('serial'),
-  sgtinFormat:val('sgtinFormat'),cpl:clampI('cpl',6,12,7),domain:val('domain'),
-  nsn:val('nsn'),text:val('text'),twoD:val('twoD'),ec:val('ec'),oneD:val('oneD'),
-  dpi:clampF('dpi',36,1200,300),xdim:clampF('xdim',0.05,5,0.5),logo:clampF('logo',0,1000,0),
-  ecbudget:clampF('ecbudget',5,95,50),barh:clampF('barh',1,300,15),
-  sprefix:val('sprefix'),sstart:clampI('sstart',0,1e9,1),scount:clampI('scount',1,2000,24),spad:clampI('spad',0,20,5),
-  pageformat:val('pageformat')||'a4',
-});
+const state=()=>{
+  const s={
+    mode:val('mode'),kind:val('kind'),gtin:val('gtin'),serial:val('serial'),
+    sgtinFormat:val('sgtinFormat'),cpl:clampI('cpl',6,12,7),domain:val('domain'),
+    nsn:val('nsn'),text:val('text'),twoD:val('twoD'),ec:val('ec'),oneD:val('oneD'),
+    dpi:clampF('dpi',36,1200,300),xdim:clampF('xdim',0.05,5,0.5),
+    // The logo is a checkbox: ticked → auto-sized to LOGO_EC_SHARE of the EC
+    // budget (filled in below); cleared → no dead-space at all.
+    logoOn:checked('logoOn'),ecbudget:LOGO_EC_SHARE*100,logo:0,
+    barh:clampF('barh',1,300,15),
+    sprefix:val('sprefix'),sstart:clampI('sstart',0,1e9,1),scount:clampI('scount',1,2000,24),spad:clampI('spad',0,20,5),
+    pageformat:val('pageformat')||'letter',
+  };
+  if(s.logoOn)s.logo=autoLogoMm(s);
+  return s;
+};
+
+// The centre-logo side (mm) that fills exactly LOGO_EC_SHARE of the active 2D
+// symbol's EC capacity. A symbol's size is independent of its logo, so size it
+// with no logo and read back the max-safe side at the auto share.
+function autoLogoMm(s){
+  if(is1D(s))return 0;
+  const m=size({...s,logo:0});
+  if(!m||!m.fits||!m.symMm)return 0;
+  return m.symMm*Math.sqrt((m.frac||0)*LOGO_EC_SHARE);
+}
 
 // Page formats for serialized sheets (mm). h=Infinity → a flexographic
 // continuous web: codes flow down one endless page of the given width.
@@ -383,12 +405,12 @@ function size(s){
       const v=qrMinVersion(bytes,s.ec);if(!v)return {fits:false,msg:`Data exceeds QR capacity at EC ${s.ec}`};
       const m=qrModules(v),side=m+8,wmm=mm(side*dots/s.dpi),symMm=mm(m*dots/s.dpi);
       return {label:`Version ${v} · ${m}×${m}`,outerWmm:wmm,outerHmm:wmm,dots,bytes,cap:QR[v-1][EC_COL[s.ec]],fits:true,
-        budget:budget(s,symMm,EC_FRAC[s.ec])};
+        symMm,frac:EC_FRAC[s.ec],budget:budget(s,symMm,EC_FRAC[s.ec])};
     }else{
       const d=dmMinSize(bytes);if(!d)return {fits:false,msg:'Data exceeds largest Data Matrix'};
       const m=d[0],side=m+2,wmm=mm(side*dots/s.dpi),symMm=mm(m*dots/s.dpi),frac=d[2]/(d[1]+d[2]);
       return {label:`Size ${m}×${m}`,outerWmm:wmm,outerHmm:wmm,dots,bytes,cap:Math.max(1,d[1]-2),fits:true,
-        budget:budget(s,symMm,frac),note:`ECC 200 fixed ${Math.round(frac*100)}%`};
+        symMm,frac,budget:budget(s,symMm,frac),note:`ECC 200 fixed ${Math.round(frac*100)}%`};
     }
   }catch(e){return {fits:false,msg:String(e)};}
 }
@@ -693,7 +715,8 @@ function openProject(){
 }
 
 // Open a centre-logo image (PNG/JPEG/SVG) and overlay it in the 2D dead-space.
-// A logo only appears once "Logo size (mm)" is > 0, matching the desktop app.
+// A logo only shows once the "Logo" dead-space is reserved, so opening an image
+// ticks that box for you (auto-sizing the hole to 15% of the EC budget).
 function openLogo(){
   const inp=document.createElement('input');
   inp.type='file';inp.accept='image/png,image/jpeg,image/svg+xml,image/*';
@@ -701,7 +724,7 @@ function openLogo(){
     const r=new FileReader();
     r.onload=()=>{const img=new Image();
       img.onload=()=>{logoImage=img;setLogoName(f.name);
-        if(num('logo')<=0){const el=$('logo');if(el)el.value='6';} // make it visible
+        const el=$('logoOn');if(el)el.checked=true; // reserve the dead-space so it shows
         $('err').textContent='';render();};
       img.onerror=()=>{$('err').textContent='Could not load that logo image.';};
       img.src=r.result;};
@@ -724,8 +747,8 @@ function applyProject(p){
   setv('cpl',d.companyPrefixLength);setv('domain',d.digitalLinkDomain);
   setv('nsn',d.nsn);setv('text',d.rawText);
   setv('dpi',pr.dpi);setv('xdim',pr.xDimensionMm);setv('barh',pr.barHeightMm);
-  setv('logo',lg.sideMm);
-  setv('ecbudget',lg.ecBudget!=null?Math.round(lg.ecBudget*100):(lg.ecBudgetPct!=null?lg.ecBudgetPct:50));
+  // The logo is now a checkbox; a saved non-zero side reserves the dead-space.
+  {const el=$('logoOn');if(el)el.checked=(parseFloat(lg.sideMm)||0)>0;}
   setv('sprefix',sr.prefix);setv('sstart',sr.start);setv('scount',sr.count);setv('spad',sr.padDigits);
   if(sr.pageFormat&&PAGE_FORMATS[sr.pageFormat])setv('pageformat',sr.pageFormat);
   render();

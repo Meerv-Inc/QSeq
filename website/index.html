@@ -46,7 +46,7 @@
   <div class="cta">
     <a class="btn primary" href="#generator">Open the generator</a>
     <a class="btn" href="/QSeq.dmg" download>Download for macOS</a>
-    <a class="btn" href="https://github.com/meerv-fmenard/qseq/releases/latest/download/qseq-windows-setup.exe">Download for Windows</a>
+    <a class="btn" href="/qseq-windows-setup.exe" download>Download for Windows</a>
     <a class="btn" href="#mission">Why open source →</a>
   </div>
   <p class="muted small">Native macOS app (Apple silicon, signed &amp; notarized — just open it) &amp; Windows x64 · the Windows build is unsigned — run the installer and click “More info → Run anyway” past SmartScreen · © 2026 Meerv Inc.</p>
@@ -143,10 +143,7 @@
       <label>Resolution (DPI)<input id="dpi" type="number" min="36" max="1200" value="300" /></label>
       <label>X-dimension (mm)<input id="xdim" type="number" min="0.05" max="5" step="0.05" value="0.5" /></label>
     </div>
-    <div class="grid2" data-when="2d">
-      <label>Logo size (mm)<input id="logo" type="number" min="0" max="1000" step="0.5" value="0" /></label>
-      <label>Logo ≤ % of EC<input id="ecbudget" type="number" min="5" max="95" value="50" /></label>
-    </div>
+    <label class="check" data-when="2d"><input id="logoOn" type="checkbox" /> Reserve a centre logo dead-space — auto-sized to 15% of the error-correction capacity</label>
     <div class="downloads" data-when="2d">
       <button type="button" id="openLogo" class="btn">Open logo image…</button>
       <button type="button" id="clearLogo" class="btn">Remove logo</button>
@@ -167,7 +164,7 @@
         <select id="pageformat">
           <optgroup label="Cut sheet">
             <option value="a4">A4</option>
-            <option value="letter">US Letter</option>
+            <option value="letter" selected>US Letter</option>
             <option value="a3">A3</option>
             <option value="legal">US Legal</option>
           </optgroup>
