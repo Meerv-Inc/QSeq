@@ -45,18 +45,19 @@ verify `flutter build`) is a later step — do it with the desktop build watched
   X-dimension; live print-true size readout — all from `qseq_core`.
 - Symbol renders via the `barcode` package as inline SVG, **server-prerendered**
   (great for SEO + first paint) and hydrated for interactivity.
-- SVG export (client-only blob download).
+- SVG **and PNG** export (PNG rasterizes the SVG to a print-true canvas, client-only).
+- **Serialized sheets** — 4-option workspace (2D/1D × single/serial) + prefix/start/
+  count/zero-pad; `buildSheet` tiles per-serial barcode SVGs into one composed SVG;
+  preview shows first 48, SVG/PNG export the full run (≤2000).
+- mission/about/support sections + copy-button; Windows installer asset.
 - SEO head ported (title, description, OG, canonical, GA, favicon) + dark theme.
 
 ## Remaining (in rough priority)
 
-1. **PNG export** — rasterize the SVG to a canvas (`package:web`, client-only) and
-   download. (The `pdf` package OOMs dart2js, so **PDF** needs either a lighter
-   client lib, canvas→jsPDF interop, or a small server route. Do NOT add `pdf` to
-   the client deps.)
-2. **Serialized sheets** — port `composeSheet`/pagination; tile codes; per-code
-   captions; page browser; PDF/PNG of all codes.
-3. **Combined label + label designer** — the feature built in JS on branch
+1. **PDF export** — the `pdf` package OOMs dart2js, so PDF needs a lighter client
+   lib, canvas→jsPDF interop, or a small server route. Do NOT add `pdf` to the
+   client deps.
+2. **Combined label + label designer** — the feature built in JS on branch
    `js-label-designer` (2D-left/1D-right, shared HRI, dashed cut-frame, free
    drag/resize, background-image offline round-trip, serialized label sheets).
    Port to Jaspr with a `<canvas>` via `package:web` (client-only).
