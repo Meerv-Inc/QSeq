@@ -88,18 +88,16 @@ class GeneratorState extends State<Generator> {
         columnsOverride: columnsOverride,
       );
 
-  /// The run for paged modes: a serialized spec derived from the Serial field
-  /// (its trailing digits are the incrementing counter — 6789, 6790, … — and
-  /// any leading text is the fixed prefix), or N identical copies.
+  /// The run for paged modes: a serialized spec derived from the Serial field.
+  /// Its trailing digits are the incrementing counter — 6789, 6790, … — and
+  /// any leading text is the fixed prefix. Sheet-of-copies workspaces
+  /// increment the same way; they just take their count from Copies.
   SerialSpec get _run {
-    if (mode.isCopies) {
-      return SerialSpec(serialize: false, count: copies.clamp(1, 2000));
-    }
     final m = RegExp(r'^(.*?)(\d{1,12})$').firstMatch(data.serial);
     return SerialSpec(
       prefix: m == null ? data.serial : m.group(1)!,
       start: m == null ? 1 : int.parse(m.group(2)!),
-      count: serial.count,
+      count: (mode.isCopies ? copies : serial.count).clamp(1, 2000),
       // padLeft to the typed width so leading zeros survive (0001 → 0002).
       pad: m == null ? 0 : m.group(2)!.length,
     );
@@ -344,9 +342,19 @@ class GeneratorState extends State<Generator> {
   List<Component> _serialSection() => [
         div(classes: 'serial-block', [
           h3([text(mode.isSerialized ? 'Serialization' : 'Sheet of copies')]),
+          _text('Serial — start of serialization (counter printed bold)',
+              data.serial, (v) => _set(() {
+                    data = data.copyWith(serial: v);
+                    sheetPage = 0;
+                  })),
+          p(classes: 'hint', [
+            text('The trailing digits increment per item — 6789, 6790, … — '
+                'and any leading text stays as a fixed prefix. Every '
+                'generated identifier is listed in the Serialization Log.')
+          ]),
           if (mode.isCopies)
             _num(
-                'Copies (same code repeated)',
+                'Copies (each one incremented)',
                 copies.toDouble(),
                 (v) => _set(() {
                       copies = v.round().clamp(1, 2000);
@@ -354,17 +362,7 @@ class GeneratorState extends State<Generator> {
                     }),
                 min: 1,
                 max: 2000),
-          if (mode.isSerialized) ...[
-            _text('Serial — start of serialization (counter printed bold)',
-                data.serial, (v) => _set(() {
-                      data = data.copyWith(serial: v);
-                      sheetPage = 0;
-                    })),
-            p(classes: 'hint', [
-              text('The trailing digits increment per item — 6789, 6790, … — '
-                  'and any leading text stays as a fixed prefix. Every '
-                  'generated identifier is listed in the Serialization Log.')
-            ]),
+          if (mode.isSerialized)
             _num(
                 'Count',
                 serial.count.toDouble(),
@@ -374,7 +372,6 @@ class GeneratorState extends State<Generator> {
                     }),
                 min: 1,
                 max: 2000),
-          ],
           _select('Page size', pageFormat.name,
               [for (final p in PageFormat.values) (p.name, p.label)],
               (v) => _set(() {
@@ -964,7 +961,7 @@ class GeneratorState extends State<Generator> {
   List<Component> _logPanel(GenInput i) {
     List<String> entries;
     try {
-      entries = mode.isSerialized
+      entries = mode.isPaged
           ? serialLog(i, _run)
           : (labelOn || mode.isCombo
               ? [lbl.labelTexts(i).d2]
