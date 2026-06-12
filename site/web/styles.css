@@ -209,3 +209,11 @@ footer a:hover{text-decoration:underline}
 .themebtn{border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:8px;
   padding:5px 10px;cursor:pointer;font-size:.9rem;line-height:1}
 .themebtn:hover{color:var(--ink);border-color:var(--accent)}
+
+/* export progress */
+.progress{margin-top:10px}
+.progress .plabel{font-size:.78rem;color:var(--muted);font-family:var(--mono);margin-bottom:5px}
+.progress .pbar{height:8px;background:var(--panel2);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.progress .pfill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .15s}
+.progress .pfill.indet{width:40%;animation:pslide 1.1s infinite linear}
+@keyframes pslide{0%{margin-left:-40%}100%{margin-left:100%}}

@@ -571,45 +571,96 @@ class GeneratorState extends State<Generator> {
   }
 
   // ================= downloads =================
+  // Export progress: a label + bar shown while a download is being prepared
+  // (multi-page PDFs and big rasters take seconds). busyFrac < 0 renders an
+  // indeterminate sweep.
+  String? busyLabel;
+  double busyFrac = -1;
+
+  /// Updates the progress UI and yields a macrotask so the browser paints it
+  /// before the next CPU-heavy render step.
+  Future<void> _busy(String label, [double frac = -1]) async {
+    setState(() {
+      busyLabel = label;
+      busyFrac = frac;
+    });
+    await Future<void>.delayed(const Duration(milliseconds: 18));
+  }
+
+  void _busyDone() => setState(() => busyLabel = null);
+
   Component _downloadButtons(Artwork art, SheetLayout? layout) {
-    final ok = art.ok;
-    return div(classes: 'downloads', [
-      button([text('Download PNG')],
-          classes: 'btn primary',
-          disabled: !ok,
-          onClick: () => _downloadPng(art)),
-      button([text('Download PDF')],
-          classes: 'btn',
-          disabled: !ok,
-          onClick: () => _downloadPdf(layout)),
-      if (!mode.isPaged)
-        button([text('Download SVG')],
+    final ok = art.ok && busyLabel == null;
+    return Component.fragment([
+      div(classes: 'downloads', [
+        button([text('Download PNG')],
+            classes: 'btn primary',
+            disabled: !ok,
+            onClick: () => _downloadPng(art, layout)),
+        button([text('Download PDF')],
             classes: 'btn',
             disabled: !ok,
-            onClick: () =>
-                downloadText('qseq-code.svg', art.svg, 'image/svg+xml')),
-      button([text('Save project')], classes: 'btn', onClick: _saveProject),
-      button([text('Open project')], classes: 'btn', onClick: _openProject),
+            onClick: () => _downloadPdf(layout)),
+        if (!mode.isPaged)
+          button([text('Download SVG')],
+              classes: 'btn',
+              disabled: !ok,
+              onClick: () =>
+                  downloadText('qseq-code.svg', art.svg, 'image/svg+xml')),
+        button([text('Save project')], classes: 'btn', onClick: _saveProject),
+        button([text('Open project')], classes: 'btn', onClick: _openProject),
+      ]),
+      if (busyLabel != null)
+        div(classes: 'progress', [
+          div(classes: 'plabel', [text(busyLabel!)]),
+          div(classes: 'pbar', [
+            div(const [],
+                classes: 'pfill${busyFrac < 0 ? ' indet' : ''}',
+                styles: busyFrac < 0
+                    ? null
+                    : Styles(raw: {
+                        'width':
+                            '${(busyFrac * 100).clamp(0, 100).toStringAsFixed(1)}%'
+                      })),
+          ]),
+        ]),
     ]);
   }
 
-  Future<void> _downloadPng(Artwork art) async {
-    if (!art.ok) return;
-    var w = (art.wMm / 25.4 * dpi).round();
-    var h = (art.hMm / 25.4 * dpi).round();
-    const cap = 8000;
-    final big = math.max(w, h);
-    if (big > cap) {
-      w = (w * cap / big).round();
-      h = (h * cap / big).round();
+  Future<void> _downloadPng(Artwork art, SheetLayout? layout) async {
+    if (busyLabel != null) return;
+    try {
+      await _busy('Preparing PNG…', 0.1);
+      var a = art;
+      // The on-screen preview caps how many cells it renders; re-render the
+      // current page in full for the export.
+      if (mode.isPaged && layout != null) {
+        a = labelOn
+            ? lbl.buildLabelSheetPage(
+                _input, labelSpec, _run, layout, sheetPage)
+            : buildSheetPage(_input, _run, layout, sheetPage);
+      }
+      if (!a.ok) return;
+      var w = (a.wMm / 25.4 * dpi).round();
+      var h = (a.hMm / 25.4 * dpi).round();
+      const cap = 8000;
+      final big = math.max(w, h);
+      if (big > cap) {
+        w = (w * cap / big).round();
+        h = (h * cap / big).round();
+      }
+      final name = mode.isPaged
+          ? 'qseq-sheet.png'
+          : (labelOn ? 'qseq-label.png' : 'qseq-code.png');
+      await _busy('Rasterizing $w × $h px…', 0.5);
+      await downloadSvgPng(name, a.svg, math.max(16, w), math.max(16, h));
+    } finally {
+      _busyDone();
     }
-    final name = mode.isPaged
-        ? 'qseq-sheet.png'
-        : (labelOn ? 'qseq-label.png' : 'qseq-code.png');
-    await downloadSvgPng(name, art.svg, math.max(16, w), math.max(16, h));
   }
 
   Future<void> _downloadPdf(SheetLayout? layout) async {
+    if (busyLabel != null) return;
     final i = _input;
     final pages = <PdfPageImage>[];
     Future<void> addPage(Artwork a0) async {
@@ -631,17 +682,24 @@ class GeneratorState extends State<Generator> {
     try {
       if (mode.isPaged && layout != null) {
         for (var p = 0; p < layout.pageCount; p++) {
+          await _busy(
+              'Preparing PDF — page ${p + 1} of ${layout.pageCount}…',
+              p / layout.pageCount);
           await addPage(labelOn
               ? lbl.buildLabelSheetPage(i, labelSpec, _run, layout, p)
               : buildSheetPage(i, _run, layout, p));
         }
-      } else if (labelOn) {
-        await addPage(lbl.buildLabel(i, labelSpec, forExport: true));
-      } else if (mode == WebMode.combo) {
-        await addPage(buildCombined(i));
       } else {
-        await addPage(buildSingle(i));
+        await _busy('Preparing PDF…', 0.3);
+        if (labelOn) {
+          await addPage(lbl.buildLabel(i, labelSpec, forExport: true));
+        } else if (mode == WebMode.combo) {
+          await addPage(buildCombined(i));
+        } else {
+          await addPage(buildSingle(i));
+        }
       }
+      await _busy('Assembling PDF…', 0.97);
       final name = mode.isPaged
           ? 'qseq-sheet.pdf'
           : (labelOn ? 'qseq-label.pdf' : 'qseq-code.pdf');
@@ -652,6 +710,8 @@ class GeneratorState extends State<Generator> {
     } catch (e) {
       setState(() =>
           err = e is FormatException ? e.message : e.toString());
+    } finally {
+      _busyDone();
     }
   }
 
