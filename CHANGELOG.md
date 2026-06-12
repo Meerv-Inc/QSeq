@@ -6,6 +6,13 @@ releases.
 
 © 2026 Meerv Inc. — PolyForm Noncommercial License 1.0.0.
 
+## [1.5.1] — 2026-06-12
+
+### Added
+- **Windows installer for the 1.5.x desktop app** published on qseq.app —
+  the first desktop build shipped with the label designer, license terms,
+  portable projects and the serialization rework on board.
+
 ## [1.5.0] — 2026-06-12
 
 The label designer reaches the desktop, projects travel between every

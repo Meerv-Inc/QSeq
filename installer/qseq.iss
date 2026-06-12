@@ -1,10 +1,10 @@
-; QSeq — Windows installer (Inno Setup)
+﻿; QSeq — Windows installer (Inno Setup)
 ; Builds a per-user setup.exe from the Flutter release build. No admin required.
 ; Compile with:
 ;   "%LOCALAPPDATA%\Programs\Inno Setup 6\ISCC.exe" installer\qseq.iss
 
 #define AppName "QSeq"
-#define AppVersion "1.2.2"
+#define AppVersion "1.5.1"
 #define AppPublisher "Meerv Inc."
 #define AppExe "QSeq.exe"
 
@@ -15,7 +15,7 @@ AppVersion={#AppVersion}
 AppVerName={#AppName} {#AppVersion}
 AppPublisher={#AppPublisher}
 AppPublisherURL=https://qseq.app
-AppSupportURL=https://github.com/meerv-fmenard/qseq
+AppSupportURL=https://github.com/Meerv-Inc/QSeq
 DefaultDirName={autopf}\{#AppName}
 DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes

@@ -95,9 +95,10 @@ QSeq exists so every code it mints passes both.
   stacked or side-by-side, with the combined outer size computed.
 - **Sheets of copies:** tile N identical codes per page — alongside the
   serialized sheets — with page format, orientation and column control.
-- **Label designer (web):** an overlay on any workspace — drag/resize the
-  code(s), title and shared HRI (adjustable font) on a sized label with a
-  dashed cut-frame and an offline background-image round-trip.
+- **Label designer (web and desktop):** an overlay on any workspace —
+  drag/resize the code(s), title and shared HRI (adjustable font) on a sized
+  label with a cut-frame and a background image; sheets export one designed
+  label per identifier.
 - **Exports:** PNG at exact DPI (with a pHYs chunk so print software reads the
   true physical size), SVG / PDF vector (optionally with mm/inch/vernier
   rulers), and copy-to-clipboard.
