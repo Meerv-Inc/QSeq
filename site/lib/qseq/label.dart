@@ -37,6 +37,10 @@ class LabelSpec {
   bool framePrinted;
   bool snap;
   String? bgDataUrl;
+
+  /// Font size of the shared HRI (Digital Link printout) in mm.
+  /// 0 = auto (derived from the HRI box height).
+  double hriFontMm;
   final Map<String, ElRect> rects = {};
 
   LabelSpec({
@@ -51,6 +55,7 @@ class LabelSpec {
     this.framePrinted = false,
     this.snap = true,
     this.bgDataUrl,
+    this.hriFontMm = 0,
   });
 
   bool on(String key) => switch (key) {
@@ -69,6 +74,7 @@ class LabelSpec {
         'frameShown': frameShown,
         'framePrinted': framePrinted,
         'snap': snap,
+        'hriFontMm': hriFontMm,
         'el': {for (final e in rects.entries) e.key: e.value.toJson()},
       };
 
@@ -86,6 +92,8 @@ class LabelSpec {
     frameShown = j['frameShown'] as bool? ?? frameShown;
     framePrinted = j['framePrinted'] as bool? ?? framePrinted;
     snap = j['snap'] as bool? ?? snap;
+    hriFontMm =
+        ((j['hriFontMm'] as num?)?.toDouble() ?? hriFontMm).clamp(0, 30);
     final el = j['el'];
     if (el is Map) {
       rects.clear();
@@ -143,7 +151,9 @@ void autoArrange(GenInput i, LabelSpec spec) {
   final t = labelTexts(i);
   final p = math.min(4.0, math.max(1.5, spec.wMm * 0.04));
   final titleFont = (spec.hMm * 0.09).clamp(2.2, 4.2);
-  final hriFont = (spec.hMm * 0.07).clamp(1.8, 3.2);
+  final hriFont = spec.hriFontMm > 0
+      ? spec.hriFontMm.clamp(0.8, 30.0)
+      : (spec.hMm * 0.07).clamp(1.8, 3.2);
   final titleH = spec.titleOn ? titleFont * 1.4 : 0.0;
   final hriH = spec.hriOn ? hriFont * 1.3 * 2 + 0.6 : 0.0;
   var top = p;
@@ -262,7 +272,9 @@ Artwork buildLabel(GenInput i, LabelSpec spec,
     if (spec.hriOn) {
       final r = spec.rects['hri'];
       if (r != null) {
-        final font = math.max(1.2, math.min(3.2, r.h / 2.6));
+        final font = spec.hriFontMm > 0
+            ? spec.hriFontMm.clamp(0.8, 30.0)
+            : math.max(1.2, math.min(3.2, r.h / 2.6));
         final cap = captionSvg(t.hri,
             cx: r.x + r.w / 2, yTop: r.y, maxWmm: r.w, fontMm: font);
         b.write(cap.svg);

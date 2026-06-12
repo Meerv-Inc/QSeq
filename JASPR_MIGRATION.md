@@ -66,19 +66,40 @@ verify `flutter build`) is a later step — do it with the desktop build watched
   VM smoke test `site/tool/smoke.dart` covers every mode — run
   `dart run tool/smoke.dart` from `site/`.
 
+## Done (live click-through fixes + workspace restructure, 2026-06-12)
+
+- **Numeric-input bug fixed**: Jaspr dispatches `num` (not String) to `onInput`
+  for `type=number` inputs — the String-typed handlers threw on every keystroke
+  in release JS, so no numeric field (Count, DPI, X-dim…) could be edited.
+  `_num` now takes `num`, live-updates only changed in-range values (mid-typing
+  state echo used to clamp half-typed numbers, e.g. "600" → 36 → 3600 → 1200),
+  and clamps on blur/Enter. Ranges (`min`/`max`) live in the `_num` call sites.
+- **Workspace restructure**: new `twoDSheet`/`oneDSheet` "Sheet of copies"
+  workspaces (N identical codes tiled per page — `SerialSpec(serialize: false)`
+  yields null serials so every cell encodes the single-mode payload). The
+  **label designer is now an overlay checkbox** available in every workspace
+  (single → one label, paged → label sheet), not a workspace; the overlay shows
+  exactly the workspace's symbols (2D/1D/both). Legacy `.qseq` files with
+  `label`/`labelSerial` modes load as combo (+Serialized) with the overlay on.
+- **Label HRI font size** (`LabelSpec.hriFontMm`, 0 = auto) — resizes the
+  Digital Link printout; persisted in `.qseq` and the label JSON.
+- **Browser-level UI test harness**: `.scratch/uitest/verify.js`
+  (puppeteer-core + system Edge) drives the hydrated app — workspaces,
+  resolver, numeric typing, overlay, HRI font — `node verify.js <url>`.
+- Mystery "lost tapdpp resolver" solved: the preview alias had pointed at a
+  4-day-old deployment; the resolver was fine in current code.
+
 ## Remaining (in rough priority)
 
-1. **Human click-through** of the hydrated preview (drag, downloads, pickers).
+1. **Human click-through** of the hydrated preview (drag, downloads, pickers)
+   — in progress; first round found the numeric-input bug (fixed, above).
 2. Minor desktop deltas: copy-PNG-to-clipboard, pHYs DPI chunk in PNG, rulers
    inside the PDF.
-3. **Combined label + label designer** — DONE in Dart; the older JS version on branch
-   `js-label-designer` (2D-left/1D-right, shared HRI, dashed cut-frame, free
-   drag/resize, background-image offline round-trip, serialized label sheets).
-   Port to Jaspr with a `<canvas>` via `package:web` (client-only).
-4. **Marketing parity** — add mission/about/support sections (raw HTML) + assets
-   (`/QSeq.dmg`, `/qseq-windows-setup.exe`) into `site/web/`.
-5. **Serialization log** panel.
-6. **Desktop de-dup** onto `qseq_core` (watch `flutter build`).
+3. `/QSeq.dmg` into `site/web/` (the Windows installer is already there; the
+   macOS dmg lives only on the Vercel deployment, not in git — copy it from the
+   live site or a local build before cutover).
+4. **Cutover** qseq.app to `site/build/jaspr` (see below), then retire `website/`.
+5. **Desktop de-dup** onto `qseq_core` (watch `flutter build`).
 
 ## Build / run / deploy
 

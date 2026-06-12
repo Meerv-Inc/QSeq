@@ -1,5 +1,7 @@
 // Engine smoke test: exercises every workspace and option combination the UI
 // can reach, on the Dart VM (same code that runs in the browser).
+import 'dart:convert';
+
 import 'package:qseq_core/qseq_core.dart';
 import 'package:site/qseq/generate.dart';
 import 'package:site/qseq/label.dart';
@@ -18,31 +20,38 @@ void main() {
     for (final twoD in [Symbology.qrCode, Symbology.dataMatrix]) {
       final i = GenInput(
           mode: mode, data: data, twoD: twoD, logoOn: true, logoDataUrl: null);
-      final ss = const SerialSpec(count: 30);
+      // Serialized runs count distinct serials; copy sheets repeat the payload.
+      final ss = mode.isCopies
+          ? const SerialSpec(serialize: false, count: 30)
+          : const SerialSpec(count: 30);
       const sheet = SheetSpec(page: PageFormat.a4);
       final tag = '${mode.name}/${twoD.name}';
-      if (mode.isLabel) {
-        final spec = LabelSpec();
-        if (mode == WebMode.label) {
-          check('label $tag', buildLabel(i, spec));
-          check('tmpl  $tag', buildLabelTemplate(i, spec));
-          check('labelX $tag', buildLabel(i, spec, forExport: true));
-        } else {
-          final L = layoutLabelSheet(spec, ss, sheet);
-          check('lsheet $tag p0', buildLabelSheetPage(i, spec, ss, L, 0));
-          check('lsheet $tag pN',
-              buildLabelSheetPage(i, spec, ss, L, L.pageCount - 1));
-        }
-      } else if (mode.isSerialized) {
+      if (mode.isPaged) {
         final L = layoutSheet(i, ss, sheet);
         check('sheet $tag p0', buildSheetPage(i, ss, L, 0));
         check('sheet $tag pN', buildSheetPage(i, ss, L, L.pageCount - 1));
         final log = serialLog(i, ss);
         if (log.length != 30) throw StateError('log ${log.length}');
-      } else if (mode.isCombo) {
-        check('combo $tag', buildCombined(i));
+        if (mode.isCopies && log.toSet().length != 1) {
+          throw StateError('copies log not identical');
+        }
+        // The label overlay tiles the designed label over the same run.
+        final spec = LabelSpec(twoDOn: i.mode.use2D, oneDOn: i.mode.use1D);
+        final LL = layoutLabelSheet(spec, ss, sheet);
+        check('lsheet $tag p0', buildLabelSheetPage(i, spec, ss, LL, 0));
+        check('lsheet $tag pN',
+            buildLabelSheetPage(i, spec, ss, LL, LL.pageCount - 1));
       } else {
-        check('single $tag', buildSingle(i));
+        if (mode.isCombo) {
+          check('combo $tag', buildCombined(i));
+        } else {
+          check('single $tag', buildSingle(i));
+        }
+        // The label overlay on every single workspace.
+        final spec = LabelSpec(twoDOn: mode.use2D, oneDOn: mode.use1D);
+        check('label $tag', buildLabel(i, spec));
+        check('tmpl  $tag', buildLabelTemplate(i, spec));
+        check('labelX $tag', buildLabel(i, spec, forExport: true));
       }
     }
   }
@@ -102,7 +111,7 @@ void main() {
   // label sheets with 1D-only / 2D-only / both, QR and DataMatrix
   for (final two in [Symbology.qrCode, Symbology.dataMatrix]) {
     for (final (on2, on1) in [(true, false), (false, true), (true, true)]) {
-      final i = GenInput(mode: WebMode.labelSerial, data: data, twoD: two);
+      final i = GenInput(mode: WebMode.comboSerial, data: data, twoD: two);
       final spec = LabelSpec(twoDOn: on2, oneDOn: on1);
       const ss = SerialSpec(count: 8);
       final L = layoutLabelSheet(spec, ss, const SheetSpec());
@@ -110,20 +119,46 @@ void main() {
           buildLabelSheetPage(i, spec, ss, L, 0));
     }
   }
-  // project round-trip
+  // explicit HRI font size renders (and round-trips through label JSON)
   {
     const i = GenInput(mode: WebMode.combo, data: data);
+    final spec = LabelSpec(hriFontMm: 5);
+    check('label hriFont=5mm', buildLabel(i, spec));
+    final spec2 = LabelSpec()..applyJson(spec.toJson());
+    if (spec2.hriFontMm != 5) throw StateError('hriFontMm round-trip');
+  }
+  // project round-trip (overlay + copies persisted)
+  {
+    const i = GenInput(mode: WebMode.twoDSheet, data: data);
     final json = projectJson(
         i: i,
         ss: const SerialSpec(),
         sheet: const SheetSpec(),
         label: LabelSpec(),
-        logoSideMm: 1);
+        logoSideMm: 1,
+        labelOn: true,
+        copies: 33);
     final p = parseProject(json);
-    if (p == null || p.mode != WebMode.combo) {
+    if (p == null ||
+        p.mode != WebMode.twoDSheet ||
+        !p.labelOn ||
+        p.copies != 33) {
       throw StateError('project round-trip failed');
     }
     print('ok  project round-trip');
+  }
+  // legacy projects: label workspaces load as combo + overlay
+  {
+    final legacy = jsonEncode({
+      'format': 'QSeq Project',
+      'version': 1,
+      'workspace': {'mode': 'labelSerial'},
+    });
+    final p = parseProject(legacy);
+    if (p == null || p.mode != WebMode.comboSerial || !p.labelOn) {
+      throw StateError('legacy label mapping failed');
+    }
+    print('ok  legacy label workspace mapping');
   }
   print('ALL SMOKE TESTS PASSED');
 }

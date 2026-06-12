@@ -47,6 +47,8 @@ class GeneratorState extends State<Generator> {
   double comboGap = 4;
   double comboPad = 2;
   bool comboSharedHri = true;
+  bool labelOn = false; // label designer overlay (any workspace)
+  int copies = 12; // sheet-of-copies count
   SerialSpec serial = const SerialSpec();
   PageFormat pageFormat = PageFormat.letter;
   PageOrientation orientation = PageOrientation.portrait;
@@ -79,12 +81,24 @@ class GeneratorState extends State<Generator> {
         columnsOverride: columnsOverride,
       );
 
+  /// The run for paged modes: the serialized spec, or N identical copies.
+  SerialSpec get _run => mode.isSerialized
+      ? serial
+      : SerialSpec(serialize: false, count: copies.clamp(1, 2000));
+
   void _set(void Function() fn) => setState(() {
         err = '';
         fn();
       });
   void _d(DataSourceInput Function(DataSourceInput) f) =>
       _set(() => data = f(data));
+
+  /// The overlay shows exactly the workspace's symbols; re-arrange for them.
+  void _syncLabelElements() {
+    labelSpec.twoDOn = mode.use2D;
+    labelSpec.oneDOn = mode.use1D;
+    labelSpec.rects.clear();
+  }
 
   // ================= build =================
   @override
@@ -94,21 +108,21 @@ class GeneratorState extends State<Generator> {
     SheetLayout? layout;
     var shownCap = 0;
     try {
-      if (mode.isLabel) {
-        if (mode == WebMode.label) {
-          art = lbl.buildLabel(i, labelSpec, selected: selectedEl);
-        } else {
-          layout = lbl.layoutLabelSheet(labelSpec, serial, _sheet);
+      if (labelOn) {
+        if (mode.isPaged) {
+          layout = lbl.layoutLabelSheet(labelSpec, _run, _sheet);
           sheetPage = sheetPage.clamp(0, layout.pageCount - 1);
           shownCap = 24;
-          art = lbl.buildLabelSheetPage(i, labelSpec, serial, layout, sheetPage,
+          art = lbl.buildLabelSheetPage(i, labelSpec, _run, layout, sheetPage,
               maxCells: shownCap);
+        } else {
+          art = lbl.buildLabel(i, labelSpec, selected: selectedEl);
         }
-      } else if (mode.isSerialized) {
-        layout = layoutSheet(i, serial, _sheet);
+      } else if (mode.isPaged) {
+        layout = layoutSheet(i, _run, _sheet);
         sheetPage = sheetPage.clamp(0, layout.pageCount - 1);
         shownCap = 60;
-        art = buildSheetPage(i, serial, layout, sheetPage, maxCells: shownCap);
+        art = buildSheetPage(i, _run, layout, sheetPage, maxCells: shownCap);
       } else if (mode.isCombo) {
         art = buildCombined(i);
       } else {
@@ -148,6 +162,13 @@ class GeneratorState extends State<Generator> {
                 mode = WebMode.values.byName(v);
                 sheetPage = 0;
                 selectedEl = null;
+                if (labelOn) _syncLabelElements();
+              })),
+      _check('Label designer — lay the code(s) out on a sized label', labelOn,
+          (v) => _set(() {
+                labelOn = v;
+                selectedEl = null;
+                if (v) _syncLabelElements();
               })),
       _select(
           'Data source',
@@ -163,7 +184,7 @@ class GeneratorState extends State<Generator> {
             (v) => _d((d) => d.copyWith(gtin: v))),
         if (!mode.isSerialized)
           _text('Serial', data.serial, (v) => _d((d) => d.copyWith(serial: v))),
-        if (!mode.isCombo && !mode.isLabel)
+        if (!mode.isCombo && !labelOn)
           _select(
               'SGTIN format',
               data.sgtinFormat.name,
@@ -175,13 +196,14 @@ class GeneratorState extends State<Generator> {
               (v) => _d((d) =>
                   d.copyWith(sgtinFormat: SgtinFormat.values.byName(v)))),
         if (!mode.isCombo &&
-            !mode.isLabel &&
+            !labelOn &&
             data.sgtinFormat == SgtinFormat.epcTagUri)
           _num('Company prefix length', data.companyPrefixLength.toDouble(),
               (v) => _d((d) =>
-                  d.copyWith(companyPrefixLength: v.round().clamp(6, 12)))),
+                  d.copyWith(companyPrefixLength: v.round().clamp(6, 12))),
+              min: 6, max: 12),
         if (mode.isCombo ||
-            mode.isLabel ||
+            labelOn ||
             data.sgtinFormat == SgtinFormat.digitalLink) ...[
           _select(
               'Resolver',
@@ -233,8 +255,8 @@ class GeneratorState extends State<Generator> {
                 (s.name, s.displayName)
             ],
             (v) => _set(() => oneDSym = Symbology.values.byName(v))),
-      // combo layout
-      if (mode.isCombo) ...[
+      // combo layout (the label overlay positions elements itself)
+      if (mode.isCombo && !labelOn) ...[
         if (mode == WebMode.combo)
           _select(
               'Arrangement',
@@ -245,26 +267,29 @@ class GeneratorState extends State<Generator> {
               (v) =>
                   _set(() => arrangement = LabelArrangement.values.byName(v))),
         _num('Gap between 1D & 2D (mm)', comboGap,
-            (v) => _set(() => comboGap = v.clamp(0, 100))),
+            (v) => _set(() => comboGap = v.clamp(0, 100)), max: 100),
         _check('Digital Link URL spans 1D + 2D (one shared line)',
             comboSharedHri, (v) => _set(() => comboSharedHri = v)),
         if (mode == WebMode.combo)
           _num('Outer padding (mm)', comboPad,
-              (v) => _set(() => comboPad = v.clamp(0, 100))),
+              (v) => _set(() => comboPad = v.clamp(0, 100)), max: 100),
       ],
-      // label designer
-      if (mode.isLabel) ..._labelSection(i),
-      // serialization
-      if (mode.isSerialized) ..._serialSection(),
+      // label designer overlay
+      if (labelOn) ..._labelSection(i),
+      // paged modes: serialization run / sheet of copies + page setup
+      if (mode.isPaged) ..._serialSection(),
       // print
       div(classes: 'grid2', [
         _num('Resolution (DPI)', dpi,
-            (v) => _set(() => dpi = v.clamp(36, 1200))),
+            (v) => _set(() => dpi = v.clamp(36, 1200)),
+            min: 36, max: 1200),
         _num('X-dimension (mm)', xdim,
-            (v) => _set(() => xdim = v.clamp(0.05, 5))),
+            (v) => _set(() => xdim = v.clamp(0.05, 5)),
+            min: 0.05, max: 5),
       ]),
       if (mode.use1D)
-        _num('Bar height (mm)', barh, (v) => _set(() => barh = v.clamp(1, 300))),
+        _num('Bar height (mm)', barh, (v) => _set(() => barh = v.clamp(1, 300)),
+            min: 1, max: 300),
       // logo
       if (mode.use2D) ..._logoSection(i),
     ];
@@ -274,7 +299,7 @@ class GeneratorState extends State<Generator> {
     String value;
     var isError = false;
     try {
-      if (mode.isLabel || mode.isCombo) {
+      if (labelOn || mode.isCombo) {
         value = lbl.labelTexts(_input).d2;
       } else {
         final r = data.resolve();
@@ -291,51 +316,66 @@ class GeneratorState extends State<Generator> {
 
   List<Component> _serialSection() => [
         div(classes: 'serial-block', [
-          h3([text('Serialization')]),
-          _text('Serial prefix (printed normal)', serial.prefix,
-              (v) => _set(() {
-                    serial = SerialSpec(
-                        prefix: v,
-                        start: serial.start,
-                        count: serial.count,
-                        pad: serial.pad);
-                    sheetPage = 0;
-                  })),
-          div(classes: 'grid2', [
+          h3([text(mode.isSerialized ? 'Serialization' : 'Sheet of copies')]),
+          if (mode.isCopies)
             _num(
-                'Start (printed bold)',
-                serial.start.toDouble(),
+                'Copies (same code repeated)',
+                copies.toDouble(),
+                (v) => _set(() {
+                      copies = v.round().clamp(1, 2000);
+                      sheetPage = 0;
+                    }),
+                min: 1,
+                max: 2000),
+          if (mode.isSerialized) ...[
+            _text('Serial prefix (printed normal)', serial.prefix,
                 (v) => _set(() {
                       serial = SerialSpec(
-                          prefix: serial.prefix,
-                          start: v.round().clamp(0, 1000000000),
+                          prefix: v,
+                          start: serial.start,
                           count: serial.count,
                           pad: serial.pad);
                       sheetPage = 0;
                     })),
+            div(classes: 'grid2', [
+              _num(
+                  'Start (printed bold)',
+                  serial.start.toDouble(),
+                  (v) => _set(() {
+                        serial = SerialSpec(
+                            prefix: serial.prefix,
+                            start: v.round().clamp(0, 1000000000),
+                            count: serial.count,
+                            pad: serial.pad);
+                        sheetPage = 0;
+                      })),
+              _num(
+                  'Count',
+                  serial.count.toDouble(),
+                  (v) => _set(() {
+                        serial = SerialSpec(
+                            prefix: serial.prefix,
+                            start: serial.start,
+                            count: v.round().clamp(1, 2000),
+                            pad: serial.pad);
+                        sheetPage = 0;
+                      }),
+                  min: 1,
+                  max: 2000),
+            ]),
             _num(
-                'Count',
-                serial.count.toDouble(),
+                'Zero-pad digits',
+                serial.pad.toDouble(),
                 (v) => _set(() {
                       serial = SerialSpec(
                           prefix: serial.prefix,
                           start: serial.start,
-                          count: v.round().clamp(1, 2000),
-                          pad: serial.pad);
+                          count: serial.count,
+                          pad: v.round().clamp(0, 20));
                       sheetPage = 0;
-                    })),
-          ]),
-          _num(
-              'Zero-pad digits',
-              serial.pad.toDouble(),
-              (v) => _set(() {
-                    serial = SerialSpec(
-                        prefix: serial.prefix,
-                        start: serial.start,
-                        count: serial.count,
-                        pad: v.round().clamp(0, 20));
-                    sheetPage = 0;
-                  })),
+                    }),
+                max: 20),
+          ],
           _select('Page size', pageFormat.name,
               [for (final p in PageFormat.values) (p.name, p.label)],
               (v) => _set(() {
@@ -358,7 +398,8 @@ class GeneratorState extends State<Generator> {
               (v) => _set(() {
                     columnsOverride = v.round().clamp(0, 50);
                     sheetPage = 0;
-                  })),
+                  }),
+              max: 50),
         ]),
       ];
 
@@ -366,7 +407,7 @@ class GeneratorState extends State<Generator> {
     String autoTxt = '';
     if (logoOn) {
       try {
-        final t = mode.isLabel || mode.isCombo
+        final t = labelOn || mode.isCombo
             ? lbl.labelTexts(i).d2
             : (data.resolve().data ?? '');
         final mm = autoLogoMm(i, t);
@@ -403,29 +444,21 @@ class GeneratorState extends State<Generator> {
         h3([text('Label')]),
         p(classes: 'hint', [
           text('Click an element to select it; drag to move, drag the corner '
-              'handle to resize. The 2D carries the Digital Link URL, the 1D '
-              'the GS1 element string; one shared human-readable line spans '
-              'the labelSpec.')
+              'handle to resize. The label shows this workspace\'s code(s): '
+              'the 2D carries the Digital Link URL, the 1D the GS1 element '
+              'string; one shared human-readable line spans the label.')
         ]),
         div(classes: 'grid2', [
           _num('Label width (mm)', labelSpec.wMm, (v) => _set(() {
                 labelSpec.wMm = v.clamp(10, 2000);
                 labelSpec.rects.clear();
-              })),
+              }), min: 10, max: 2000),
           _num('Label height (mm)', labelSpec.hMm, (v) => _set(() {
                 labelSpec.hMm = v.clamp(10, 2000);
                 labelSpec.rects.clear();
-              })),
+              }), min: 10, max: 2000),
         ]),
         div(classes: 'label-toggles', [
-          _check('2D code', labelSpec.twoDOn, (v) => _set(() {
-                labelSpec.twoDOn = v;
-                labelSpec.rects.clear();
-              })),
-          _check('1D barcode', labelSpec.oneDOn, (v) => _set(() {
-                labelSpec.oneDOn = v;
-                labelSpec.rects.clear();
-              })),
           _check('Title', labelSpec.titleOn, (v) => _set(() {
                 labelSpec.titleOn = v;
                 labelSpec.rects.clear();
@@ -437,6 +470,10 @@ class GeneratorState extends State<Generator> {
         ]),
         _text('Title text', labelSpec.title,
             (v) => _set(() => labelSpec.title = v)),
+        if (labelSpec.hriOn)
+          _num('HRI font size (mm, 0 = auto)', labelSpec.hriFontMm,
+              (v) => _set(() => labelSpec.hriFontMm = v.clamp(0, 30)),
+              max: 30),
         div(classes: 'label-toggles', [
           _check('Show label frame', labelSpec.frameShown,
               (v) => _set(() => labelSpec.frameShown = v)),
@@ -448,11 +485,14 @@ class GeneratorState extends State<Generator> {
         if (sel != null)
           div(classes: 'grid3', [
             _num('$selectedEl X (mm)', sel.x,
-                (v) => _set(() => sel.x = v.clamp(0, labelSpec.wMm - 1))),
+                (v) => _set(() => sel.x = v.clamp(0, labelSpec.wMm - 1)),
+                max: labelSpec.wMm - 1),
             _num('Y (mm)', sel.y,
-                (v) => _set(() => sel.y = v.clamp(0, labelSpec.hMm - 1))),
+                (v) => _set(() => sel.y = v.clamp(0, labelSpec.hMm - 1)),
+                max: labelSpec.hMm - 1),
             _num('Width (mm)', sel.w,
-                (v) => _set(() => sel.w = v.clamp(3, labelSpec.wMm))),
+                (v) => _set(() => sel.w = v.clamp(3, labelSpec.wMm)),
+                min: 3, max: labelSpec.wMm),
           ]),
         div(classes: 'downloads', [
           button([text('Auto-arrange')], classes: 'btn',
@@ -491,7 +531,7 @@ class GeneratorState extends State<Generator> {
           classes: 'btn',
           disabled: !ok,
           onClick: () => _downloadPdf(layout)),
-      if (!mode.isSerialized)
+      if (!mode.isPaged)
         button([text('Download SVG')],
             classes: 'btn',
             disabled: !ok,
@@ -512,9 +552,9 @@ class GeneratorState extends State<Generator> {
       w = (w * cap / big).round();
       h = (h * cap / big).round();
     }
-    final name = mode.isSerialized
+    final name = mode.isPaged
         ? 'qseq-sheet.png'
-        : (mode.isLabel ? 'qseq-labelSpec.png' : 'qseq-code.png');
+        : (labelOn ? 'qseq-label.png' : 'qseq-code.png');
     await downloadSvgPng(name, art.svg, math.max(16, w), math.max(16, h));
   }
 
@@ -537,21 +577,22 @@ class GeneratorState extends State<Generator> {
     }
 
     try {
-      if (mode.isSerialized && layout != null) {
+      if (mode.isPaged && layout != null) {
         for (var p = 0; p < layout.pageCount; p++) {
-          await addPage(mode.isLabel
-              ? lbl.buildLabelSheetPage(i, labelSpec, serial, layout, p)
-              : buildSheetPage(i, serial, layout, p));
+          await addPage(labelOn
+              ? lbl.buildLabelSheetPage(i, labelSpec, _run, layout, p)
+              : buildSheetPage(i, _run, layout, p));
         }
-      } else if (mode == WebMode.label) {
+      } else if (labelOn) {
         await addPage(lbl.buildLabel(i, labelSpec, forExport: true));
       } else if (mode == WebMode.combo) {
         await addPage(buildCombined(i));
       } else {
         await addPage(buildSingle(i));
       }
-      final name =
-          mode.isSerialized ? 'qseq-sheet.pdf' : (mode.isLabel ? 'qseq-labelSpec.pdf' : 'qseq-code.pdf');
+      final name = mode.isPaged
+          ? 'qseq-sheet.pdf'
+          : (labelOn ? 'qseq-label.pdf' : 'qseq-code.pdf');
       final saved = await savePdfPages(name, pages);
       if (!saved) {
         setState(() => err = 'PDF library still loading — try again.');
@@ -599,6 +640,8 @@ class GeneratorState extends State<Generator> {
       sheet: _sheet,
       label: labelSpec,
       logoSideMm: logoOn ? 1 : 0,
+      labelOn: labelOn,
+      copies: copies,
     );
     downloadText('design.qseq', json, 'application/json');
   }
@@ -614,6 +657,8 @@ class GeneratorState extends State<Generator> {
     }
     _set(() {
       mode = p.mode;
+      labelOn = p.labelOn;
+      copies = p.copies;
       data = p.data;
       twoD = p.twoD;
       oneDSym = p.oneD;
@@ -647,7 +692,7 @@ class GeneratorState extends State<Generator> {
     final artPxH = art.hMm * _cssPxPerMm;
     final zoom =
         ((600 - rulerBandPx - 16) / artPxW).clamp(0.15, 2.5).toDouble();
-    final isLabelEditor = mode == WebMode.label;
+    final isLabelEditor = labelOn && !mode.isPaged;
     final children = <Component>[
       div(
         styles: Styles(raw: {
@@ -725,7 +770,7 @@ class GeneratorState extends State<Generator> {
   double _grabDx = 0, _grabDy = 0;
 
   void _labelPointer(uw.Event e, int phase) {
-    if (mode != WebMode.label) return;
+    if (!labelOn || mode.isPaged) return;
     final me = e as uw.MouseEvent;
     final target = e.currentTarget as uw.Element?;
     if (target == null) return;
@@ -809,7 +854,7 @@ class GeneratorState extends State<Generator> {
       return div(classes: 'readout', cells);
     }
     final wIn = art.wMm / 25.4, hIn = art.hMm / 25.4;
-    if (mode.isSerialized && layout != null) {
+    if (mode.isPaged && layout != null) {
       kv('Page', '${numStr(layout.pageWmm)} × ${layout.continuous ? '∞' : numStr(layout.pageHmm)} mm');
       kv('Cell',
           '${layout.cellW.toStringAsFixed(1)} × ${layout.cellH.toStringAsFixed(1)} mm');
@@ -845,7 +890,7 @@ class GeneratorState extends State<Generator> {
         full('',
             'Module ${s.moduleDots} dots @ ${dpi.toInt()} DPI · print at ${dpi.toInt()} DPI for exact size');
       }
-      if (mode.isLabel) {
+      if (labelOn) {
         full('',
             '2D → Digital Link URL · 1D → GS1 element string · one shared HRI');
       }
@@ -859,7 +904,7 @@ class GeneratorState extends State<Generator> {
     try {
       entries = mode.isSerialized
           ? serialLog(i, serial)
-          : (mode.isLabel || mode.isCombo
+          : (labelOn || mode.isCombo
               ? [lbl.labelTexts(i).d2]
               : [data.resolve().data ?? '']);
       entries = entries.where((e) => e.isNotEmpty).toList();
@@ -924,15 +969,27 @@ class GeneratorState extends State<Generator> {
   Component _text(String lbl0, String value, void Function(String) on) =>
       label([text(lbl0), input(value: value, onInput: on)]);
 
-  Component _num(String lbl0, double value, void Function(double) on) {
+  Component _num(String lbl0, double value, void Function(double) on,
+      {double min = 0, double max = 1000000000}) {
     return label([
       text(lbl0),
       input(
         attributes: const {'type': 'number', 'step': 'any'},
         value: _fmt(value),
-        onInput: (String v) {
-          final n = double.tryParse(v);
-          if (n != null) on(n);
+        // Jaspr decodes the input event by the DOM type: number inputs deliver
+        // a num (NaN while the field is empty/partial), not a String.
+        // Live-update only changed, in-range values — updating state mid-typing
+        // re-renders and overwrites the half-typed text (e.g. "6…00" would
+        // clamp to 36 before the user finishes typing 600).
+        onInput: (num v) {
+          final d = v.toDouble();
+          if (!d.isNaN && d != value && d >= min && d <= max) on(d);
+        },
+        // Commit on blur/Enter: clamp out-of-range input, restore the last
+        // value if the field was left empty.
+        onChange: (num v) {
+          final d = v.toDouble();
+          on(d.isNaN ? value : d.clamp(min, max));
         },
       ),
     ]);

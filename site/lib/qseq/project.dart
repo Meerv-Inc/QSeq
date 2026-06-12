@@ -13,21 +13,26 @@ import 'label.dart';
 
 const _modeTo = {
   WebMode.twoD: 'twoD',
-  WebMode.twoDSerial: 'twoDSerial',
   WebMode.oneD: 'oneD',
-  WebMode.oneDSerial: 'oneDSerial',
   WebMode.combo: 'combo',
+  WebMode.twoDSheet: 'twoDSheet',
+  WebMode.oneDSheet: 'oneDSheet',
+  WebMode.twoDSerial: 'twoDSerial',
+  WebMode.oneDSerial: 'oneDSerial',
   WebMode.comboSerial: 'comboSerial',
-  WebMode.label: 'label',
-  WebMode.labelSerial: 'labelSerial',
 };
 
-WebMode modeFrom(String? v) =>
-    _modeTo.entries
-        .where((e) => e.value == v)
-        .map((e) => e.key)
-        .firstOrNull ??
-    WebMode.twoD;
+/// Legacy files stored the label designer as a workspace; it is now an overlay
+/// over a combo workspace (same element set: 2D + 1D).
+WebMode modeFrom(String? v) => switch (v) {
+      'label' => WebMode.combo,
+      'labelSerial' => WebMode.comboSerial,
+      _ => _modeTo.entries
+              .where((e) => e.value == v)
+              .map((e) => e.key)
+              .firstOrNull ??
+          WebMode.twoD,
+    };
 
 const _ecTo = {
   QrEcLevel.low: 'low',
@@ -42,6 +47,8 @@ String projectJson({
   required SheetSpec sheet,
   required LabelSpec label,
   required double logoSideMm,
+  required bool labelOn,
+  required int copies,
 }) {
   final d = i.data;
   final proj = {
@@ -49,6 +56,7 @@ String projectJson({
     'version': 1,
     'workspace': {
       'mode': _modeTo[i.mode],
+      'labelOn': labelOn,
       'oneDSymbology': i.oneDSym.name,
       'twoDSymbology': i.twoD.name,
       'errorCorrection': _ecTo[i.ec],
@@ -74,6 +82,7 @@ String projectJson({
       'start': ss.start,
       'count': ss.count,
       'padDigits': ss.pad,
+      'copies': copies,
       'pageFormat': sheet.page.name,
       'orientation': sheet.orientation.name,
       'columns': sheet.columnsOverride,
@@ -90,6 +99,7 @@ T? _enumByName<T extends Enum>(List<T> values, String? name) =>
 /// keep the supplied defaults (old project files still load).
 ({
   WebMode mode,
+  bool labelOn,
   DataSourceInput data,
   Symbology twoD,
   Symbology oneD,
@@ -103,6 +113,7 @@ T? _enumByName<T extends Enum>(List<T> values, String? name) =>
   double padMm,
   bool comboSharedHri,
   SerialSpec serial,
+  int copies,
   SheetSpec sheet,
   Map<String, dynamic>? labelJson,
 })? parseProject(String text) {
@@ -123,8 +134,12 @@ T? _enumByName<T extends Enum>(List<T> values, String? name) =>
           .map((e) => e.key)
           .firstOrNull ??
       QrEcLevel.medium;
+  final modeStr = w['mode'] as String?;
   return (
-    mode: modeFrom(w['mode'] as String?),
+    mode: modeFrom(modeStr),
+    // Legacy label workspaces load as combo + overlay on.
+    labelOn: w['labelOn'] as bool? ??
+        (modeStr == 'label' || modeStr == 'labelSerial'),
     data: DataSourceInput(
       kind: _enumByName(DataSourceKind.values, d['kind'] as String?) ??
           DataSourceKind.sgtin,
@@ -164,6 +179,7 @@ T? _enumByName<T extends Enum>(List<T> values, String? name) =>
       count: (sr['count'] as num?)?.toInt().clamp(1, 2000) ?? 24,
       pad: (sr['padDigits'] as num?)?.toInt().clamp(0, 20) ?? 5,
     ),
+    copies: (sr['copies'] as num?)?.toInt().clamp(1, 2000) ?? 12,
     sheet: SheetSpec(
       page: _enumByName(PageFormat.values, sr['pageFormat'] as String?) ??
           PageFormat.letter,

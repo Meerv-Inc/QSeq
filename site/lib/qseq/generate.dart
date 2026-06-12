@@ -14,31 +14,35 @@ import 'package:qseq_core/qseq_core.dart';
 
 import 'svgkit.dart';
 
-/// The web workspaces — the desktop [AppMode]s plus the label designer.
+/// The web workspaces — the desktop [AppMode]s plus sheet-of-copies modes.
+/// The label designer is NOT a workspace: it is an overlay the UI can switch
+/// on over any workspace (single → one label, paged → a sheet of labels).
 enum WebMode {
   twoD('2D'),
-  twoDSerial('2D — Serialized sheet'),
   oneD('1D'),
-  oneDSerial('1D — Serialized sheet'),
   combo('Combined 1D + 2D'),
-  comboSerial('Combined — Serialized sheet'),
-  label('Label designer'),
-  labelSerial('Label — Serialized sheet');
+  twoDSheet('2D — Sheet of copies'),
+  oneDSheet('1D — Sheet of copies'),
+  twoDSerial('2D — Serialized sheet'),
+  oneDSerial('1D — Serialized sheet'),
+  comboSerial('Combined — Serialized sheet');
 
   const WebMode(this.title);
   final String title;
 
   bool get use1D =>
-      this == oneD || this == oneDSerial || isCombo || isLabel;
+      this == oneD || this == oneDSheet || this == oneDSerial || isCombo;
   bool get use2D =>
-      this == twoD || this == twoDSerial || isCombo || isLabel;
+      this == twoD || this == twoDSheet || this == twoDSerial || isCombo;
   bool get isSerialized =>
-      this == oneDSerial ||
-      this == twoDSerial ||
-      this == comboSerial ||
-      this == labelSerial;
+      this == oneDSerial || this == twoDSerial || this == comboSerial;
+
+  /// Unserialized sheet: N copies of the same code.
+  bool get isCopies => this == twoDSheet || this == oneDSheet;
+
+  /// Any page-tiled mode (serialized run or sheet of copies).
+  bool get isPaged => isSerialized || isCopies;
   bool get isCombo => this == combo || this == comboSerial;
-  bool get isLabel => this == label || this == labelSerial;
 }
 
 /// Share of the EC capacity the auto-sized centre logo consumes (desktop's
@@ -339,10 +343,19 @@ class SerialSpec {
   final int start;
   final int count;
   final int pad;
+
+  /// false → an unserialized run: [count] identical copies of the single-mode
+  /// payload ([serialAt] yields null, so encodeWith uses the fixed serial).
+  final bool serialize;
   const SerialSpec(
-      {this.prefix = '', this.start = 1, this.count = 24, this.pad = 5});
-  String serialAt(int n) => '$prefix${counterAt(n)}';
-  String counterAt(int n) => (start + n).toString().padLeft(pad, '0');
+      {this.prefix = '',
+      this.start = 1,
+      this.count = 24,
+      this.pad = 5,
+      this.serialize = true});
+  String? serialAt(int n) => serialize ? '$prefix${counterAt(n)}' : null;
+  String? counterAt(int n) =>
+      serialize ? (start + n).toString().padLeft(pad, '0') : null;
 }
 
 class SheetSpec {
@@ -419,7 +432,7 @@ _Cell _sheetCell(GenInput i, SerialSpec ss, int n,
         '${s.fragment}</g>');
     y += s.hMm;
     if (sharedHri) return;
-    final boldFrom = data.lastIndexOf(counter);
+    final boldFrom = counter == null ? -1 : data.lastIndexOf(counter);
     final cap = captionSvg(data,
         cx: cellW / 2,
         yTop: y + 1.2,
@@ -452,7 +465,7 @@ _Cell _sheetCell(GenInput i, SerialSpec ss, int n,
         yTop: y + 1.2,
         maxWmm: cellW - 1,
         fontMm: 2.0,
-        boldFrom: sharedUrl.lastIndexOf(counter));
+        boldFrom: counter == null ? -1 : sharedUrl.lastIndexOf(counter));
     y += 1.2 + cap.heightMm;
     b.write(cap.svg);
   }
