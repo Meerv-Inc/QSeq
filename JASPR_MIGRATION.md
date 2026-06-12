@@ -1,8 +1,10 @@
 # QSeq → Jaspr migration
 
-Status as of 2026-06-11 (branch `jaspr-migration`). The live site (`qseq.app`)
-is **unchanged** — it still serves the static `website/` from `main`. This branch
-builds the Dart/Jaspr replacement in parallel; nothing cuts over until parity.
+Status as of 2026-06-12 (branch `jaspr-migration`): **CUT OVER** — `qseq.app`
+now serves the Jaspr build (`site/build/jaspr`, deployed via `vercel --prod`).
+The old static `website/` is retired from production but kept in the repo for
+reference. Caveat: `/QSeq.dmg` 404s (it was already missing from the previous
+production deployment — re-add the macOS build to `site/web/` when available).
 
 ## Why
 
@@ -91,15 +93,14 @@ verify `flutter build`) is a later step — do it with the desktop build watched
 
 ## Remaining (in rough priority)
 
-1. **Human click-through** of the hydrated preview (drag, downloads, pickers)
-   — in progress; first round found the numeric-input bug (fixed, above).
-2. Minor desktop deltas: copy-PNG-to-clipboard, pHYs DPI chunk in PNG, rulers
-   inside the PDF.
-3. `/QSeq.dmg` into `site/web/` (the Windows installer is already there; the
-   macOS dmg lives only on the Vercel deployment, not in git — copy it from the
-   live site or a local build before cutover).
-4. **Cutover** qseq.app to `site/build/jaspr` (see below), then retire `website/`.
-5. **Desktop de-dup** onto `qseq_core` (watch `flutter build`).
+1. `/QSeq.dmg` into `site/web/` — **the macOS download is a 404 in production**
+   (it was already broken before the cutover: the dmg is not in git and was
+   missing from the previous deployment too). Needs a dmg from a Mac build,
+   then rebuild + redeploy.
+2. Minor desktop deltas: copy-PNG-to-clipboard, pHYs DPI chunk in PNG.
+3. Delete `website/` once nobody needs it for reference.
+4. **Desktop de-dup** onto `qseq_core` (watch `flutter build`).
+5. Merge `jaspr-migration` → `main`; flip the GitHub default branch back to main.
 
 ## Build / run / deploy
 
@@ -110,16 +111,15 @@ dart pub global run jaspr_cli:jaspr serve      # dev server (hot reload) on :808
 dart pub global run jaspr_cli:jaspr build      # -> site/build/jaspr (static)
 ```
 
-**Vercel cutover (prebuilt static — Vercel has no Dart toolchain):**
-The qseq Vercel project currently deploys `website/`. To cut over, build locally
-then deploy `site/build/jaspr` as a static dir to the same project:
+**Vercel production deploy (prebuilt static — Vercel has no Dart toolchain):**
 ```bash
 cd site && dart pub global run jaspr_cli:jaspr build
-cd build/jaspr && vercel --prod      # serves the static output; needs the project link
+# the build WIPES build/jaspr including .vercel/ — restore the project link
+# (projectName "qseq"; copy from website/.vercel/project.json) before deploying
+cd build/jaspr && vercel --prod --yes
 ```
-Keep `website/` until the Jaspr build is at parity; cutover = point the deploy at
-`site/build/jaspr` instead of `website/`. See the `qseq-deploy-and-discovery`
-memory (manual `vercel --prod`, no GitHub auto-deploy).
+Preview deploys: `vercel deploy --yes` then re-point the alias
+`vercel alias set <url> qseq-jaspr.vercel.app`. No GitHub auto-deploy.
 
 ## Branches
 
