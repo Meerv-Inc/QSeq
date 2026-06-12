@@ -6,6 +6,39 @@ releases.
 
 © 2026 Meerv Inc. — PolyForm Noncommercial License 1.0.0.
 
+## [1.4.0] — 2026-06-12
+
+Serialization that starts where you say, in every sheet — and a site that
+spells out what a sustainable identifier is.
+
+### Added
+- **Dark / light mode switch** in the navigation (left of Generator); the
+  choice persists and applies before first paint. The light palette uses the
+  Meerv brand green.
+- **"What Sustainable Identity requires"** section on the site: an identifier
+  must be an *Identity* — serialized, web-resolvable, ultimately leading to a
+  Digital Product Passport (a bare SKU is not one) — **and** *Sustainable* —
+  printed true-to-size with enough error-correction margin to survive real
+  life. Both conditions must hold.
+- The hero now reads **Sustainable Identity Generator for Every Thing**, in
+  the Meerv brand green.
+
+### Changed
+- **Serialization starts at the Serial field.** The serial you type (e.g.
+  6789) is the basis: its trailing digits increment per item — 6789, 6790, … —
+  leading text stays as a fixed prefix, and leading zeros are preserved
+  (AB0099 → AB0100). The separate Prefix / Start / Zero-pad fields are gone.
+- **Sheet-of-copies workspaces serialize too** — every label on a copies sheet
+  gets the next identifier, so no two printed codes are the same.
+- The **Serialization Log** lists every generated identifier in all sheet
+  workspaces (it previously counted 00001… from a separate Start field,
+  ignoring the Serial).
+
+### Fixed
+- **Blank dropdowns after switching workspaces** (e.g. the Resolver showing
+  nothing until clicked): form controls are now keyed, so the UI never
+  re-purposes one control's element as another's.
+
 ## [1.3.0] — 2026-06-12
 
 The website is now the **Dart/Jaspr app** — qseq.app cut over from the old

@@ -44,6 +44,31 @@ a public good. It is written in Dart so a **single core** (`packages/qseq_core`)
 serves macOS, Windows (Flutter) and the web (Jaspr) identically — an identity
 minted on any surface is byte-for-byte the same.
 
+### What makes an identifier a *sustainable identity*
+
+"Sustainable Identity" is a double condition, and both halves must hold:
+
+1. **It must be an Identity.** A Stock Keeping Unit (SKU) — or any bare,
+   class-level GTIN — names a *kind* of thing, not a thing. Unserialized, it is
+   shared by every unit in the batch and is ultimately not resolvable to a
+   Digital Product Passport, so **an SKU is not an Identity**. Identity begins
+   at serialization: an SGTIN carried in a web-resolvable GS1 Digital Link,
+   where each physical item resolves to its own record. This is why QSeq
+   serializes everything — every sheet it prints increments the serial so no
+   two codes name the same thing, and the serialization log accounts for every
+   identifier minted.
+2. **It must be Sustainable.** An identity printed in a way that is not
+   sustainable is not sustainable either. A code printed at the wrong physical
+   size, with its error-correction budget spent on a logo, or with no margin
+   left for the scuffs, fading and curvature of real life stops scanning — and
+   an identity that stops resolving takes reuse, repair, recall and end-of-life
+   tracking with it. This is why QSeq is print-true (exact-DPI sizing, rulers)
+   and budget-aware (the logo dead-space reports the share of error correction
+   it consumes and warns before a code becomes fragile or unscannable).
+
+An SKU alone fails the first condition; a fragile print fails the second.
+QSeq exists so every code it mints passes both.
+
 ## Features
 
 - **Symbologies:** QR Code, Data Matrix, GS1-128, Code 128, Code 39, EAN-13,

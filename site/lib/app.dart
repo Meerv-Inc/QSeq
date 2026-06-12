@@ -9,7 +9,7 @@ import 'components/generator.dart';
 
 /// Single source of truth for the displayed site version — keep in sync with
 /// site/pubspec.yaml and the CHANGELOG.
-const qseqVersion = '1.3.0';
+const qseqVersion = '1.4.0';
 
 /// The page shell. Static marketing chrome is injected as raw HTML (identical to
 /// the previous static site); the interactive generator is a hydrated @client
