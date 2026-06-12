@@ -88,10 +88,22 @@ class GeneratorState extends State<Generator> {
         columnsOverride: columnsOverride,
       );
 
-  /// The run for paged modes: the serialized spec, or N identical copies.
-  SerialSpec get _run => mode.isSerialized
-      ? serial
-      : SerialSpec(serialize: false, count: copies.clamp(1, 2000));
+  /// The run for paged modes: a serialized spec derived from the Serial field
+  /// (its trailing digits are the incrementing counter — 6789, 6790, … — and
+  /// any leading text is the fixed prefix), or N identical copies.
+  SerialSpec get _run {
+    if (mode.isCopies) {
+      return SerialSpec(serialize: false, count: copies.clamp(1, 2000));
+    }
+    final m = RegExp(r'^(.*?)(\d{1,12})$').firstMatch(data.serial);
+    return SerialSpec(
+      prefix: m == null ? data.serial : m.group(1)!,
+      start: m == null ? 1 : int.parse(m.group(2)!),
+      count: serial.count,
+      // padLeft to the typed width so leading zeros survive (0001 → 0002).
+      pad: m == null ? 0 : m.group(2)!.length,
+    );
+  }
 
   void _set(void Function() fn) => setState(() {
         err = '';
@@ -343,53 +355,25 @@ class GeneratorState extends State<Generator> {
                 min: 1,
                 max: 2000),
           if (mode.isSerialized) ...[
-            _text('Serial prefix (printed normal)', serial.prefix,
-                (v) => _set(() {
-                      serial = SerialSpec(
-                          prefix: v,
-                          start: serial.start,
-                          count: serial.count,
-                          pad: serial.pad);
+            _text('Serial — start of serialization (counter printed bold)',
+                data.serial, (v) => _set(() {
+                      data = data.copyWith(serial: v);
                       sheetPage = 0;
                     })),
-            div(classes: 'grid2', [
-              _num(
-                  'Start (printed bold)',
-                  serial.start.toDouble(),
-                  (v) => _set(() {
-                        serial = SerialSpec(
-                            prefix: serial.prefix,
-                            start: v.round().clamp(0, 1000000000),
-                            count: serial.count,
-                            pad: serial.pad);
-                        sheetPage = 0;
-                      })),
-              _num(
-                  'Count',
-                  serial.count.toDouble(),
-                  (v) => _set(() {
-                        serial = SerialSpec(
-                            prefix: serial.prefix,
-                            start: serial.start,
-                            count: v.round().clamp(1, 2000),
-                            pad: serial.pad);
-                        sheetPage = 0;
-                      }),
-                  min: 1,
-                  max: 2000),
+            p(classes: 'hint', [
+              text('The trailing digits increment per item — 6789, 6790, … — '
+                  'and any leading text stays as a fixed prefix. Every '
+                  'generated identifier is listed in the Serialization Log.')
             ]),
             _num(
-                'Zero-pad digits',
-                serial.pad.toDouble(),
+                'Count',
+                serial.count.toDouble(),
                 (v) => _set(() {
-                      serial = SerialSpec(
-                          prefix: serial.prefix,
-                          start: serial.start,
-                          count: serial.count,
-                          pad: v.round().clamp(0, 20));
+                      serial = SerialSpec(count: v.round().clamp(1, 2000));
                       sheetPage = 0;
                     }),
-                max: 20),
+                min: 1,
+                max: 2000),
           ],
           _select('Page size', pageFormat.name,
               [for (final p in PageFormat.values) (p.name, p.label)],
@@ -707,7 +691,7 @@ class GeneratorState extends State<Generator> {
   void _saveProject() {
     final json = projectJson(
       i: _input,
-      ss: serial,
+      ss: _run,
       sheet: _sheet,
       label: labelSpec,
       logoSideMm: logoOn ? 1 : 0,
@@ -981,7 +965,7 @@ class GeneratorState extends State<Generator> {
     List<String> entries;
     try {
       entries = mode.isSerialized
-          ? serialLog(i, serial)
+          ? serialLog(i, _run)
           : (labelOn || mode.isCombo
               ? [lbl.labelTexts(i).d2]
               : [data.resolve().data ?? '']);

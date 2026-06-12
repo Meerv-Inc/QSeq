@@ -32,6 +32,15 @@ void main() {
       RawText('<meta name="twitter:card" content="summary" />'),
       RawText('<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'%3E%3Crect width=\'100\' height=\'100\' rx=\'18\' fill=\'%230b0d10\'/%3E%3Cg fill=\'%237cf6c8\'%3E%3Crect x=\'18\' y=\'18\' width=\'20\' height=\'20\'/%3E%3Crect x=\'62\' y=\'18\' width=\'20\' height=\'20\'/%3E%3Crect x=\'18\' y=\'62\' width=\'20\' height=\'20\'/%3E%3Crect x=\'48\' y=\'48\' width=\'10\' height=\'10\'/%3E%3Crect x=\'62\' y=\'62\' width=\'10\' height=\'10\'/%3E%3Crect x=\'72\' y=\'72\' width=\'10\' height=\'10\'/%3E%3C/g%3E%3C/svg%3E" />'),
       RawText('<link rel="stylesheet" href="/styles.css" />'),
+      // Apply the saved theme before first paint (no flash), then wire the
+      // nav toggle: ☀ offers light while dark, ☾ offers dark while light.
+      RawText(
+          '<script>(function(){try{if(localStorage.getItem("qseq-theme")==="light")document.documentElement.setAttribute("data-theme","light");}catch(e){}})();'
+          'document.addEventListener("DOMContentLoaded",function(){var b=document.getElementById("themeBtn");if(!b)return;'
+          'function paint(){b.textContent=document.documentElement.getAttribute("data-theme")==="light"?"\\u263E":"\\u2600";}'
+          'b.addEventListener("click",function(){var r=document.documentElement;var light=r.getAttribute("data-theme")==="light";'
+          'if(light){r.removeAttribute("data-theme");}else{r.setAttribute("data-theme","light");}'
+          'try{localStorage.setItem("qseq-theme",light?"dark":"light");}catch(e){}paint();});paint();});</script>'),
       RawText('<link rel="preconnect" href="https://cdn.jsdelivr.net" />'),
       RawText('<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js" defer></script>'),
       RawText('<script async src="https://www.googletagmanager.com/gtag/js?id=G-015RDZXKP2"></script>'),

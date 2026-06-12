@@ -39,6 +39,7 @@ const _header = r'''
     <span>QSeq</span>
   </div>
   <nav>
+    <button id="themeBtn" class="themebtn" type="button" aria-label="Switch between dark and light mode" title="Dark / light mode">☀</button>
     <a href="#generator">Generator</a>
     <a href="#mission">Mission</a>
     <a href="#about">About</a>

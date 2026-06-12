@@ -178,3 +178,34 @@ footer a:hover{text-decoration:underline}
 
 /* Meerv brand green (meerv.com logo / --primary) */
 .hero h1 .meerv{background:none;-webkit-background-clip:initial;background-clip:initial;color:#1c7552}
+
+/* ---- light theme -------------------------------------------------------- */
+/* Toggled by the nav switch; variables flip, plus the handful of hardcoded
+   dark-only colors below. Dark remains the default. */
+:root[data-theme="light"]{
+  --bg:#f6f8f9; --panel:#ffffff; --panel2:#eef1f4; --line:#d6dde3;
+  --ink:#141a20; --muted:#5c6772; --accent:#1c7552; --accent2:#2a6fd6;
+  --err:#c62828;
+}
+:root[data-theme="light"] .nav{background:rgba(246,248,249,.78)}
+:root[data-theme="light"] .lede,
+:root[data-theme="light"] .mission p,
+:root[data-theme="light"] .about p,
+:root[data-theme="light"] .support p,
+:root[data-theme="light"] .register,
+:root[data-theme="light"] .rel ul{color:#39434d}
+:root[data-theme="light"] .btn.primary{color:#fff;background:linear-gradient(100deg,#1c7552,#186d38)}
+:root[data-theme="light"] .pagetabs{background:rgba(238,241,244,.92)}
+:root[data-theme="light"] .pagetabs .ptab.active{color:#fff}
+:root[data-theme="light"] .stage{background:radial-gradient(circle at 50% 40%,#e7ecef,#dde3e8)}
+:root[data-theme="light"] .readout .warn,
+:root[data-theme="light"] .logonote.warn{color:#9a6b00}
+:root[data-theme="light"] .copyrow{background:rgba(28,117,82,.07);border-color:rgba(28,117,82,.3)}
+:root[data-theme="light"] .copybtn{background:rgba(28,117,82,.1);border-color:rgba(28,117,82,.32)}
+:root[data-theme="light"] .copybtn:hover{background:rgba(28,117,82,.2)}
+:root[data-theme="light"] .copybtn.copied{color:#fff}
+:root[data-theme="light"] .loglist.scrolly::-webkit-scrollbar-thumb{background:#c2ccd5}
+:root[data-theme="light"] .hero h1 .meerv{color:#1c7552}
+.themebtn{border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:8px;
+  padding:5px 10px;cursor:pointer;font-size:.9rem;line-height:1}
+.themebtn:hover{color:var(--ink);border-color:var(--accent)}
