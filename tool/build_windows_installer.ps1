@@ -57,9 +57,15 @@ $signing = $dlib -and (Test-Path $dlib) -and $metadataReady -and $signtool
 
 if ($signing) {
     # /tr = Microsoft's Artifact Signing timestamp authority (RFC 3161).
-    $signCmd = "`"$signtool`" sign /v /fd SHA256 /tr http://timestamp.acs.microsoft.com /td SHA256 /dlib `"$dlib`" /dmdf `"$metadata`""
+    $signArgs = @('sign', '/v', '/fd', 'SHA256',
+        '/tr', 'http://timestamp.acs.microsoft.com', '/td', 'SHA256',
+        '/dlib', $dlib, '/dmdf', $metadata)
+    # Single-string form for Inno Setup's SignTool directive ($f = each file,
+    # $q = a double quote — avoids literal quotes, which PowerShell 5.1 mangles
+    # when passing arguments to native executables).
+    $signCmd = "`$q$signtool`$q sign /v /fd SHA256 /tr http://timestamp.acs.microsoft.com /td SHA256 /dlib `$q$dlib`$q /dmdf `$q$metadata`$q"
     Write-Host '== signing QSeq.exe =='
-    Invoke-Expression "$signCmd `"$exe`""
+    & $signtool @signArgs $exe
     if ($LASTEXITCODE -ne 0) { throw 'signing QSeq.exe failed' }
 } else {
     Write-Warning ('Building UNSIGNED: ' + $(

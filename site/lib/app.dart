@@ -1,4 +1,4 @@
-// QSeq — Sustainable Identity on Every Thing
+﻿// QSeq — Sustainable Identity on Every Thing
 // Copyright (c) 2026 Meerv Inc.  Required Notice: https://qseq.app
 // Licensed under the PolyForm Noncommercial License 1.0.0.
 
@@ -10,7 +10,7 @@ import 'components/license_gate.dart';
 
 /// Single source of truth for the displayed site version — keep in sync with
 /// site/pubspec.yaml and the CHANGELOG.
-const qseqVersion = '1.5.1';
+const qseqVersion = '1.5.2';
 
 /// The page shell. Static marketing chrome is injected as raw HTML (identical to
 /// the previous static site); the interactive generator is a hydrated @client
@@ -61,7 +61,7 @@ const _hero = r'''
     <a class="btn" href="/QSeq.dmg" download>Download for macOS</a>
     <a class="btn" href="/qseq-windows-setup.exe" download>Download for Windows</a>
   </div>
-  <p class="muted small">Native macOS app (Apple silicon, signed &amp; notarized) &amp; Windows x64 · the Windows build is unsigned — click “More info → Run anyway” past SmartScreen · © 2026 Meerv Inc.</p>
+  <p class="muted small">Native macOS app (Apple silicon, signed &amp; notarized) &amp; Windows x64 (Authenticode-signed by Meerv Inc.) · © 2026 Meerv Inc.</p>
 </section>
 ''';
 

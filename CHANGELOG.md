@@ -6,6 +6,20 @@ releases.
 
 © 2026 Meerv Inc. — PolyForm Noncommercial License 1.0.0.
 
+## [1.5.2] — 2026-06-12
+
+### Added
+- **The Windows app and installer are now Authenticode-signed by Meerv
+  Inc.** via Azure Artifact Signing (timestamped, uninstaller included) —
+  no more "Unknown publisher"; SmartScreen/antivirus reputation now accrues
+  to the signed identity.
+
+### Fixed
+- **Unreadable panels when the in-app theme differed from the OS theme**
+  (e.g. white-on-white Serialization Log text and invisible toolbar icons
+  on Windows): all window chrome now paints opaquely from the app's own
+  theme toggle.
+
 ## [1.5.1] — 2026-06-12
 
 ### Added
