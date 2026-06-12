@@ -76,7 +76,11 @@ String projectJson({
       'rawText': d.rawText,
     },
     'print': {'dpi': i.dpi, 'xDimensionMm': i.xdim, 'barHeightMm': i.barh},
-    'logo': {'sideMm': logoSideMm, 'ecBudget': logoAutoEcShare},
+    'logo': {
+      'sideMm': logoSideMm,
+      'manualMm': i.logoManualMm,
+      'ecBudget': i.logoEcShare,
+    },
     'serialization': {
       'prefix': ss.prefix,
       'start': ss.start,
@@ -108,6 +112,8 @@ T? _enumByName<T extends Enum>(List<T> values, String? name) =>
   double xdim,
   double barh,
   bool logoOn,
+  double logoEcShare,
+  double logoManualMm,
   LabelArrangement arrangement,
   double gapMm,
   double padMm,
@@ -167,6 +173,9 @@ T? _enumByName<T extends Enum>(List<T> values, String? name) =>
     xdim: ((pr['xDimensionMm'] as num?)?.toDouble() ?? 0.5).clamp(0.05, 5),
     barh: ((pr['barHeightMm'] as num?)?.toDouble() ?? 15).clamp(1, 300),
     logoOn: ((lg['sideMm'] as num?)?.toDouble() ?? 0) > 0,
+    logoEcShare:
+        ((lg['ecBudget'] as num?)?.toDouble() ?? logoAutoEcShare).clamp(0.05, 0.5),
+    logoManualMm: ((lg['manualMm'] as num?)?.toDouble() ?? 0).clamp(0, 100),
     arrangement: _enumByName(
             LabelArrangement.values, w['arrangement'] as String?) ??
         LabelArrangement.sideBySide,

@@ -61,6 +61,12 @@ class GenInput {
   final double barh;
   final bool logoOn;
   final String? logoDataUrl; // picked logo image (data URL), 2D dead-space
+  /// Share of the 2D symbol's error-correction capacity the auto-sized logo
+  /// dead-space consumes (0.15–0.5 from the UI).
+  final double logoEcShare;
+
+  /// Manual dead-space side in mm; 0 = auto-size from [logoEcShare].
+  final double logoManualMm;
   final LabelArrangement arrangement; // combo
   final double gapMm; // combo: gap between 1D and 2D
   final double padMm; // combo: outer padding
@@ -79,6 +85,8 @@ class GenInput {
     this.barh = 15,
     this.logoOn = false,
     this.logoDataUrl,
+    this.logoEcShare = logoAutoEcShare,
+    this.logoManualMm = 0,
     this.arrangement = LabelArrangement.sideBySide,
     this.gapMm = 4,
     this.padMm = 2,
@@ -135,8 +143,8 @@ double recoverableFraction(GenInput i, SizeResult size) {
   return b == null ? 0.30 : b.budgetFraction / LogoEc.defaultSafetyMargin;
 }
 
-/// The centre-logo side (mm) auto-sized to [logoAutoEcShare] of the active 2D
-/// symbol's EC capacity (mirrors the desktop autoLogoSideProvider).
+/// The centre-logo side (mm) auto-sized to [GenInput.logoEcShare] of the
+/// active 2D symbol's EC capacity (mirrors the desktop autoLogoSideProvider).
 double autoLogoMm(GenInput i, String data) {
   try {
     final size = Sizer.compute(_cfg(i, i.twoD, data));
@@ -146,7 +154,7 @@ double autoLogoMm(GenInput i, String data) {
     final symModules = totalModules - 2 * quiet;
     final effX = Dpi.effectiveXDimensionMm(i.xdim, i.dpi);
     final symMm = symModules * effX;
-    return symMm * math.sqrt(recoverableFraction(i, size) * logoAutoEcShare);
+    return symMm * math.sqrt(recoverableFraction(i, size) * i.logoEcShare);
   } catch (_) {
     return 0;
   }
@@ -238,8 +246,12 @@ class Artwork {
 String _errMsg(Object e) =>
     e is FormatException ? e.message : e.toString().replaceFirst('Exception: ', '');
 
-double _activeLogoMm(GenInput i, String twoDData) =>
-    i.logoOn ? autoLogoMm(i, twoDData) : 0;
+/// The dead-space side that actually applies: manual override when set,
+/// otherwise the EC-share auto size; 0 when the logo is off.
+double activeLogoMm(GenInput i, String twoDData) {
+  if (!i.logoOn) return 0;
+  return i.logoManualMm > 0 ? i.logoManualMm : autoLogoMm(i, twoDData);
+}
 
 /// Single static code (2D or 1D) with the full HRI spelled out underneath.
 Artwork buildSingle(GenInput i) {
@@ -249,7 +261,7 @@ Artwork buildSingle(GenInput i) {
   if (data.isEmpty) return const Artwork(error: 'No data to encode.');
   try {
     final sym = i.mode.use1D && !i.mode.use2D ? i.oneDSym : i.twoD;
-    final logo = sym.is2D ? _activeLogoMm(i, data) : 0.0;
+    final logo = sym.is2D ? activeLogoMm(i, data) : 0.0;
     final s = renderSymbol(i, sym, data, logoSideMm: logo);
     final cap = captionSvg(data,
         cx: s.wMm / 2, yTop: s.hMm + 2.0, maxWmm: s.wMm - 1);
@@ -275,7 +287,7 @@ Artwork buildCombined(GenInput i, {String? serialOverride}) {
         .encodeWith(format: SgtinFormat.digitalLink, serial: serialOverride);
     final d1 = i.data
         .encodeWith(format: SgtinFormat.elementString, serial: serialOverride);
-    final logo = _activeLogoMm(i, d2);
+    final logo = activeLogoMm(i, d2);
     final two = renderSymbol(i, i.twoD, d2, logoSideMm: logo);
     final one = renderSymbol(i, i.oneDSym, d1);
     final g = i.gapMm.clamp(0, 100).toDouble();
@@ -449,7 +461,7 @@ _Cell _sheetCell(GenInput i, SerialSpec ss, int n,
         ? i.data.encodeWith(format: SgtinFormat.digitalLink, serial: serial)
         : i.data.encodeWith(serial: serial);
     sharedUrl = d2;
-    final logo = _activeLogoMm(i, d2);
+    final logo = activeLogoMm(i, d2);
     addSymbol(renderSymbol(i, i.twoD, d2, logoSideMm: logo), d2);
   }
   if (i.mode.use1D) {
@@ -550,6 +562,33 @@ Artwork buildSheetPage(GenInput i, SerialSpec ss, SheetLayout L, int page,
   } catch (e) {
     return Artwork(error: _errMsg(e));
   }
+}
+
+/// Wraps a finished artwork with mm-true rulers (vertical band on the right,
+/// horizontal band below, vernier corner) — used for PDF export when the user
+/// opts rulers in. The page grows by one ruler band in each direction.
+Artwork withPrintRulers(Artwork a) {
+  if (!a.ok) return a;
+  final inner = a.svg
+      .replaceFirst(RegExp(r'^<svg[^>]*>'), '')
+      .replaceFirst(RegExp(r'</svg>$'), '');
+  final w = a.wMm + rulerBandMm, h = a.hMm + rulerBandMm;
+  final b = StringBuffer()
+    ..write('<rect width="${numStr(w)}" height="${numStr(h)}" fill="#fff"/>')
+    ..write(inner)
+    ..write('<g transform="translate(${numStr(a.wMm)},0)">'
+        '${rulerMmFragment(a.hMm, horizontal: false)}</g>')
+    ..write('<g transform="translate(0,${numStr(a.hMm)})">'
+        '${rulerMmFragment(a.wMm, horizontal: true)}</g>')
+    ..write('<g transform="translate(${numStr(a.wMm)},${numStr(a.hMm)})">'
+        '${vernierMmFragment()}</g>');
+  return Artwork(
+      svg: svgDoc(b.toString(), w, h),
+      wMm: w,
+      hMm: h,
+      size: a.size,
+      size2: a.size2,
+      data: a.data);
 }
 
 /// All encoded payloads for the serialization log.

@@ -119,6 +119,29 @@ void main() {
           buildLabelSheetPage(i, spec, ss, L, 0));
     }
   }
+  // print rulers wrap a single artwork and a sheet page
+  {
+    const i = GenInput(mode: WebMode.twoD, data: data);
+    final r = withPrintRulers(buildSingle(i));
+    check('rulers single', r);
+    if (!r.svg.contains('vern 0.1mm')) throw StateError('no vernier');
+    const is2 = GenInput(mode: WebMode.twoDSerial, data: data);
+    const ss = SerialSpec(count: 8);
+    final L = layoutSheet(is2, ss, const SheetSpec());
+    check('rulers sheet', withPrintRulers(buildSheetPage(is2, ss, L, 0)));
+  }
+  // logo dead-space: EC shares and the manual override
+  {
+    for (final share in [0.15, 0.3, 0.5]) {
+      final i = GenInput(
+          mode: WebMode.twoD, data: data, logoOn: true, logoEcShare: share);
+      check('logo ec=${(share * 100).round()}%', buildSingle(i));
+    }
+    const manual = GenInput(
+        mode: WebMode.twoD, data: data, logoOn: true, logoManualMm: 8);
+    if (activeLogoMm(manual, 'x') != 8) throw StateError('manual logo mm');
+    check('logo manual 8mm', buildSingle(manual));
+  }
   // explicit HRI font size renders (and round-trips through label JSON)
   {
     const i = GenInput(mode: WebMode.combo, data: data);

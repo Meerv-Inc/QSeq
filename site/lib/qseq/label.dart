@@ -238,7 +238,7 @@ Artwork buildLabel(GenInput i, LabelSpec spec,
     if (spec.twoDOn) {
       final r = spec.rects['twoD'];
       if (r != null) {
-        final logo = i.logoOn ? autoLogoMm(i, t.d2) : 0.0;
+        final logo = activeLogoMm(i, t.d2);
         final s = renderSymbol(i, i.twoD, t.d2, logoSideMm: logo);
         final k = r.w / s.wMm;
         r.h = s.hMm * k; // keep true aspect

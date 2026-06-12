@@ -141,6 +141,73 @@ String _ruler(double lengthMm, double s, {required bool horizontal}) {
   return b.toString();
 }
 
+// ---- print rulers (mm units) -------------------------------------------------
+// Fragment versions of the rulers in millimetre user units, for composing into
+// exported artwork (PDF pages). Drawn at (0,0); the horizontal band runs along
+// x, the vertical along y. Same mm/inch/tick layout as the screen rulers.
+
+/// Depth of a print ruler band in mm (≈ the screen band at preview scale).
+const double rulerBandMm = 9;
+
+String rulerMmFragment(double lengthMm, {required bool horizontal}) {
+  final b = StringBuffer();
+  void ln(double x1, double y1, double x2, double y2, double sw) =>
+      b.write('<line x1="${_n(x1)}" y1="${_n(y1)}" x2="${_n(x2)}" '
+          'y2="${_n(y2)}" stroke="#111" stroke-width="${_n(sw)}"/>');
+  void tx(double x, double y, String t) =>
+      b.write('<text x="${_n(x)}" y="${_n(y)}" font-size="1.9" '
+          'font-family="monospace" fill="#111">${xmlEscape(t)}</text>');
+  // mm ticks along the leading edge
+  final mmN = lengthMm.floor();
+  for (var i = 0; i <= mmN; i++) {
+    final p = i.toDouble();
+    final maj = i % 10 == 0, med = i % 5 == 0;
+    final tick = maj ? 2.8 : (med ? 1.8 : 1.0);
+    final sw = maj ? 0.22 : 0.12;
+    if (horizontal) {
+      ln(p, 0, p, tick, sw);
+      if (maj && i > 0) tx(p + 0.4, 4.6, '$i');
+    } else {
+      ln(0, p, tick, p, sw);
+      if (maj && i > 0) tx(0.4, p + 2.1, '$i');
+    }
+  }
+  tx(0.4, horizontal ? 2.3 : 1.9, 'mm');
+  // 1/16-inch ticks along the trailing edge
+  const sixteenth = 25.4 / 16;
+  final sN = (lengthMm / sixteenth).floor();
+  for (var j = 0; j <= sN; j++) {
+    final p = j * sixteenth;
+    final maj = j % 16 == 0, half = j % 8 == 0, q = j % 4 == 0;
+    final tick = maj ? 2.8 : (half ? 1.9 : (q ? 1.3 : 0.7));
+    final sw = maj ? 0.22 : 0.12;
+    if (horizontal) {
+      ln(p, rulerBandMm - tick, p, rulerBandMm, sw);
+      if (maj && j > 0) tx(p + 0.4, rulerBandMm - 3.1, '${j ~/ 16}"');
+    } else {
+      ln(rulerBandMm - tick, p, rulerBandMm, p, sw);
+      if (maj && j > 0) tx(rulerBandMm - 4.4, p + 2.1, '${j ~/ 16}"');
+    }
+  }
+  return b.toString();
+}
+
+/// Vernier corner in mm units: 10 divisions over 9 mm → 0.1 mm reading.
+String vernierMmFragment() {
+  final b = StringBuffer();
+  const x0 = 0.5, y0 = 1.8, u = 0.9;
+  b.write('<line x1="$x0" y1="$y0" x2="${_n(x0 + 10 * u)}" y2="$y0" '
+      'stroke="#111" stroke-width="0.22"/>');
+  for (var k = 0; k <= 10; k++) {
+    b.write('<line x1="${_n(x0 + k * u)}" y1="$y0" x2="${_n(x0 + k * u)}" '
+        'y2="${_n(y0 + 1.3)}" stroke="#111" '
+        'stroke-width="${k % 5 == 0 ? 0.22 : 0.1}"/>');
+  }
+  b.write('<text x="0.5" y="${_n(rulerBandMm - 0.8)}" font-size="1.4" '
+      'font-family="monospace" fill="#111">vern 0.1mm</text>');
+  return b.toString();
+}
+
 /// Vernier corner block: 10 divisions over 9 mm → 0.1 mm reading.
 String vernierSvg(double pxPerMm) {
   const band = rulerBandPx;

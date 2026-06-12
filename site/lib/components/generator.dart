@@ -43,12 +43,17 @@ class GeneratorState extends State<Generator> {
   bool logoOn = false;
   String? logoDataUrl;
   String logoName = '';
+  double logoEcShare = logoAutoEcShare; // 0.15–0.5
+  bool logoManual = false;
+  double logoManualMm = 10;
   LabelArrangement arrangement = LabelArrangement.sideBySide;
   double comboGap = 4;
   double comboPad = 2;
   bool comboSharedHri = true;
   bool labelOn = false; // label designer overlay (any workspace)
   int copies = 12; // sheet-of-copies count
+  bool rulersOnScreen = true;
+  bool rulersInPdf = false;
   SerialSpec serial = const SerialSpec();
   PageFormat pageFormat = PageFormat.letter;
   PageOrientation orientation = PageOrientation.portrait;
@@ -69,6 +74,8 @@ class GeneratorState extends State<Generator> {
         barh: barh,
         logoOn: logoOn,
         logoDataUrl: logoDataUrl,
+        logoEcShare: logoEcShare,
+        logoManualMm: logoManual ? logoManualMm : 0,
         arrangement: arrangement,
         gapMm: comboGap,
         padMm: comboPad,
@@ -290,6 +297,14 @@ class GeneratorState extends State<Generator> {
       if (mode.use1D)
         _num('Bar height (mm)', barh, (v) => _set(() => barh = v.clamp(1, 300)),
             min: 1, max: 300),
+      // rulers
+      div(classes: 'serial-block', [
+        h3([text('Rulers')]),
+        _check('Show rulers around the preview', rulersOnScreen,
+            (v) => _set(() => rulersOnScreen = v)),
+        _check('Include rulers in the PDF export', rulersInPdf,
+            (v) => _set(() => rulersInPdf = v)),
+      ]),
       // logo
       if (mode.use2D) ..._logoSection(i),
     ];
@@ -404,34 +419,57 @@ class GeneratorState extends State<Generator> {
       ];
 
   List<Component> _logoSection(GenInput i) {
-    String autoTxt = '';
+    String sizeTxt = '';
     if (logoOn) {
       try {
         final t = labelOn || mode.isCombo
             ? lbl.labelTexts(i).d2
             : (data.resolve().data ?? '');
-        final mm = autoLogoMm(i, t);
-        if (mm > 0) autoTxt = ' (≈ ${mm.toStringAsFixed(1)} mm)';
+        final mm = activeLogoMm(i, t);
+        if (mm > 0) sizeTxt = 'Dead-space ≈ ${mm.toStringAsFixed(1)} mm';
       } catch (_) {}
     }
     return [
-      label(classes: 'check', [
-        input(
-            attributes: const {'type': 'checkbox'},
-            checked: logoOn,
-            onChange: (bool v) => _set(() => logoOn = v)),
-        text(
-            ' Reserve a centre logo dead-space — auto-sized to 15% of the error-correction capacity$autoTxt'),
-      ]),
-      div(classes: 'downloads', [
-        button([text('Open logo image…')], classes: 'btn', onClick: _openLogo),
-        button([text('Remove logo')], classes: 'btn', onClick: () => _set(() {
-              logoDataUrl = null;
-              logoName = '';
-            })),
-        span(classes: 'muted small',
-            [text(logoName.isEmpty ? 'No logo image' : 'Logo: $logoName')]),
-      ]),
+      _check('Logo', logoOn, (v) => _set(() => logoOn = v)),
+      if (logoOn) ...[
+        _select(
+            'Dead-space size',
+            logoManual ? 'manual' : '${(logoEcShare * 100).round()}',
+            const [
+              ('15', '15% of error correction'),
+              ('20', '20% of error correction'),
+              ('30', '30% of error correction'),
+              ('40', '40% of error correction'),
+              ('50', '50% of error correction'),
+              ('manual', 'Manual…'),
+            ], (v) {
+          _set(() {
+            if (v == 'manual') {
+              logoManual = true;
+            } else {
+              logoManual = false;
+              logoEcShare = int.parse(v) / 100;
+            }
+          });
+        }),
+        if (logoManual)
+          _num('Dead-space side (mm)', logoManualMm,
+              (v) => _set(() => logoManualMm = v.clamp(1, 100)),
+              min: 1, max: 100),
+        div(classes: 'downloads', [
+          button([text('Open logo image…')],
+              classes: 'btn', onClick: _openLogo),
+          button([text('Remove logo')], classes: 'btn',
+              onClick: () => _set(() {
+                    logoDataUrl = null;
+                    logoName = '';
+                  })),
+          span(classes: 'muted small', [
+            text(logoName.isEmpty ? 'No logo image' : 'Logo: $logoName')
+          ]),
+        ]),
+        if (sizeTxt.isNotEmpty) p(classes: 'muted small', [text(sizeTxt)]),
+      ],
     ];
   }
 
@@ -561,7 +599,8 @@ class GeneratorState extends State<Generator> {
   Future<void> _downloadPdf(SheetLayout? layout) async {
     final i = _input;
     final pages = <PdfPageImage>[];
-    Future<void> addPage(Artwork a) async {
+    Future<void> addPage(Artwork a0) async {
+      final a = rulersInPdf ? withPrintRulers(a0) : a0;
       if (!a.ok) throw FormatException(a.error ?? 'render failed');
       var w = (a.wMm / 25.4 * dpi).round();
       var h = (a.hMm / 25.4 * dpi).round();
@@ -667,6 +706,9 @@ class GeneratorState extends State<Generator> {
       xdim = p.xdim;
       barh = p.barh;
       logoOn = p.logoOn;
+      logoEcShare = p.logoEcShare;
+      logoManual = p.logoManualMm > 0;
+      if (p.logoManualMm > 0) logoManualMm = p.logoManualMm;
       arrangement = p.arrangement;
       comboGap = p.gapMm;
       comboPad = p.padMm;
@@ -690,15 +732,17 @@ class GeneratorState extends State<Generator> {
     // Fit: scale the css-mm artwork so (artwork + rulers) ≈ 600px wide.
     final artPxW = art.wMm * _cssPxPerMm;
     final artPxH = art.hMm * _cssPxPerMm;
-    final zoom =
-        ((600 - rulerBandPx - 16) / artPxW).clamp(0.15, 2.5).toDouble();
+    final band = rulersOnScreen ? rulerBandPx : 0;
+    final zoom = ((600 - band - 16) / artPxW).clamp(0.15, 2.5).toDouble();
     final isLabelEditor = labelOn && !mode.isPaged;
     final children = <Component>[
       div(
         styles: Styles(raw: {
           'display': 'grid',
-          'grid-template-columns': '${artPxW}px ${rulerBandPx}px',
-          'grid-template-rows': '${artPxH}px ${rulerBandPx}px',
+          'grid-template-columns':
+              '${artPxW}px${rulersOnScreen ? ' ${rulerBandPx}px' : ''}',
+          'grid-template-rows':
+              '${artPxH}px${rulersOnScreen ? ' ${rulerBandPx}px' : ''}',
           'gap': '14px',
           'background': '#fff',
           'padding': '8px',
@@ -720,9 +764,11 @@ class GeneratorState extends State<Generator> {
                 : null,
             [RawText(art.svg)],
           ),
-          RawText(vRulerSvg(art.hMm, _cssPxPerMm)),
-          RawText(hRulerSvg(art.wMm, _cssPxPerMm)),
-          RawText(vernierSvg(_cssPxPerMm)),
+          if (rulersOnScreen) ...[
+            RawText(vRulerSvg(art.hMm, _cssPxPerMm)),
+            RawText(hRulerSvg(art.wMm, _cssPxPerMm)),
+            RawText(vernierSvg(_cssPxPerMm)),
+          ],
         ],
       ),
     ];
