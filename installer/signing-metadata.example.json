@@ -1,0 +1,6 @@
+{
+  "Endpoint": "https://eus.codesigning.azure.net",
+  "CodeSigningAccountName": "meerv-signing",
+  "CertificateProfileName": "qseq-public-trust",
+  "CorrelationId": "qseq-windows-installer"
+}

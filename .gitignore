@@ -55,3 +55,6 @@ app.*.map.json
 # Vercel
 .vercel
 dist/
+
+# local Azure Artifact Signing config (create from the .example.json)
+installer/signing-metadata.json

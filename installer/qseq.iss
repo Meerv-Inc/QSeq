@@ -2,6 +2,11 @@
 ; Builds a per-user setup.exe from the Flutter release build. No admin required.
 ; Compile with:
 ;   "%LOCALAPPDATA%\Programs\Inno Setup 6\ISCC.exe" installer\qseq.iss
+;
+; Signed builds (Azure Artifact/Trusted Signing): use tool\build_windows_installer.ps1,
+; which signs QSeq.exe first, then compiles with
+;   ISCC.exe /DSign "/Sazuresign=<signtool sign … $f>" installer\qseq.iss
+; so the setup.exe and the uninstaller get Authenticode-signed too.
 
 #define AppName "QSeq"
 #define AppVersion "1.5.1"
@@ -30,6 +35,11 @@ WizardStyle=modern
 SetupIconFile=..\windows\runner\resources\app_icon.ico
 UninstallDisplayIcon={app}\{#AppExe}
 UninstallDisplayName={#AppName} {#AppVersion}
+#ifdef Sign
+; The "azuresign" tool is supplied on the ISCC command line (/Sazuresign=…).
+SignTool=azuresign
+SignedUninstaller=yes
+#endif
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
