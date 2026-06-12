@@ -48,7 +48,12 @@ if (-not $dlib) {
 }
 $metadata = Join-Path $repo 'installer\signing-metadata.json'
 $signtool = Find-SignTool
-$signing = $dlib -and (Test-Path $dlib) -and (Test-Path $metadata) -and $signtool
+# Treat the template as not configured while any REQUIRED field still holds an
+# angle-bracket placeholder (CorrelationId is optional and may stay as-is).
+$metadataReady = (Test-Path $metadata) -and
+    ((Get-Content $metadata -Raw) -notmatch
+        '"(Endpoint|CodeSigningAccountName|CertificateProfileName)":\s*"<')
+$signing = $dlib -and (Test-Path $dlib) -and $metadataReady -and $signtool
 
 if ($signing) {
     # /tr = Microsoft's Artifact Signing timestamp authority (RFC 3161).
@@ -60,7 +65,7 @@ if ($signing) {
     Write-Warning ('Building UNSIGNED: ' + $(
         if (-not $signtool) { 'signtool.exe not found (install a Windows 10/11 SDK).' }
         elseif (-not $dlib -or -not (Test-Path $dlib)) { 'set QSEQ_SIGN_DLIB to Azure.CodeSigning.Dlib.dll.' }
-        else { 'create installer\signing-metadata.json (see the .example.json).' }))
+        else { 'replace the <placeholders> in installer\signing-metadata.json.' }))
 }
 
 # --- 3. Inno Setup ---------------------------------------------------------------
