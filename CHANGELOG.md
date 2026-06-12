@@ -6,6 +6,42 @@ releases.
 
 © 2026 Meerv Inc. — PolyForm Noncommercial License 1.0.0.
 
+## [1.3.0] — 2026-06-12
+
+The website is now the **Dart/Jaspr app** — qseq.app cut over from the old
+hand-written JavaScript to the same Dart core (`qseq_core` + `barcode`) the
+desktop apps use, so an identity minted in the browser is byte-for-byte the
+desktop's. Source moved to **github.com/Meerv-Inc/QSeq**.
+
+### Added
+- **Sheet-of-copies workspaces (web)** — "2D — Sheet of copies" and "1D — Sheet
+  of copies" tile N identical codes per page (1–2000), with the same page
+  formats, pagination and PDF export as serialized sheets.
+- **Label designer as an overlay (web)** — the designer is now a checkbox
+  available in *every* workspace instead of a separate workspace: single modes
+  design one label, sheet modes tile the designed label per copy/serial. The
+  label shows exactly the workspace's symbols.
+- **HRI font size (web)** — the Digital Link printout on a label has an
+  adjustable font size (mm, 0 = auto), saved in `.qseq` projects.
+- **Rulers settings section (web)** — screen rulers can be switched off, and
+  PDF exports can opt **in** to mm-true ruler bands (mm/inch ticks + vernier).
+- **Logo dead-space controls (web)** — the Logo section offers 15/20/30/40/50%
+  of the error-correction budget or a Manual side-in-mm override (previously
+  fixed at 15%); persisted in `.qseq` projects. For every size it reports the
+  share of the error-correction capacity consumed and what that means for
+  scanability (robust / fragile / will not scan).
+- The footer shows the running version (bottom left).
+
+### Fixed
+- **Numeric fields were dead on the web** — typing into Count, DPI,
+  X-dimension and every other number field did nothing (a type mismatch threw
+  on each keystroke in release builds). Number inputs also no longer mangle
+  half-typed values while you type; out-of-range values clamp when you leave
+  the field.
+
+### Changed
+- Old `.qseq` projects with label workspaces load as Combined + label overlay.
+
 ## [1.2.2] — 2026-06-10
 
 Print-true fixes and a friendlier web app.

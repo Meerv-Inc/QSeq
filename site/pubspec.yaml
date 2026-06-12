@@ -1,6 +1,6 @@
 name: site
 description: QSeq — Sustainable Identity on Every Thing (Jaspr web app)
-version: 1.2.2
+version: 1.3.0
 
 environment:
   sdk: ^3.10.0

@@ -7,6 +7,10 @@ import 'package:jaspr/jaspr.dart';
 
 import 'components/generator.dart';
 
+/// Single source of truth for the displayed site version — keep in sync with
+/// site/pubspec.yaml and the CHANGELOG.
+const qseqVersion = '1.3.0';
+
 /// The page shell. Static marketing chrome is injected as raw HTML (identical to
 /// the previous static site); the interactive generator is a hydrated @client
 /// island. Server-prerendered for SEO.
@@ -38,7 +42,7 @@ const _header = r'''
     <a href="#mission">Mission</a>
     <a href="#about">About</a>
     <a href="#support">Support</a>
-    <a class="ghost" href="https://github.com/meerv-fmenard/qseq" target="_blank" rel="noopener">Source</a>
+    <a class="ghost" href="https://github.com/Meerv-Inc/QSeq" target="_blank" rel="noopener">Source</a>
   </nav>
 </header>
 ''';
@@ -70,7 +74,7 @@ const _mission = r'''
   <div class="copyrow">
     <span class="copylabel">Source code</span>
     <div class="copybox">
-      <code id="repoUrl">https://github.com/meerv-fmenard/qseq</code>
+      <code id="repoUrl">https://github.com/Meerv-Inc/QSeq</code>
       <button type="button" class="copybtn" data-copy-target="repoUrl" aria-label="Copy repository URL" title="Copy">
         <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
       </button>
@@ -79,7 +83,7 @@ const _mission = r'''
 </section>
 ''';
 
-const _about = r'''
+const _about = '''
 <section id="about" class="about">
   <h2>Why “QSeq”?</h2>
   <p><b>Seq</b> is <i>sequence</i> — QSeq exists to mint ordered, serialized identities. The <b>Q</b> is chosen deliberately: every reading of it lands on exactly what a well-formed sequence of identity codes must be — ordered, robust and resolvable.</p>
@@ -93,7 +97,7 @@ const _about = r'''
   <p>Quality factor, quanta, queue, cue, QR — four meanings and a carrier, each independently true, all pointing to the same idea: <b>a quality-assured, ordered, resolvable sequence of identity codes.</b> That is QSeq.</p>
   <h2 style="margin-top:48px">Why Flutter &amp; Dart?</h2>
   <p>QSeq is written in <b>Flutter / Dart</b> so a <b>single codebase</b> serves every surface. The <b>macOS and Windows</b> desktop apps are built from it, and the same Dart core powers this website: the web generator now runs the <i>exact</i> encoders and sizing engine as the desktop, compiled to the browser. One implementation of the encoders, capacity tables and sizing math means an identity minted on macOS, Windows or the browser is byte-for-byte the same.</p>
-  <p class="muted">QSeq v1.2.2 · © 2026 Meerv Inc. · Licensed under the PolyForm Noncommercial License 1.0.0 — released as source-available in service of Sustainable Identity on Every Thing.</p>
+  <p class="muted">QSeq v$qseqVersion · © 2026 Meerv Inc. · Licensed under the PolyForm Noncommercial License 1.0.0 — released as source-available in service of Sustainable Identity on Every Thing.</p>
 </section>
 ''';
 
@@ -104,15 +108,15 @@ const _support = r'''
   <p>Email <a class="mail" href="mailto:support@meerv.com?subject=QSeq%20support">support@meerv.com</a> and we'll get back to you. Telling us your <b>QSeq version</b> and your <b>platform</b> — macOS, Windows or web — helps us help you faster.</p>
   <div class="cta">
     <a class="btn primary" href="mailto:support@meerv.com?subject=QSeq%20support">Email support@meerv.com</a>
-    <a class="btn" href="https://github.com/meerv-fmenard/qseq/issues" target="_blank" rel="noopener">Open a GitHub issue →</a>
+    <a class="btn" href="https://github.com/Meerv-Inc/QSeq/issues" target="_blank" rel="noopener">Open a GitHub issue →</a>
   </div>
 </section>
 ''';
 
-const _footer = r'''
+const _footer = '''
 <footer>
-  <span>QSeq · © 2026 Meerv Inc.</span>
-  <a href="https://github.com/meerv-fmenard/qseq" target="_blank" rel="noopener"><strong>github.com/meerv-fmenard/qseq</strong></a>
+  <span>QSeq.app Version $qseqVersion © 2026 Meerv Inc.</span>
+  <a href="https://github.com/Meerv-Inc/QSeq" target="_blank" rel="noopener"><strong>github.com/Meerv-Inc/QSeq</strong></a>
   <span>Sustainable Identity on Every Thing</span>
 </footer>
 ''';

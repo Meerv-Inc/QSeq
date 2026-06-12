@@ -419,14 +419,45 @@ class GeneratorState extends State<Generator> {
       ];
 
   List<Component> _logoSection(GenInput i) {
+    // The EC readout for every dead-space size: the size in mm, the share of
+    // the error-correction capacity it consumes, and the scanability
+    // consequence.
     String sizeTxt = '';
+    String noteTxt = '';
+    String noteCls = 'ok';
     if (logoOn) {
       try {
         final t = labelOn || mode.isCombo
             ? lbl.labelTexts(i).d2
             : (data.resolve().data ?? '');
         final mm = activeLogoMm(i, t);
-        if (mm > 0) sizeTxt = 'Dead-space ≈ ${mm.toStringAsFixed(1)} mm';
+        if (mm > 0) {
+          sizeTxt = 'Dead-space ≈ ${mm.toStringAsFixed(1)} mm';
+          final share = logoEcShareUsed(i, t, mm);
+          if (share != null) {
+            sizeTxt = '$sizeTxt · uses ≈ ${(share * 100).round()}% of the '
+                'symbol\'s error-correction capacity.';
+            if (share >= 1) {
+              noteCls = 'bad';
+              noteTxt =
+                  'The dead-space destroys more data than the error correction '
+                  'can recover — the code will NOT scan. Shrink the dead-space '
+                  'or raise the error-correction level.';
+            } else if (share > 0.5) {
+              noteCls = 'warn';
+              noteTxt =
+                  'Over half the error correction is spent on the dead-space. '
+                  'A perfect print will scan, but little margin is left for '
+                  'real-world damage — print defects, scuffs, fading or '
+                  'curvature can make the code unreadable.';
+            } else {
+              noteTxt =
+                  'At least half the error correction stays available to '
+                  'absorb real-world damage (print defects, scuffs, fading) — '
+                  'readability stays robust.';
+            }
+          }
+        }
       } catch (_) {}
     }
     return [
@@ -469,6 +500,7 @@ class GeneratorState extends State<Generator> {
           ]),
         ]),
         if (sizeTxt.isNotEmpty) p(classes: 'muted small', [text(sizeTxt)]),
+        if (noteTxt.isNotEmpty) p(classes: 'logonote $noteCls', [text(noteTxt)]),
       ],
     ];
   }

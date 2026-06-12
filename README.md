@@ -3,12 +3,13 @@
 *© 2026 Meerv Inc.*
 
 A native **macOS and Windows** (Flutter) generator for Barcodes, QR Codes and
-Data Matrix codes, built for GS1 supply-chain and defense logistics use. Its defining
-feature is a **live physical-size calculator**: the printed outer perimeter is
-shown as a function of the centre logo dead-space, the byte count, the printing
-resolution (DPI) and the error-correction level.
+Data Matrix codes — plus the **[qseq.app](https://qseq.app)** web app, written
+in **Dart/Jaspr** from the same core — built for GS1 supply-chain and defense
+logistics use. Its defining feature is a **live physical-size calculator**: the
+printed outer perimeter is shown as a function of the centre logo dead-space,
+the byte count, the printing resolution (DPI) and the error-correction level.
 
-Download the macOS or Windows app and try the browser version at **[qseq.app](https://qseq.app)**.
+Download the macOS or Windows app and use the browser version at **[qseq.app](https://qseq.app)**.
 
 ## Purpose
 
@@ -39,8 +40,9 @@ object carries an open, web-resolvable, standards-based identity that anyone can
 read, verify and build upon — without proprietary lock-in. Durable, interoperable
 identity is the foundation of the circular economy (reuse, repair, recall,
 provenance, end-of-life), and the tools that *mint* those identities should stay
-a public good. It is written in Flutter so a **single codebase** serves macOS,
-Windows and the web identically.
+a public good. It is written in Dart so a **single core** (`packages/qseq_core`)
+serves macOS, Windows (Flutter) and the web (Jaspr) identically — an identity
+minted on any surface is byte-for-byte the same.
 
 ## Features
 
@@ -68,33 +70,51 @@ Windows and the web identically.
 - **Combined 1D + 2D label:** pairs a GS1-128 (SGTIN element string) with a
   QR/Data Matrix (GS1 Digital Link) for the same item on one larger label,
   stacked or side-by-side, with the combined outer size computed.
+- **Sheets of copies:** tile N identical codes per page — alongside the
+  serialized sheets — with page format, orientation and column control.
+- **Label designer (web):** an overlay on any workspace — drag/resize the
+  code(s), title and shared HRI (adjustable font) on a sized label with a
+  dashed cut-frame and an offline background-image round-trip.
 - **Exports:** PNG at exact DPI (with a pHYs chunk so print software reads the
-  true physical size), SVG / PDF vector, and copy-to-clipboard.
+  true physical size), SVG / PDF vector (optionally with mm/inch/vernier
+  rulers), and copy-to-clipboard.
 
 ## Architecture
 
 ```
+packages/qseq_core/   pure-Dart shared core: encoders (gtin, sgtin, gs1/FNC1,
+                      nsn), sizing (capacity tables, logo_ec, dpi, Sizer) and
+                      models — the single source of truth for every surface
+site/                 the qseq.app web app (Dart/Jaspr, statically prerendered;
+                      mm-true SVG engine, label designer, serialized sheets)
 lib/
-  encoders/   gtin, sgtin (3 output forms), gs1 (FNC1), nsn
-  sizing/     qr_capacity, datamatrix_capacity, linear_metrics,
-              logo_ec (dead-space budget), dpi, sizer (dispatch -> SizeResult)
+  encoders/ sizing/ models/   desktop copies of the core (being de-duplicated
+                              onto qseq_core)
   render/     barcode_factory, raster_renderer (pixel-exact PNG + pHYs),
               label_renderer (combined), svg_exporter, pdf_exporter, clipboard
-  models/     symbology, encode_config, size_result, data_source, combined_label
   state/      app_controller (Riverpod) + derived size providers
   ui/         home_page (macos_ui shell), inputs_panel, preview_pane,
               size_readout, export_actions
+website/              the previous hand-written JS site (retired, kept for
+                      reference)
 ```
 
-The domain core (`encoders/`, `sizing/`) is pure Dart and fully unit-tested; the
-sizing engine is a pure function `Sizer.compute(EncodeConfig) -> SizeResult`.
+The domain core is pure Dart and fully unit-tested; the sizing engine is a pure
+function `Sizer.compute(EncodeConfig) -> SizeResult`.
 
 ## Develop
 
 ```bash
+# desktop
 flutter pub get
-flutter test          # 59 tests: encoders, sizing, render pipeline, providers
+flutter test          # encoders, sizing, render pipeline, providers
 flutter run -d macos  # requires CocoaPods (brew install cocoapods)
+
+# web (from site/)
+dart pub get
+dart pub global run jaspr_cli:jaspr serve   # dev server on :8080
+dart pub global run jaspr_cli:jaspr build   # static build -> site/build/jaspr
+dart run tool/smoke.dart                    # engine smoke test (every mode)
 ```
 
 ## Sizing notes / standards caveats (surfaced in-app)

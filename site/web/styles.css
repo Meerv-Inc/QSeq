@@ -170,3 +170,8 @@ footer a:hover{text-decoration:underline}
 .loglist.scrolly::-webkit-scrollbar{width:8px;height:8px;display:block}
 .loglist.scrolly::-webkit-scrollbar-thumb{background:#2a333d;border-radius:4px}
 #artwork svg{display:block}
+
+.logonote{font-size:.78rem;font-family:var(--mono);margin:6px 0 0;line-height:1.45}
+.logonote.ok{color:var(--accent)}
+.logonote.warn{color:#ffd479}
+.logonote.bad{color:var(--err)}

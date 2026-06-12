@@ -141,6 +141,15 @@ void main() {
         mode: WebMode.twoD, data: data, logoOn: true, logoManualMm: 8);
     if (activeLogoMm(manual, 'x') != 8) throw StateError('manual logo mm');
     check('logo manual 8mm', buildSingle(manual));
+    // logoEcShareUsed inverts autoLogoMm
+    const auto = GenInput(
+        mode: WebMode.twoD, data: data, logoOn: true, logoEcShare: 0.3);
+    final d = data.resolve().data!;
+    final back = logoEcShareUsed(auto, d, autoLogoMm(auto, d));
+    if (back == null || (back - 0.3).abs() > 0.02) {
+      throw StateError('share inverse $back');
+    }
+    print('ok  logo share inverse 30% -> ${(back * 100).toStringAsFixed(1)}%');
   }
   // explicit HRI font size renders (and round-trips through label JSON)
   {

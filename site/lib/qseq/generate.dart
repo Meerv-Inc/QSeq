@@ -253,6 +253,26 @@ double activeLogoMm(GenInput i, String twoDData) {
   return i.logoManualMm > 0 ? i.logoManualMm : autoLogoMm(i, twoDData);
 }
 
+/// Fraction of the 2D symbol's error-correction capacity a dead-space of
+/// [sideMm] consumes (the inverse of [autoLogoMm]); null when the symbol
+/// can't be sized. Can exceed 1.0 — the code is then unscannable.
+double? logoEcShareUsed(GenInput i, String data, double sideMm) {
+  try {
+    final size = Sizer.compute(_cfg(i, i.twoD, data));
+    if (!size.fits) return null;
+    final quiet = i.twoD.quietZoneModules;
+    final totalModules = size.outer.widthPx ~/ size.moduleDots;
+    final symModules = totalModules - 2 * quiet;
+    final effX = Dpi.effectiveXDimensionMm(i.xdim, i.dpi);
+    final symMm = symModules * effX;
+    if (symMm <= 0) return null;
+    final areaFraction = (sideMm / symMm) * (sideMm / symMm);
+    return areaFraction / recoverableFraction(i, size);
+  } catch (_) {
+    return null;
+  }
+}
+
 /// Single static code (2D or 1D) with the full HRI spelled out underneath.
 Artwork buildSingle(GenInput i) {
   final r = i.data.resolve();
