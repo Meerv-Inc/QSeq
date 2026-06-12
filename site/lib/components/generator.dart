@@ -46,6 +46,7 @@ class GeneratorState extends State<Generator> {
   LabelArrangement arrangement = LabelArrangement.sideBySide;
   double comboGap = 4;
   double comboPad = 2;
+  bool comboSharedHri = true;
   SerialSpec serial = const SerialSpec();
   PageFormat pageFormat = PageFormat.letter;
   PageOrientation orientation = PageOrientation.portrait;
@@ -69,6 +70,7 @@ class GeneratorState extends State<Generator> {
         arrangement: arrangement,
         gapMm: comboGap,
         padMm: comboPad,
+        comboSharedHri: comboSharedHri,
       );
 
   SheetSpec get _sheet => SheetSpec(
@@ -244,6 +246,8 @@ class GeneratorState extends State<Generator> {
                   _set(() => arrangement = LabelArrangement.values.byName(v))),
         _num('Gap between 1D & 2D (mm)', comboGap,
             (v) => _set(() => comboGap = v.clamp(0, 100))),
+        _check('Digital Link URL spans 1D + 2D (one shared line)',
+            comboSharedHri, (v) => _set(() => comboSharedHri = v)),
         if (mode == WebMode.combo)
           _num('Outer padding (mm)', comboPad,
               (v) => _set(() => comboPad = v.clamp(0, 100))),
@@ -621,6 +625,7 @@ class GeneratorState extends State<Generator> {
       arrangement = p.arrangement;
       comboGap = p.gapMm;
       comboPad = p.padMm;
+      comboSharedHri = p.comboSharedHri;
       serial = p.serial;
       pageFormat = p.sheet.page;
       orientation = p.sheet.orientation;

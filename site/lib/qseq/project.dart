@@ -55,6 +55,7 @@ String projectJson({
       'arrangement': i.arrangement.name,
       'labelGapMm': i.gapMm,
       'labelPaddingMm': i.padMm,
+      'comboSharedHri': i.comboSharedHri,
     },
     'data': {
       'kind': d.kind.name,
@@ -100,6 +101,7 @@ T? _enumByName<T extends Enum>(List<T> values, String? name) =>
   LabelArrangement arrangement,
   double gapMm,
   double padMm,
+  bool comboSharedHri,
   SerialSpec serial,
   SheetSpec sheet,
   Map<String, dynamic>? labelJson,
@@ -154,6 +156,7 @@ T? _enumByName<T extends Enum>(List<T> values, String? name) =>
             LabelArrangement.values, w['arrangement'] as String?) ??
         LabelArrangement.sideBySide,
     gapMm: ((w['labelGapMm'] as num?)?.toDouble() ?? 4).clamp(0, 100),
+    comboSharedHri: w['comboSharedHri'] as bool? ?? true,
     padMm: ((w['labelPaddingMm'] as num?)?.toDouble() ?? 2).clamp(0, 100),
     serial: SerialSpec(
       prefix: sr['prefix'] as String? ?? '',

@@ -60,6 +60,9 @@ class GenInput {
   final LabelArrangement arrangement; // combo
   final double gapMm; // combo: gap between 1D and 2D
   final double padMm; // combo: outer padding
+  /// Combo HRI style: true → ONE Digital Link URL spanning both symbols;
+  /// false → a caption under each symbol with its own encoded data.
+  final bool comboSharedHri;
 
   const GenInput({
     required this.mode,
@@ -75,6 +78,7 @@ class GenInput {
     this.arrangement = LabelArrangement.sideBySide,
     this.gapMm = 4,
     this.padMm = 2,
+    this.comboSharedHri = true,
   });
 }
 
@@ -288,17 +292,34 @@ Artwork buildCombined(GenInput i, {String? serialOverride}) {
       x1 = p + two.wMm + g;
       y1 = (h - one.hMm) / 2;
     }
-    // Shared HRI: the Digital Link URL once, under the whole label.
-    final cap =
-        captionSvg(d2, cx: w / 2, yTop: h + 1.0, maxWmm: w - 2);
-    final totalH = h + (cap.heightMm > 0 ? 1.0 + cap.heightMm : 0);
-    final b = StringBuffer()
-      ..write('<rect width="${numStr(w)}" height="${numStr(totalH)}" fill="#fff"/>')
+    final b = StringBuffer();
+    final cells = StringBuffer()
       ..write('<g transform="translate(${numStr(x2)},${numStr(y2)})">'
           '${two.fragment}</g>')
       ..write('<g transform="translate(${numStr(x1)},${numStr(y1)})">'
-          '${one.fragment}</g>')
-      ..write(cap.svg);
+          '${one.fragment}</g>');
+    double totalH;
+    if (i.comboSharedHri) {
+      // ONE Digital Link URL spanning both symbols.
+      final cap = captionSvg(d2, cx: w / 2, yTop: h + 1.0, maxWmm: w - 2);
+      totalH = h + (cap.heightMm > 0 ? 1.0 + cap.heightMm : 0);
+      cells.write(cap.svg);
+    } else {
+      // A caption under each symbol with its own encoded data.
+      final cap2 = captionSvg(d2,
+          cx: x2 + two.wMm / 2, yTop: y2 + two.hMm + 1.0, maxWmm: two.wMm);
+      final cap1 = captionSvg(d1,
+          cx: x1 + one.wMm / 2, yTop: y1 + one.hMm + 1.0, maxWmm: one.wMm);
+      totalH = math.max(
+          y2 + two.hMm + 1.0 + cap2.heightMm,
+          y1 + one.hMm + 1.0 + cap1.heightMm) + p;
+      cells
+        ..write(cap2.svg)
+        ..write(cap1.svg);
+    }
+    b
+      ..write('<rect width="${numStr(w)}" height="${numStr(totalH)}" fill="#fff"/>')
+      ..write(cells);
     return Artwork(
         svg: svgDoc(b.toString(), w, totalH),
         wMm: w,
@@ -387,6 +408,9 @@ _Cell _sheetCell(GenInput i, SerialSpec ss, int n,
     {required double cellW}) {
   final serial = ss.serialAt(n);
   final counter = ss.counterAt(n);
+  // Combo with the shared-HRI option: symbols stack caption-less, then ONE
+  // Digital Link URL spans the cell (counter bold).
+  final sharedHri = i.mode.isCombo && i.comboSharedHri;
   final b = StringBuffer();
   var y = 0.0;
   void addSymbol(SymbolRender s, String data) {
@@ -394,6 +418,7 @@ _Cell _sheetCell(GenInput i, SerialSpec ss, int n,
     b.write('<g transform="translate(${numStr(x)},${numStr(y)})">'
         '${s.fragment}</g>');
     y += s.hMm;
+    if (sharedHri) return;
     final boldFrom = data.lastIndexOf(counter);
     final cap = captionSvg(data,
         cx: cellW / 2,
@@ -405,12 +430,12 @@ _Cell _sheetCell(GenInput i, SerialSpec ss, int n,
     b.write(cap.svg);
   }
 
+  String? sharedUrl;
   if (i.mode.use2D) {
-    final d2 = i.mode.isCombo || i.data.kind == DataSourceKind.sgtin
-        ? i.data.encodeWith(
-            format: i.mode.isCombo ? SgtinFormat.digitalLink : null,
-            serial: serial)
+    final d2 = i.mode.isCombo
+        ? i.data.encodeWith(format: SgtinFormat.digitalLink, serial: serial)
         : i.data.encodeWith(serial: serial);
+    sharedUrl = d2;
     final logo = _activeLogoMm(i, d2);
     addSymbol(renderSymbol(i, i.twoD, d2, logoSideMm: logo), d2);
   }
@@ -420,6 +445,16 @@ _Cell _sheetCell(GenInput i, SerialSpec ss, int n,
         ? i.data.encodeWith(format: SgtinFormat.elementString, serial: serial)
         : i.data.encodeWith(serial: serial);
     addSymbol(renderSymbol(i, i.oneDSym, d1), d1);
+  }
+  if (sharedHri && sharedUrl != null) {
+    final cap = captionSvg(sharedUrl,
+        cx: cellW / 2,
+        yTop: y + 1.2,
+        maxWmm: cellW - 1,
+        fontMm: 2.0,
+        boldFrom: sharedUrl.lastIndexOf(counter));
+    y += 1.2 + cap.heightMm;
+    b.write(cap.svg);
   }
   return _Cell(b.toString(), cellW, y);
 }

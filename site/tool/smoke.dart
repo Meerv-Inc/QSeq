@@ -88,6 +88,28 @@ void main() {
             columnsOverride: 2));
     check('landscape2col', buildSheetPage(i, ss, L2, 0, maxCells: 6));
   }
+  // combo shared-vs-per-code HRI, single + sheet
+  for (final shared in [true, false]) {
+    final i = GenInput(
+        mode: WebMode.combo, data: data, comboSharedHri: shared);
+    check('combo hri=$shared', buildCombined(i));
+    final is2 = GenInput(
+        mode: WebMode.comboSerial, data: data, comboSharedHri: shared);
+    const ss = SerialSpec(count: 12);
+    final L = layoutSheet(is2, ss, const SheetSpec());
+    check('comboSheet hri=$shared', buildSheetPage(is2, ss, L, 0));
+  }
+  // label sheets with 1D-only / 2D-only / both, QR and DataMatrix
+  for (final two in [Symbology.qrCode, Symbology.dataMatrix]) {
+    for (final (on2, on1) in [(true, false), (false, true), (true, true)]) {
+      final i = GenInput(mode: WebMode.labelSerial, data: data, twoD: two);
+      final spec = LabelSpec(twoDOn: on2, oneDOn: on1);
+      const ss = SerialSpec(count: 8);
+      final L = layoutLabelSheet(spec, ss, const SheetSpec());
+      check('lsheet ${two.name} 2D=$on2 1D=$on1',
+          buildLabelSheetPage(i, spec, ss, L, 0));
+    }
+  }
   // project round-trip
   {
     const i = GenInput(mode: WebMode.combo, data: data);
