@@ -6,6 +6,7 @@ import 'package:qseq_core/qseq_core.dart';
 import 'package:site/qseq/generate.dart';
 import 'package:site/qseq/label.dart';
 import 'package:site/qseq/project.dart';
+import 'package:site/qseq/svgkit.dart' show rulerBandMm;
 
 void check(String name, Artwork a) {
   if (!a.ok) throw StateError('$name: ${a.error}');
@@ -119,7 +120,8 @@ void main() {
           buildLabelSheetPage(i, spec, ss, L, 0));
     }
   }
-  // print rulers wrap a single artwork and a sheet page
+  // print rulers wrap a single artwork; sheet pages keep their EXACT page
+  // size (in-gutter rulers) so print drivers never shrink-to-fit (~3-4%).
   {
     const i = GenInput(mode: WebMode.twoD, data: data);
     final r = withPrintRulers(buildSingle(i));
@@ -127,8 +129,14 @@ void main() {
     if (!r.svg.contains('vern 0.1mm')) throw StateError('no vernier');
     const is2 = GenInput(mode: WebMode.twoDSerial, data: data);
     const ss = SerialSpec(count: 8);
-    final L = layoutSheet(is2, ss, const SheetSpec());
-    check('rulers sheet', withPrintRulers(buildSheetPage(is2, ss, L, 0)));
+    final spec = SheetSpec(gutterMm: rulerBandMm + 2);
+    final L = layoutSheet(is2, ss, spec);
+    final page = withPrintRulersInside(buildSheetPage(is2, ss, L, 0));
+    check('rulers sheet', page);
+    if (page.wMm != spec.pageWmm || page.hMm != spec.pageHmm) {
+      throw StateError('ruler page grew: ${page.wMm}x${page.hMm}');
+    }
+    if (!page.svg.contains('vern 0.1mm')) throw StateError('no sheet vernier');
   }
   // logo dead-space: EC shares and the manual override
   {

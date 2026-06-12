@@ -340,7 +340,7 @@ Artwork buildLabelTemplate(GenInput i, LabelSpec spec) {
 SheetLayout layoutLabelSheet(LabelSpec spec, SerialSpec ss, SheetSpec sheet) {
   final count = ss.count.clamp(1, 2000);
   final cellW = spec.wMm, cellH = spec.hMm;
-  final contentW = sheet.pageWmm - 2 * 8;
+  final contentW = sheet.pageWmm - 2 * 8 - sheet.gutterMm;
   var cols = sheet.columnsOverride > 0
       ? sheet.columnsOverride
       : math.max(1, ((contentW + 3) / (cellW + 3)).floor());
@@ -352,9 +352,9 @@ SheetLayout layoutLabelSheet(LabelSpec spec, SerialSpec ss, SheetSpec sheet) {
     perPage = count;
     rows = (count / cols).ceil();
     pageCount = 1;
-    pageHmm = 16 + rows * (cellH + 3) - 3;
+    pageHmm = 16 + sheet.gutterMm + rows * (cellH + 3) - 3;
   } else {
-    final contentH = sheet.pageHmm - 16;
+    final contentH = sheet.pageHmm - 16 - sheet.gutterMm;
     rows = math.max(1, ((contentH + 3) / (cellH + 3)).floor());
     perPage = cols * rows;
     pageCount = math.max(1, (count / perPage).ceil());

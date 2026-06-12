@@ -394,10 +394,17 @@ class SheetSpec {
   final PageFormat page;
   final PageOrientation orientation;
   final int columnsOverride; // 0 = auto-fit
+
+  /// Extra space reserved INSIDE the page along the right and bottom edges
+  /// (for the print rulers). The page keeps its exact standard size — growing
+  /// it past Letter/A4 makes print drivers "fit" the page and shrink
+  /// everything by ~3–4%, breaking print-true sizing.
+  final double gutterMm;
   const SheetSpec(
       {this.page = PageFormat.letter,
       this.orientation = PageOrientation.portrait,
-      this.columnsOverride = 0});
+      this.columnsOverride = 0,
+      this.gutterMm = 0});
 
   double get pageWmm => !page.isContinuous &&
           orientation == PageOrientation.landscape
@@ -529,7 +536,7 @@ SheetLayout layoutSheet(GenInput i, SerialSpec ss, SheetSpec spec) {
   final cellW = probeW;
   final probeCell = _sheetCell(i, ss, count - 1, cellW: cellW);
   final cellH = probeCell.hMm;
-  final contentW = spec.pageWmm - 2 * _sheetMarginMm;
+  final contentW = spec.pageWmm - 2 * _sheetMarginMm - spec.gutterMm;
   var cols = spec.columnsOverride > 0
       ? spec.columnsOverride
       : math.max(
@@ -542,9 +549,12 @@ SheetLayout layoutSheet(GenInput i, SerialSpec ss, SheetSpec spec) {
     perPage = count;
     rows = (count / cols).ceil();
     pageCount = 1;
-    pageHmm = 2 * _sheetMarginMm + rows * (cellH + _cellGapMm) - _cellGapMm;
+    pageHmm = 2 * _sheetMarginMm +
+        spec.gutterMm +
+        rows * (cellH + _cellGapMm) -
+        _cellGapMm;
   } else {
-    final contentH = spec.pageHmm - 2 * _sheetMarginMm;
+    final contentH = spec.pageHmm - 2 * _sheetMarginMm - spec.gutterMm;
     rows = math.max(
         1, ((contentH + _cellGapMm) / (cellH + _cellGapMm)).floor());
     perPage = cols * rows;
@@ -585,8 +595,10 @@ Artwork buildSheetPage(GenInput i, SerialSpec ss, SheetLayout L, int page,
 }
 
 /// Wraps a finished artwork with mm-true rulers (vertical band on the right,
-/// horizontal band below, vernier corner) — used for PDF export when the user
-/// opts rulers in. The page grows by one ruler band in each direction.
+/// horizontal band below, vernier corner). Used for PDF export when the user
+/// opts rulers in — for SINGLE codes only: the page grows by one ruler band
+/// in each direction, which is safe because the page stays smaller than the
+/// paper. Full sheet pages must use [withPrintRulersInside] instead.
 Artwork withPrintRulers(Artwork a) {
   if (!a.ok) return a;
   final inner = a.svg
@@ -606,6 +618,34 @@ Artwork withPrintRulers(Artwork a) {
       svg: svgDoc(b.toString(), w, h),
       wMm: w,
       hMm: h,
+      size: a.size,
+      size2: a.size2,
+      data: a.data);
+}
+
+/// Overlays the rulers INSIDE a sheet page (in the gutter the layout reserved
+/// via [SheetSpec.gutterMm]) so the page keeps its exact standard size —
+/// growing a Letter/A4 page makes print drivers shrink-to-fit everything by
+/// ~3–4%, destroying print-true dimensions.
+Artwork withPrintRulersInside(Artwork a) {
+  if (!a.ok) return a;
+  final inner = a.svg
+      .replaceFirst(RegExp(r'^<svg[^>]*>'), '')
+      .replaceFirst(RegExp(r'</svg>$'), '');
+  final bandX = a.wMm - rulerBandMm;
+  final bandY = a.hMm - rulerBandMm;
+  final b = StringBuffer()
+    ..write(inner)
+    ..write('<g transform="translate(${numStr(bandX)},0)">'
+        '${rulerMmFragment(bandY, horizontal: false)}</g>')
+    ..write('<g transform="translate(0,${numStr(bandY)})">'
+        '${rulerMmFragment(bandX, horizontal: true)}</g>')
+    ..write('<g transform="translate(${numStr(bandX)},${numStr(bandY)})">'
+        '${vernierMmFragment()}</g>');
+  return Artwork(
+      svg: svgDoc(b.toString(), a.wMm, a.hMm),
+      wMm: a.wMm,
+      hMm: a.hMm,
       size: a.size,
       size2: a.size2,
       data: a.data);

@@ -86,6 +86,10 @@ class GeneratorState extends State<Generator> {
         page: pageFormat,
         orientation: orientation,
         columnsOverride: columnsOverride,
+        // Reserve the ruler band INSIDE the page so the printed page keeps
+        // its exact standard size (an oversized page gets shrink-to-fit by
+        // print drivers — measured ~3–4% small on paper).
+        gutterMm: rulersInPdf ? rulerBandMm + 2 : 0,
       );
 
   /// The run for paged modes: a serialized spec derived from the Serial field.
@@ -664,7 +668,13 @@ class GeneratorState extends State<Generator> {
     final i = _input;
     final pages = <PdfPageImage>[];
     Future<void> addPage(Artwork a0) async {
-      final a = rulersInPdf ? withPrintRulers(a0) : a0;
+      // Sheets keep their standard page size and draw rulers in the reserved
+      // gutter; single codes grow the (paper-smaller) page by the band.
+      final a = !rulersInPdf
+          ? a0
+          : (mode.isPaged && layout != null
+              ? withPrintRulersInside(a0)
+              : withPrintRulers(a0));
       if (!a.ok) throw FormatException(a.error ?? 'render failed');
       var w = (a.wMm / 25.4 * dpi).round();
       var h = (a.hMm / 25.4 * dpi).round();
