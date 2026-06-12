@@ -34,6 +34,8 @@ void main() {
       RawText('<link rel="stylesheet" href="/styles.css" />'),
       RawText('<script async src="https://www.googletagmanager.com/gtag/js?id=G-015RDZXKP2"></script>'),
       RawText('<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag("js",new Date());gtag("config","G-015RDZXKP2");</script>'),
+      // Copy-to-clipboard for the mission "Source code" button.
+      RawText('<script>document.addEventListener("DOMContentLoaded",function(){document.querySelectorAll(".copybtn").forEach(function(b){var o=b.innerHTML;b.addEventListener("click",function(){var el=document.getElementById(b.getAttribute("data-copy-target"));var t=el?el.textContent.trim():"";navigator.clipboard.writeText(t).then(function(){b.classList.add("copied");setTimeout(function(){b.classList.remove("copied");},1200);});});});});</script>'),
     ],
     body: const App(),
   ));

@@ -19,6 +19,9 @@ class App extends StatelessComponent {
       RawText(_header),
       RawText(_hero),
       const Generator(),
+      RawText(_mission),
+      RawText(_about),
+      RawText(_support),
       RawText(_footer),
     ]);
   }
@@ -32,6 +35,8 @@ const _header = r'''
   </div>
   <nav>
     <a href="#generator">Generator</a>
+    <a href="#mission">Mission</a>
+    <a href="#about">About</a>
     <a href="#support">Support</a>
     <a class="ghost" href="https://github.com/meerv-fmenard/qseq" target="_blank" rel="noopener">Source</a>
   </nav>
@@ -52,11 +57,62 @@ const _hero = r'''
 </section>
 ''';
 
+const _mission = r'''
+<section id="mission" class="mission">
+  <h2>Why this is source-available</h2>
+  <p>QSeq is released as source-available (PolyForm Noncommercial) to accelerate the transition to <b>Sustainable Identity on Every Thing</b> (SIoT): a future where every physical object carries an open, web-resolvable, standards-based identity — GS1 Digital Links, SGTINs and compatible carriers — that anyone can read, verify and build upon without proprietary lock-in.</p>
+  <p>Durable, interoperable identity is the foundation of the circular economy. Reuse, repair, recall, provenance and end-of-life tracking all depend on a code that still resolves years after it was printed. Keeping the tools that <i>mint</i> those identities open means the infrastructure of identity stays a public good — not a toll booth.</p>
+  <div class="pillars">
+    <div><h3>Standards-first</h3><p>GS1 Digital Link, SGTIN, EPC Tag URI, GS1-128, Data Matrix — no bespoke formats.</p></div>
+    <div><h3>Print-true</h3><p>Exact-DPI sizing with mm + inch + vernier rulers so the print matches the intent.</p></div>
+    <div><h3>Yours to fork</h3><p>Raw parameters export to editable JSON. Generate designs from your own pipelines.</p></div>
+  </div>
+  <div class="copyrow">
+    <span class="copylabel">Source code</span>
+    <div class="copybox">
+      <code id="repoUrl">https://github.com/meerv-fmenard/qseq</code>
+      <button type="button" class="copybtn" data-copy-target="repoUrl" aria-label="Copy repository URL" title="Copy">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      </button>
+    </div>
+  </div>
+</section>
+''';
+
+const _about = r'''
+<section id="about" class="about">
+  <h2>Why “QSeq”?</h2>
+  <p><b>Seq</b> is <i>sequence</i> — QSeq exists to mint ordered, serialized identities. The <b>Q</b> is chosen deliberately: every reading of it lands on exactly what a well-formed sequence of identity codes must be — ordered, robust and resolvable.</p>
+  <ul class="register">
+    <li><b>Q — Quality factor.</b> In physics, <i>Q</i> measures how well a resonator preserves energy against loss; a higher Q survives more disturbance. A QSeq code is engineered the same way: its error-correction budget and structure-aware dead-space are a literal quality factor for how much damage an identity can take and still resolve.</li>
+    <li><b>Q — Time quanta.</b> A <i>quantum</i> is the smallest indivisible step. Serialization advances one quantum at a time — each code is the next discrete tick in the sequence, never skipped, never repeated.</li>
+    <li><b>Q — Queue.</b> A <i>queue</i> is an ordered set processed in order. A serialized sheet <em>is</em> a queue of identities, minted and consumed first-to-last.</li>
+    <li><b>Q — Cue.</b> A <i>cue</i> is the signal that triggers the next action. Every scannable code is a cue: scan it, it resolves, and the next supply-chain step fires.</li>
+    <li><b>Q — QR.</b> And of course the canonical 2D carrier itself begins with Q.</li>
+  </ul>
+  <p>Quality factor, quanta, queue, cue, QR — four meanings and a carrier, each independently true, all pointing to the same idea: <b>a quality-assured, ordered, resolvable sequence of identity codes.</b> That is QSeq.</p>
+  <h2 style="margin-top:48px">Why Flutter &amp; Dart?</h2>
+  <p>QSeq is written in <b>Flutter / Dart</b> so a <b>single codebase</b> serves every surface. The <b>macOS and Windows</b> desktop apps are built from it, and the same Dart core powers this website: the web generator now runs the <i>exact</i> encoders and sizing engine as the desktop, compiled to the browser. One implementation of the encoders, capacity tables and sizing math means an identity minted on macOS, Windows or the browser is byte-for-byte the same.</p>
+  <p class="muted">QSeq v1.2.2 · © 2026 Meerv Inc. · Licensed under the PolyForm Noncommercial License 1.0.0 — released as source-available in service of Sustainable Identity on Every Thing.</p>
+</section>
+''';
+
+const _support = r'''
+<section id="support" class="support">
+  <h2>Support</h2>
+  <p>Questions, bug reports or feature requests? We read every message — QSeq is built in the open and we want it to work for you.</p>
+  <p>Email <a class="mail" href="mailto:support@meerv.com?subject=QSeq%20support">support@meerv.com</a> and we'll get back to you. Telling us your <b>QSeq version</b> and your <b>platform</b> — macOS, Windows or web — helps us help you faster.</p>
+  <div class="cta">
+    <a class="btn primary" href="mailto:support@meerv.com?subject=QSeq%20support">Email support@meerv.com</a>
+    <a class="btn" href="https://github.com/meerv-fmenard/qseq/issues" target="_blank" rel="noopener">Open a GitHub issue →</a>
+  </div>
+</section>
+''';
+
 const _footer = r'''
-<footer id="support">
+<footer>
   <span>QSeq · © 2026 Meerv Inc.</span>
   <a href="https://github.com/meerv-fmenard/qseq" target="_blank" rel="noopener"><strong>github.com/meerv-fmenard/qseq</strong></a>
-  <a href="mailto:support@meerv.com?subject=QSeq%20support">support@meerv.com</a>
   <span>Sustainable Identity on Every Thing</span>
 </footer>
 ''';
