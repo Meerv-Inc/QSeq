@@ -194,18 +194,22 @@ class PreviewPane extends ConsumerWidget {
       ),
     );
 
-    // Page + a vertical ruler down its right edge, all at true scale.
+    // Page + a vertical ruler down its right edge, all at true scale
+    // (the ruler band is omitted entirely when screen rulers are off).
     const rulerBand = 30.0;
-    final sheetTrue = Row(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        pageTrue,
-        const SizedBox(width: 6),
-        RulerStrip(pxPerMm: trueScale, lengthPx: pageHpx, horizontal: false),
-      ],
-    );
-    final sheetW = pageWpx + 6 + rulerBand;
+    final sheetTrue = !s.rulersOnScreen
+        ? pageTrue
+        : Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              pageTrue,
+              const SizedBox(width: 6),
+              RulerStrip(
+                  pxPerMm: trueScale, lengthPx: pageHpx, horizontal: false),
+            ],
+          );
+    final sheetW = pageWpx + (s.rulersOnScreen ? 6 + rulerBand : 0);
     final sheetH = pageHpx;
 
     return LayoutBuilder(
@@ -244,7 +248,7 @@ class PreviewPane extends ConsumerWidget {
                 ),
               ),
             ),
-            if (refPpm > 0)
+            if (refPpm > 0 && s.rulersOnScreen)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: Row(
@@ -410,7 +414,7 @@ class PreviewPane extends ConsumerWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (ppmH > 0 && ppmV > 0)
+          if (ppmH > 0 && ppmV > 0 && s.rulersOnScreen)
             Row(mainAxisSize: MainAxisSize.min, children: [
               symbol,
               const SizedBox(width: 16),
@@ -418,7 +422,7 @@ class PreviewPane extends ConsumerWidget {
             ])
           else
             symbol,
-          if (ppmH > 0)
+          if (ppmH > 0 && s.rulersOnScreen)
             Padding(
               padding: const EdgeInsets.only(top: 12),
               child: RulerStrip(pxPerMm: ppmH, lengthPx: dispW),

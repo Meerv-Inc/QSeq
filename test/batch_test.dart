@@ -10,17 +10,17 @@ import 'package:qr_studio/models/batch.dart';
 import 'package:qr_studio/state/app_controller.dart';
 
 void main() {
-  test('serialized 2D sheet generates sequential bold-counter serials', () {
+  test('serialized 2D sheet increments from the data serial itself', () {
     final container = ProviderContainer();
     addTearDown(container.dispose);
 
+    // The run derives from the Serial field: trailing digits are the counter
+    // (leading zeros preserved), leading text is the fixed prefix.
     container.read(appControllerProvider.notifier).update(
           (s) => s.copyWith(
             mode: AppMode.twoDSerial,
-            batchPrefix: 'LOT-',
-            batchStart: 8,
             batchCount: 5,
-            batchPadding: 4,
+            data: s.data.copyWith(serial: 'LOT-0008'),
           ),
         );
 
@@ -47,10 +47,8 @@ void main() {
     container.read(appControllerProvider.notifier).update(
           (s) => s.copyWith(
             mode: AppMode.comboSerial,
-            batchPrefix: '',
-            batchStart: 1,
             batchCount: 3,
-            batchPadding: 5,
+            data: s.data.copyWith(serial: '00001'),
           ),
         );
 
@@ -69,6 +67,20 @@ void main() {
           (s) => s.copyWith(mode: AppMode.oneDSerial, batchCount: 4),
         );
     expect(container.read(serialLogProvider).length, 4);
+  });
+
+  test('sheet of copies increments too, counted by Copies', () {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    container.read(appControllerProvider.notifier).update(
+          (s) => s.copyWith(mode: AppMode.twoDSheet, batchCopies: 7),
+        );
+    final batch = container.read(batchProvider)!;
+    expect(batch.items.length, 7);
+    // Default serial 6789 → 6789..6795, each distinct.
+    expect(batch.items.first.serial, '6789');
+    expect(batch.items.last.serial, '6795');
+    expect(container.read(serialLogProvider).toSet().length, 7);
   });
 
   test('PageFormat dimensions are correct', () {

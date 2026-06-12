@@ -31,8 +31,9 @@ class InputsPanel extends ConsumerWidget {
         _dataSection(context, s, update),
         _symbologySection(s, update),
         if (s.mode.isCombo) _comboLayoutSection(s, update),
-        if (s.mode.isSerialized) _batchSection(s, update),
+        if (s.mode.isSerialized) _batchSection(context, s, update),
         _printSection(s, update),
+        _rulersSection(s, update),
         if (s.mode.use2D) _logoSection(context, ref, s, update),
         Padding(
           padding: const EdgeInsets.only(top: 4, bottom: 8),
@@ -254,37 +255,44 @@ class InputsPanel extends ConsumerWidget {
     return SectionCard(title: 'Label layout', children: children);
   }
 
-  Widget _batchSection(
-      AppSettings s, void Function(AppSettings Function(AppSettings)) update) {
-    return SectionCard(title: 'Serialization', children: [
+  Widget _batchSection(BuildContext context, AppSettings s,
+      void Function(AppSettings Function(AppSettings)) update) {
+    return SectionCard(
+        title: s.mode.isCopies ? 'Sheet of copies' : 'Serialization',
+        children: [
       LabeledField(
-        label: 'Serial prefix (printed normal)',
-        child: _text(s.batchPrefix,
-            (v) => update((x) => x.copyWith(batchPrefix: v))),
+        label: 'Serial — start of serialization (counter printed bold)',
+        child: _text(
+            s.data.serial,
+            (v) =>
+                update((x) => x.copyWith(data: s.data.copyWith(serial: v)))),
       ),
-      LabeledField(
-        label: 'Start number (printed bold)',
-        child: NumberField(
-            value: s.batchStart.toDouble(),
-            // Clamp to ≥ 0 to match the web (a negative start would pad/format
-            // into nonsense serials); cap matches the web's range.
-            onChanged: (v) => update(
-                (x) => x.copyWith(batchStart: v.round().clamp(0, 1000000000)))),
+      Text(
+        'The trailing digits increment per item — 6789, 6790, … — and any '
+        'leading text stays as a fixed prefix. Every generated identifier is '
+        'listed in the Serialization Log.',
+        style: MacosTheme.of(context)
+            .typography
+            .caption2
+            .copyWith(color: MacosColors.systemGrayColor),
       ),
-      LabeledField(
-        label: 'Count',
-        child: NumberField(
-            value: s.batchCount.toDouble(),
-            onChanged: (v) => update(
-                (x) => x.copyWith(batchCount: v.round().clamp(1, 2000)))),
-      ),
-      LabeledField(
-        label: 'Zero-pad digits',
-        child: NumberField(
-            value: s.batchPadding.toDouble(),
-            onChanged: (v) => update(
-                (x) => x.copyWith(batchPadding: v.round().clamp(0, 12)))),
-      ),
+      const SizedBox(height: 8),
+      if (s.mode.isCopies)
+        LabeledField(
+          label: 'Copies (each one incremented)',
+          child: NumberField(
+              value: s.batchCopies.toDouble(),
+              onChanged: (v) => update(
+                  (x) => x.copyWith(batchCopies: v.round().clamp(1, 2000)))),
+        )
+      else
+        LabeledField(
+          label: 'Count',
+          child: NumberField(
+              value: s.batchCount.toDouble(),
+              onChanged: (v) => update(
+                  (x) => x.copyWith(batchCount: v.round().clamp(1, 2000)))),
+        ),
       LabeledField(
         label: 'Page size',
         child: _dropdown<PageFormat>(
@@ -345,46 +353,142 @@ class InputsPanel extends ConsumerWidget {
     ]);
   }
 
+  Widget _rulersSection(
+      AppSettings s, void Function(AppSettings Function(AppSettings)) update) {
+    return SectionCard(title: 'Rulers', children: [
+      _checkRow('Show rulers around the preview', s.rulersOnScreen,
+          (v) => update((x) => x.copyWith(rulersOnScreen: v))),
+      const SizedBox(height: 6),
+      _checkRow('Include rulers in PNG / PDF exports', s.rulersInExports,
+          (v) => update((x) => x.copyWith(rulersInExports: v))),
+    ]);
+  }
+
   Widget _logoSection(BuildContext context, WidgetRef ref, AppSettings s,
       void Function(AppSettings Function(AppSettings)) update) {
     final on = s.logoSideMm > 0;
-    final sharePct = (kLogoAutoEcShare * 100).round();
-    return SectionCard(title: 'Logo', children: [
-      Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          MacosCheckbox(
-            value: on,
-            // Ticking it auto-sizes the dead-space to a fixed share of the EC
-            // budget; clearing it removes the logo entirely (size 0).
-            onChanged: (checked) => update((x) => x.copyWith(
-                  logoSideMm: checked ? ref.read(autoLogoSideProvider) : 0,
-                  logoEcBudget:
-                      checked ? kLogoAutoEcShare : x.logoEcBudget,
-                )),
+    final theme = MacosTheme.of(context);
+
+    // Re-derive the auto size after a settings change (the provider reflects
+    // the freshly updated state when read inside the callback).
+    void applyAuto(void Function(AppSettings Function(AppSettings)) u) {
+      final side = ref.read(autoLogoSideProvider);
+      u((x) => x.copyWith(logoSideMm: side));
+    }
+
+    final children = <Widget>[
+      _checkRow('Logo', on, (checked) {
+        update((x) => x.copyWith(
+              logoManual: false,
+              logoEcBudget: checked ? x.logoEcShare : x.logoEcBudget,
+            ));
+        if (checked) {
+          applyAuto(update);
+        } else {
+          update((x) => x.copyWith(logoSideMm: 0));
+        }
+      }),
+    ];
+
+    if (on) {
+      children.addAll([
+        const SizedBox(height: 8),
+        LabeledField(
+          label: 'Dead-space size',
+          child: _dropdown<String>(
+            value: s.logoManual ? 'manual' : '${(s.logoEcShare * 100).round()}',
+            items: const {
+              '15': '15% of error correction',
+              '20': '20% of error correction',
+              '30': '30% of error correction',
+              '40': '40% of error correction',
+              '50': '50% of error correction',
+              'manual': 'Manual…',
+            },
+            onChanged: (v) {
+              if (v == 'manual') {
+                update((x) => x.copyWith(logoManual: true));
+              } else {
+                final share = int.parse(v) / 100;
+                update((x) => x.copyWith(
+                    logoManual: false,
+                    logoEcShare: share,
+                    logoEcBudget: share));
+                applyAuto(update);
+              }
+            },
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text('Reserve a centre logo dead-space',
-                style: MacosTheme.of(context).typography.body),
+        ),
+        if (s.logoManual)
+          LabeledField(
+            label: 'Dead-space side (mm)',
+            child: NumberField(
+                value: s.logoSideMm,
+                suffix: 'mm',
+                onChanged: (v) => update(
+                    (x) => x.copyWith(logoSideMm: v.clamp(1, 100)))),
           ),
-        ],
-      ),
-      const SizedBox(height: 8),
-      Text(
-        on
-            ? 'Auto-sized to $sharePct% of the symbol’s error-correction '
-                'capacity (≈ ${s.logoSideMm.toStringAsFixed(1)} mm). Pick an '
-                'image from the toolbar to fill it.'
-            : 'Reserves a clean centre square sized to $sharePct% of the '
-                'error-correction budget — finder, timing and alignment '
-                'patterns always show through.',
-        style: MacosTheme.of(context)
-            .typography
-            .caption2
-            .copyWith(color: MacosColors.systemGrayColor),
-      ),
-    ]);
+      ]);
+
+      // EC consumption + the scanability consequence, like the web app.
+      final share = ref.watch(logoShareUsedProvider);
+      if (share != null) {
+        final String note;
+        final Color color;
+        if (share >= 1) {
+          color = MacosColors.systemRedColor;
+          note = 'The dead-space destroys more data than the error correction '
+              'can recover — the code will NOT scan. Shrink the dead-space or '
+              'raise the error-correction level.';
+        } else if (share > 0.5) {
+          color = MacosColors.systemOrangeColor;
+          note = 'Over half the error correction is spent on the dead-space. '
+              'A perfect print will scan, but little margin is left for '
+              'real-world damage — print defects, scuffs, fading or curvature '
+              'can make the code unreadable.';
+        } else {
+          color = MacosColors.systemGreenColor;
+          note = 'At least half the error correction stays available to '
+              'absorb real-world damage (print defects, scuffs, fading) — '
+              'readability stays robust.';
+        }
+        children.addAll([
+          const SizedBox(height: 8),
+          Text(
+            'Dead-space ≈ ${s.logoSideMm.toStringAsFixed(1)} mm · uses '
+            '≈ ${(share * 100).round()}% of the symbol’s error-correction '
+            'capacity.',
+            style: theme.typography.caption2
+                .copyWith(color: MacosColors.systemGrayColor),
+          ),
+          const SizedBox(height: 4),
+          Text(note, style: theme.typography.caption2.copyWith(color: color)),
+        ]);
+      }
+    } else {
+      children.addAll([
+        const SizedBox(height: 8),
+        Text(
+          'Reserves a clean centre square in the 2D symbol for a logo — '
+          'finder, timing and alignment patterns always show through. '
+          'Pick an image from the toolbar to fill it.',
+          style: theme.typography.caption2
+              .copyWith(color: MacosColors.systemGrayColor),
+        ),
+      ]);
+    }
+    return SectionCard(title: 'Logo', children: children);
+  }
+
+  Widget _checkRow(String label, bool value, ValueChanged<bool> onChanged) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        MacosCheckbox(value: value, onChanged: onChanged),
+        const SizedBox(width: 8),
+        Expanded(child: Text(label)),
+      ],
+    );
   }
 
   // --- small control helpers ---

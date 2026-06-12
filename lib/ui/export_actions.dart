@@ -83,7 +83,7 @@ class ExportActions {
   static Future<bool> exportPng(AppSettings s) async {
     var image = await renderImage(s);
     if (image == null) return false;
-    image = await Ruler.addRulers(image, s.safeDpi);
+    if (s.rulersInExports) image = await Ruler.addRulers(image, s.safeDpi);
     final bytes = await RasterRenderer.toPng(image, s.safeDpi);
     return _save(bytes, 'code.png', 'PNG image', ['png']);
   }
@@ -91,7 +91,7 @@ class ExportActions {
   static Future<bool> copyPng(AppSettings s) async {
     var image = await renderImage(s);
     if (image == null) return false;
-    image = await Ruler.addRulers(image, s.safeDpi);
+    if (s.rulersInExports) image = await Ruler.addRulers(image, s.safeDpi);
     final bytes = await RasterRenderer.toPng(image, s.safeDpi);
     return ClipboardExport.copyPng(bytes);
   }
@@ -126,7 +126,8 @@ class ExportActions {
         logoPng = await File(s.logoImagePath!).readAsBytes();
       } catch (_) {}
     }
-    final bytes = await BatchPdf.build(batch, logoPng: logoPng);
+    final bytes = await BatchPdf.build(batch,
+        logoPng: logoPng, includeRulers: s.rulersInExports);
     return _save(bytes, 'batch.pdf', 'PDF document', ['pdf']);
   }
 
@@ -136,7 +137,7 @@ class ExportActions {
     if (s.mode.isCombo) {
       var image = await renderImage(s);
       if (image == null) return false;
-      image = await Ruler.addRulers(image, s.safeDpi);
+      if (s.rulersInExports) image = await Ruler.addRulers(image, s.safeDpi);
       bytes = await RasterRenderer.toPng(image, s.safeDpi);
       // A combined label is rasterised; save as PNG at its physical size.
       return _save(bytes, 'label.png', 'PNG image', ['png']);
@@ -147,7 +148,8 @@ class ExportActions {
         : null;
     bytes = await PdfExporter.export(s.singleConfig, size,
         logoPng: (logoPng != null && logoPng.isNotEmpty) ? logoPng : null,
-        caption: LabelCaption.hri(s.singleConfig.data));
+        caption: LabelCaption.hri(s.singleConfig.data),
+        includeRulers: s.rulersInExports);
     return _save(bytes, 'code.pdf', 'PDF document', ['pdf']);
   }
 

@@ -26,6 +26,7 @@ class PdfExporter {
     SizeResult size, {
     Uint8List? logoPng,
     LabelCaption? caption,
+    bool includeRulers = true,
   }) async {
     final doc = pw.Document();
     final wMm = size.outer.widthMm;
@@ -104,19 +105,23 @@ class PdfExporter {
       );
     }
 
-    // Measurement rulers along the bottom (x) and right (y) edges.
+    // Measurement rulers along the bottom (x) and right (y) edges (optional —
+    // without them the page is exactly the content's physical size).
     final contentWmm = wMm;
     final contentHmm = hMm + captionMm;
-    final ruler = await PdfRuler.build(contentWmm, contentHmm, cfg.dpi);
+    final ruler =
+        includeRulers ? await PdfRuler.build(contentWmm, contentHmm, cfg.dpi) : null;
     const gapMm = 3.0; // gap so rulers never touch the code
-    final pageWmm = contentWmm + gapMm + ruler.bandMm;
-    final pageHmm = contentHmm + gapMm + ruler.bandMm;
+    final pageWmm = contentWmm + (ruler == null ? 0 : gapMm + ruler.bandMm);
+    final pageHmm = contentHmm + (ruler == null ? 0 : gapMm + ruler.bandMm);
 
     final page = pw.Stack(children: [
       pw.Positioned(left: 0, top: 0, child: content),
-      pw.Positioned(left: 0, bottom: 0, child: ruler.horizontal),
-      pw.Positioned(right: 0, top: 0, child: ruler.vertical),
-      pw.Positioned(right: 0, bottom: 0, child: ruler.vernier),
+      if (ruler != null) ...[
+        pw.Positioned(left: 0, bottom: 0, child: ruler.horizontal),
+        pw.Positioned(right: 0, top: 0, child: ruler.vertical),
+        pw.Positioned(right: 0, bottom: 0, child: ruler.vernier),
+      ],
     ]);
 
     doc.addPage(

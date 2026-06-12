@@ -55,18 +55,24 @@ class ProjectIo {
       'logo': {
         'sideMm': s.logoSideMm,
         'ecBudget': s.logoEcBudget,
+        'ecShare': s.logoEcShare,
+        'manual': s.logoManual,
         'imagePath': s.logoImagePath,
+      },
+      'rulers': {
+        'onScreen': s.rulersOnScreen,
+        'inExports': s.rulersInExports,
       },
       'label': {
         'arrangement': s.arrangement.name,
         'gapMm': s.labelGapMm,
         'paddingMm': s.labelPaddingMm,
       },
+      // prefix/start/zero-pad derive from the data serial itself now (legacy
+      // keys are ignored on load).
       'serialization': {
-        'prefix': s.batchPrefix,
-        'start': s.batchStart,
         'count': s.batchCount,
-        'padDigits': s.batchPadding,
+        'copies': s.batchCopies,
         'columns': s.batchColumns,
         'pageFormat': s.pageFormat.name,
         'pageOrientation': s.pageOrientation.name,
@@ -83,6 +89,7 @@ class ProjectIo {
     final lg = sub('logo');
     final lb = sub('label');
     final sr = sub('serialization');
+    final ru = sub('rulers');
 
     double dbl(Object? v, double fb) =>
         v is num ? v.toDouble() : (v is String ? double.tryParse(v) ?? fb : fb);
@@ -116,15 +123,21 @@ class ProjectIo {
       barHeightMm: dbl(p['barHeightMm'], def.barHeightMm),
       logoSideMm: dbl(lg['sideMm'], def.logoSideMm),
       logoEcBudget: dbl(lg['ecBudget'], def.logoEcBudget),
+      logoEcShare: dbl(lg['ecShare'], def.logoEcShare).clamp(0.05, 0.5),
+      logoManual: lg['manual'] == true,
       logoImagePath: lg['imagePath'] is String ? lg['imagePath'] as String : null,
+      rulersOnScreen: ru['onScreen'] is bool
+          ? ru['onScreen'] as bool
+          : def.rulersOnScreen,
+      rulersInExports: ru['inExports'] is bool
+          ? ru['inExports'] as bool
+          : def.rulersInExports,
       arrangement:
           _byName(LabelArrangement.values, lb['arrangement'], def.arrangement),
       labelGapMm: dbl(lb['gapMm'], def.labelGapMm),
       labelPaddingMm: dbl(lb['paddingMm'], def.labelPaddingMm),
-      batchPrefix: str(sr['prefix'], def.batchPrefix),
-      batchStart: integer(sr['start'], def.batchStart),
       batchCount: integer(sr['count'], def.batchCount),
-      batchPadding: integer(sr['padDigits'], def.batchPadding),
+      batchCopies: integer(sr['copies'], def.batchCopies),
       batchColumns: integer(sr['columns'], def.batchColumns),
       pageFormat: _byName(PageFormat.values, sr['pageFormat'], def.pageFormat),
       pageOrientation: _byName(

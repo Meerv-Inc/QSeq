@@ -9,7 +9,10 @@ releases.
 ## [1.4.0] — 2026-06-12
 
 Serialization that starts where you say, in every sheet — and a site that
-spells out what a sustainable identifier is.
+spells out what a sustainable identifier is. The desktop apps gained the same
+behavior: serialization from the Serial field, sheet-of-copies workspaces,
+the logo EC-share/manual controls with the scanability readout, optional
+rulers (screen and exports), and an export progress bar on the web.
 
 ### Added
 - **Dark / light mode switch** in the navigation (left of Generator); the

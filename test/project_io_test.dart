@@ -21,10 +21,11 @@ void main() {
       xDimensionMm: 0.33,
       logoSideMm: 6,
       logoEcBudget: 0.4,
-      batchPrefix: 'LOT-',
-      batchStart: 100,
+      logoEcShare: 0.3,
+      logoManual: true,
+      rulersInExports: false,
       batchCount: 50,
-      batchPadding: 6,
+      batchCopies: 9,
       data: DataSourceInput(
         kind: DataSourceKind.sgtin,
         gtin: '80614141123458',
@@ -44,8 +45,12 @@ void main() {
     expect(back.ecLevel, QrEcLevel.high);
     expect(back.dpi, 600);
     expect(back.logoEcBudget, 0.4);
-    expect(back.batchPrefix, 'LOT-');
+    expect(back.logoEcShare, 0.3);
+    expect(back.logoManual, isTrue);
+    expect(back.rulersInExports, isFalse);
+    expect(back.rulersOnScreen, isTrue);
     expect(back.batchCount, 50);
+    expect(back.batchCopies, 9);
     expect(back.data.gtin, '80614141123458');
   });
 

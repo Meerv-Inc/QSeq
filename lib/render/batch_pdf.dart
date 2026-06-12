@@ -20,7 +20,8 @@ import 'ruler.dart';
 class BatchPdf {
   BatchPdf._();
 
-  static Future<Uint8List> build(Batch batch, {Uint8List? logoPng}) async {
+  static Future<Uint8List> build(Batch batch,
+      {Uint8List? logoPng, bool includeRulers = true}) async {
     final doc = pw.Document();
     final fmt = _pdfFormat(batch);
     final cols = batch.columns;
@@ -36,7 +37,10 @@ class BatchPdf {
     final contentWmm = batch.effectiveWidthMm - innerMm - outerMm;
     // pageHeightMm is the finite content length even for a continuous web.
     final contentHmm = batch.pageHeightMm - innerMm - outerMm;
-    final ruler = await PdfRuler.build(contentWmm, contentHmm, dpi);
+    // The gutter stays reserved either way so the grid/pagination matches the
+    // on-screen preview; without rulers the band is simply left blank.
+    final ruler =
+        includeRulers ? await PdfRuler.build(contentWmm, contentHmm, dpi) : null;
 
     final twoDBarcode = batch.hasTwoD
         ? (batch.twoDSample!.symbology.supportsEcLevel
@@ -142,14 +146,16 @@ class BatchPdf {
           buildForeground: (context) => pw.Stack(
             overflow: pw.Overflow.visible,
             children: [
-              pw.Positioned(
-                  left: 0, bottom: -outerMm * mm, child: ruler.horizontal),
-              pw.Positioned(
-                  top: 0, right: -outerMm * mm, child: ruler.vertical),
-              pw.Positioned(
-                  right: -outerMm * mm,
-                  bottom: -outerMm * mm,
-                  child: ruler.vernier),
+              if (ruler != null) ...[
+                pw.Positioned(
+                    left: 0, bottom: -outerMm * mm, child: ruler.horizontal),
+                pw.Positioned(
+                    top: 0, right: -outerMm * mm, child: ruler.vertical),
+                pw.Positioned(
+                    right: -outerMm * mm,
+                    bottom: -outerMm * mm,
+                    child: ruler.vernier),
+              ],
             ],
           ),
         ),

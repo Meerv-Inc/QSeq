@@ -16,24 +16,43 @@ import '../models/symbology.dart';
 import '../sizing/sizer.dart';
 
 /// The workspace: which symbol families are produced (1D, 2D, or both) and
-/// whether the output is a single item or a serialized sheet.
+/// whether the output is a single item or a page-tiled sheet. Sheet-of-copies
+/// and serialized workspaces both increment the serial per item (mirroring the
+/// web app); copies sheets just take their count from a separate Copies field.
 enum AppMode {
-  oneD('1D'),
-  oneDSerial('1D — Serialized sheet'),
   twoD('2D'),
-  twoDSerial('2D — Serialized sheet'),
+  oneD('1D'),
   combo('1D + 2D label'),
+  twoDSheet('2D — Sheet of copies'),
+  oneDSheet('1D — Sheet of copies'),
+  twoDSerial('2D — Serialized sheet'),
+  oneDSerial('1D — Serialized sheet'),
   comboSerial('1D + 2D — Serialized sheet');
 
   const AppMode(this.label);
   final String label;
 
   bool get use1D =>
-      this == oneD || this == oneDSerial || this == combo || this == comboSerial;
+      this == oneD ||
+      this == oneDSheet ||
+      this == oneDSerial ||
+      this == combo ||
+      this == comboSerial;
   bool get use2D =>
-      this == twoD || this == twoDSerial || this == combo || this == comboSerial;
+      this == twoD ||
+      this == twoDSheet ||
+      this == twoDSerial ||
+      this == combo ||
+      this == comboSerial;
+
+  /// Sheet of copies: page-tiled like a serialized sheet (and incremented the
+  /// same way), but counted by the Copies field.
+  bool get isCopies => this == oneDSheet || this == twoDSheet;
   bool get isSerialized =>
-      this == oneDSerial || this == twoDSerial || this == comboSerial;
+      isCopies ||
+      this == oneDSerial ||
+      this == twoDSerial ||
+      this == comboSerial;
   bool get isCombo => use1D && use2D;
 }
 
@@ -62,16 +81,28 @@ class AppSettings {
   final double logoEcBudget;
   final String? logoImagePath;
 
+  /// The auto-size share of EC capacity picked in the Logo dropdown
+  /// (0.15–0.5); ignored when [logoManual] is on.
+  final double logoEcShare;
+
+  /// Manual dead-space mode: [logoSideMm] is user-entered instead of
+  /// auto-sized from [logoEcShare].
+  final bool logoManual;
+
+  // Rulers
+  final bool rulersOnScreen;
+  final bool rulersInExports;
+
   // Combined-label layout
   final LabelArrangement arrangement;
   final double labelGapMm;
   final double labelPaddingMm;
 
-  // Serialized-sheet specifics
-  final String batchPrefix;
-  final int batchStart;
+  // Sheet specifics. Serialization derives its prefix/start/zero-pad from the
+  // data serial itself (trailing digits increment, leading text is the
+  // prefix); only the counts live here.
   final int batchCount;
-  final int batchPadding;
+  final int batchCopies; // sheet-of-copies count
   final int batchColumns; // 0 = auto-fit
   final PageFormat pageFormat;
   final PageOrientation pageOrientation;
@@ -88,13 +119,15 @@ class AppSettings {
     this.logoSideMm = 0,
     this.logoEcBudget = 0.5,
     this.logoImagePath,
+    this.logoEcShare = kLogoAutoEcShare,
+    this.logoManual = false,
+    this.rulersOnScreen = true,
+    this.rulersInExports = true,
     this.arrangement = LabelArrangement.stacked,
     this.labelGapMm = 3,
     this.labelPaddingMm = 2,
-    this.batchPrefix = '',
-    this.batchStart = 1,
     this.batchCount = 24,
-    this.batchPadding = 5,
+    this.batchCopies = 12,
     this.batchColumns = 0,
     this.pageFormat = PageFormat.letter,
     this.pageOrientation = PageOrientation.portrait,
@@ -112,13 +145,15 @@ class AppSettings {
     double? logoSideMm,
     double? logoEcBudget,
     Object? logoImagePath = _unset,
+    double? logoEcShare,
+    bool? logoManual,
+    bool? rulersOnScreen,
+    bool? rulersInExports,
     LabelArrangement? arrangement,
     double? labelGapMm,
     double? labelPaddingMm,
-    String? batchPrefix,
-    int? batchStart,
     int? batchCount,
-    int? batchPadding,
+    int? batchCopies,
     int? batchColumns,
     PageFormat? pageFormat,
     PageOrientation? pageOrientation,
@@ -137,13 +172,15 @@ class AppSettings {
       logoImagePath: identical(logoImagePath, _unset)
           ? this.logoImagePath
           : logoImagePath as String?,
+      logoEcShare: logoEcShare ?? this.logoEcShare,
+      logoManual: logoManual ?? this.logoManual,
+      rulersOnScreen: rulersOnScreen ?? this.rulersOnScreen,
+      rulersInExports: rulersInExports ?? this.rulersInExports,
       arrangement: arrangement ?? this.arrangement,
       labelGapMm: labelGapMm ?? this.labelGapMm,
       labelPaddingMm: labelPaddingMm ?? this.labelPaddingMm,
-      batchPrefix: batchPrefix ?? this.batchPrefix,
-      batchStart: batchStart ?? this.batchStart,
       batchCount: batchCount ?? this.batchCount,
-      batchPadding: batchPadding ?? this.batchPadding,
+      batchCopies: batchCopies ?? this.batchCopies,
       batchColumns: batchColumns ?? this.batchColumns,
       pageFormat: pageFormat ?? this.pageFormat,
       pageOrientation: pageOrientation ?? this.pageOrientation,
@@ -261,20 +298,24 @@ final combinedLabelProvider = Provider<CombinedLabel?>((ref) {
 });
 
 /// Builds the serialized sheet for the current settings (or null).
+/// The run is derived from the data serial itself — its trailing digits are
+/// the incrementing counter (6789, 6790, …), any leading text is the fixed
+/// prefix, and leading zeros are preserved (AB0099 → AB0100) — mirroring the
+/// web app.
 Batch? buildBatchFor(AppSettings s) {
   if (!s.mode.isSerialized) return null;
-  final count = s.batchCount.clamp(1, 2000);
-  final padding = s.batchPadding.clamp(0, 12);
+  final count = (s.mode.isCopies ? s.batchCopies : s.batchCount).clamp(1, 2000);
+  final m = RegExp(r'^(.*?)(\d{1,12})$').firstMatch(s.data.serial);
   try {
     return Batch.build(
       use1D: s.mode.use1D,
       use2D: s.mode.use2D,
       oneDSymbology: s.oneDSymbology,
       twoDSymbology: s.twoDSymbology,
-      prefix: s.batchPrefix,
-      start: s.batchStart,
+      prefix: m == null ? s.data.serial : m.group(1)!,
+      start: m == null ? 1 : int.parse(m.group(2)!),
       count: count,
-      padding: padding,
+      padding: m == null ? 0 : m.group(2)!.length,
       // In a combined cell the 1D carries the element string and the 2D the
       // Digital Link; standalone 1D/2D honour the chosen SGTIN format.
       buildOneD: (serial) => s.mode.isCombo
@@ -305,29 +346,46 @@ final batchProvider = Provider<Batch?>((ref) {
   return buildBatchFor(s);
 });
 
-/// The centre-logo side (mm) that consumes exactly [kLogoAutoEcShare] of the
-/// active 2D symbol's error-correction capacity. Drives the "Logo" checkbox:
-/// ticking it sizes the dead-space to this. 0 when there is no 2D symbol to
-/// host one (a 1D-only workspace, or no valid data yet).
+/// The active 2D config for the current workspace, or null.
+EncodeConfig? _activeTwoD(Ref ref, AppSettings s) {
+  if (!s.mode.use2D) return null;
+  if (s.mode.isSerialized) return ref.watch(batchProvider)?.twoDSample;
+  if (s.mode.isCombo) return ref.watch(combinedLabelProvider)?.twoD;
+  if (s.resolved.data != null) return s.singleConfig;
+  return null;
+}
+
+/// The centre-logo side (mm) that consumes exactly [AppSettings.logoEcShare]
+/// of the active 2D symbol's error-correction capacity. Drives the "Logo"
+/// checkbox and the EC-share dropdown. 0 when there is no 2D symbol to host
+/// one (a 1D-only workspace, or no valid data yet).
 final autoLogoSideProvider = Provider<double>((ref) {
   final s = ref.watch(appControllerProvider);
-  if (!s.mode.use2D) return 0;
-  EncodeConfig? twoD;
-  if (s.mode.isSerialized) {
-    twoD = ref.watch(batchProvider)?.twoDSample;
-  } else if (s.mode.isCombo) {
-    twoD = ref.watch(combinedLabelProvider)?.twoD;
-  } else if (s.resolved.data != null) {
-    twoD = s.singleConfig;
-  }
+  final twoD = _activeTwoD(ref, s);
   if (twoD == null) return 0;
   // A symbol's size is independent of its centre logo, so probe the sizer with
-  // a token logo at the auto share — the max-safe side it reports back is
-  // exactly the dead-space that fills [kLogoAutoEcShare] of the EC budget.
+  // a token logo at the chosen share — the max-safe side it reports back is
+  // exactly the dead-space that fills that share of the EC budget.
   final budget = Sizer.compute(
-          twoD.copyWith(logoSideMm: 1, logoSafetyMargin: kLogoAutoEcShare))
+          twoD.copyWith(logoSideMm: 1, logoSafetyMargin: s.logoEcShare))
       .logoBudget;
   return budget?.maxSafeLogoMm ?? 0;
+});
+
+/// Fraction of the 2D symbol's full error-correction capacity the current
+/// dead-space consumes (can exceed 1.0 — the code is then unscannable).
+/// Null when no logo or no 2D symbol.
+final logoShareUsedProvider = Provider<double?>((ref) {
+  final s = ref.watch(appControllerProvider);
+  if (s.logoSideMm <= 0) return null;
+  final twoD = _activeTwoD(ref, s);
+  if (twoD == null) return null;
+  final b = Sizer.compute(twoD).logoBudget;
+  if (b == null || twoD.logoSafetyMargin <= 0) return null;
+  // budgetFraction = recoverable × safetyMargin, so invert the margin.
+  final recoverable = b.budgetFraction / twoD.logoSafetyMargin;
+  if (recoverable <= 0) return null;
+  return b.logoAreaFraction / recoverable;
 });
 
 /// Every encoded payload in the current workspace — drives the Serialization
