@@ -175,3 +175,6 @@ footer a:hover{text-decoration:underline}
 .logonote.ok{color:var(--accent)}
 .logonote.warn{color:#ffd479}
 .logonote.bad{color:var(--err)}
+
+/* Meerv brand green (meerv.com logo / --primary) */
+.hero h1 .meerv{background:none;-webkit-background-clip:initial;background-clip:initial;color:#1c7552}

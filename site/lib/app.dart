@@ -51,7 +51,7 @@ const _header = r'''
 const _hero = r'''
 <section class="hero">
   <p class="kicker">Sustainable Identity on Every&nbsp;Thing</p>
-  <h1>Open identity tooling for<br/><span>every physical object.</span></h1>
+  <h1><span class="meerv">Sustainable Identity Generator</span><br/>for <span>Every Thing</span></h1>
   <p class="lede">QSeq mints Barcodes, QR&nbsp;Codes and Data&nbsp;Matrix carriers for <b>SGTINs</b>, <b>GS1&nbsp;Digital&nbsp;Links</b>, <b>EPC&nbsp;URIs</b> and <b>NATO&nbsp;Stock&nbsp;Numbers</b> — with a print-true physical-size calculator so what you design is exactly what prints.</p>
   <div class="cta">
     <a class="btn primary" href="#generator">Open the generator</a>
