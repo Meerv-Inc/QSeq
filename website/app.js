@@ -133,8 +133,13 @@ function captionParts(s){
 const ppmm=dpi=>dpi/25.4; // pixels per millimetre at a DPI
 
 // Render one barcode to a NEW canvas (with centre logo knockout for 2D).
-function makeCanvas(s,text){
-  const opts={bcid:bcid(s),text:text,scale:Math.max(2,moduleDots(s.xdim,s.dpi)),
+// embedDpi caps the raster resolution (px per module) without changing the
+// code's physical size — callers that place the canvas at a matching mm scale
+// (25.4/embedDpi per px) get the same printed size with far fewer pixels. Used
+// by the PDF exporter to keep big serialized sheets under jsPDF's string limit.
+function makeCanvas(s,text,embedDpi){
+  const dpi=embedDpi||s.dpi;
+  const opts={bcid:bcid(s),text:text,scale:Math.max(2,moduleDots(s.xdim,dpi)),
     paddingwidth:0,paddingheight:0};
   if(!is1D(s)&&s.twoD==='qrcode')opts.eclevel=s.ec;
   if(is1D(s)){opts.height=Math.max(6,s.barh);opts.includetext=true;}
@@ -143,7 +148,7 @@ function makeCanvas(s,text){
   if(!is1D(s)&&s.logo>0){
     const ctx=cv.getContext('2d');
     const sym=Math.min(cv.width,cv.height);
-    const scale=Math.max(2,moduleDots(s.xdim,s.dpi));
+    const scale=Math.max(2,moduleDots(s.xdim,dpi));
     const modules=Math.max(1,Math.round(sym/scale));
     const cell=sym/modules;                       // pixels per module
     // Reserve a clean square at the centre, sized to the logo and snapped to
@@ -154,7 +159,7 @@ function makeCanvas(s,text){
     // desktop (_centredModuleHole): logo mm → px → modules. The old logoFrac
     // divided by the OUTER (quiet-zone-inclusive) width and capped at 0.5, so the
     // web hole came out smaller than the desktop and clipped the logo image.
-    const logoPx=s.logo/25.4*s.dpi;
+    const logoPx=s.logo/25.4*dpi;
     let n=Math.round(logoPx/cell);
     if(n>0){
       if((modules-n)%2!==0)n++;                   // keep the hole centred on the grid
@@ -592,10 +597,25 @@ function pdfVernier(doc,x0,y0){
   doc.setFontSize(4.4);doc.text('vernier 0.1mm',x0,y0+4.4);
 }
 
-function downloadPdf(){
+// Progress UI for the (potentially large) client-side PDF assembly.
+function pdfProgress(done,total){
+  const box=$('pdfProgress');if(!box)return;
+  if(done<0){box.hidden=true;return;}
+  const pct=total?Math.min(100,Math.round(done/total*100)):0;
+  box.hidden=false;box.setAttribute('aria-valuenow',String(pct));
+  const fill=$('pdfProgressFill');if(fill)fill.style.width=pct+'%';
+  const lbl=$('pdfProgressLabel');
+  if(lbl)lbl.textContent=`Assembling PDF… ${done.toLocaleString()} / ${total.toLocaleString()} codes (${pct}%)`;
+}
+// Let the browser repaint between batches so the bar actually moves.
+const uiYield=()=>new Promise(r=>setTimeout(r,0));
+
+async function downloadPdf(){
   const s=state();
   const J=window.jspdf&&window.jspdf.jsPDF;
   if(!J){$('err').textContent='PDF library still loading — try again.';return;}
+  const btn=$('dlPdf');if(btn)btn.disabled=true;
+  $('err').textContent='';
   const mmpx=25.4/s.dpi,gutter=RBAND+RGAP;
   const FPT=6, lineHmm=FPT*1.4/2.835, charWmm=FPT*0.6/2.835;
   const hriLines=(text,wmm)=>{const cpl=Math.max(8,Math.floor(wmm/charWmm));
@@ -606,9 +626,17 @@ function downloadPdf(){
     if(isSerial(s)){
       const fmt=pageFmt(s),continuous=fmt.h===Infinity;
       const n=Math.min(s.scount,2000),m=8,gap=3;
+      // Cap the embedded raster at ~12 px per module: plenty for a 1-bit barcode
+      // at any physical size, and it bounds the PNG bytes so big serialized sheets
+      // don't overflow jsPDF's single-string document (RangeError: Invalid string
+      // length). Layout and physical size are unchanged — mm-per-px is derived
+      // from the same capped resolution, so each cell lands at the same mm size.
+      const MAX_PPM=12;
+      const EMBED_DPI=Math.min(s.dpi,Math.round(MAX_PPM*25.4/Math.max(0.05,s.xdim)));
+      const mmpx=25.4/EMBED_DPI;
       const seed=i=>encode(s,s.sprefix+String(s.sstart+i).padStart(s.spad,'0'));
       // Probe first & last serials (longest data → largest symbol) for the grid.
-      const pA=makeCanvas(s,seed(0)),pB=makeCanvas(s,seed(n-1));
+      const pA=makeCanvas(s,seed(0),EMBED_DPI),pB=makeCanvas(s,seed(n-1),EMBED_DPI);
       const cellW=Math.max(pA.width,pB.width)*mmpx;
       const codeHmm=Math.max(pA.height,pB.height)*mmpx;
       const contentW=fmt.w-m-(m+gutter);
@@ -622,16 +650,18 @@ function downloadPdf(){
           if(++row>=cols){totalH+=rowH+gap;row=0;rowH=0;}}
         if(row>0)totalH+=rowH+gap;
         const pageH=m+totalH+(m+gutter);
-        doc=new J({unit:'mm',format:[fmt.w,pageH]});
+        doc=new J({unit:'mm',format:[fmt.w,pageH],compress:true});
         contentH=pageH-m-(m+gutter);
       }else{
-        doc=new J({unit:'mm',format:[fmt.w,fmt.h]});
+        doc=new J({unit:'mm',format:[fmt.w,fmt.h],compress:true});
         contentH=fmt.h-m-(m+gutter);
       }
       let col=0,x=m,y=m,rowH=0;
+      pdfProgress(0,n);
+      let lastYield=performance.now();
       for(let i=0;i<n;i++){
         const data=seed(i);
-        const cv=makeCanvas(s,data);
+        const cv=makeCanvas(s,data,EMBED_DPI);
         const wmm=cv.width*mmpx,hmm=cv.height*mmpx;
         const cellH=codeHmm+2+hriLines(data,cellW-1)*lineHmm+1.5;
         if(!continuous&&y+cellH>m+contentH){doc.addPage([fmt.w,fmt.h]);x=m;y=m;col=0;rowH=0;}
@@ -639,7 +669,10 @@ function downloadPdf(){
         drawHriPdf(doc,data,x+wmm/2,y+hmm+2,cellW-1);
         rowH=Math.max(rowH,cellH);
         col++;if(col>=cols){col=0;x=m;y+=rowH+gap;rowH=0;}else{x+=cellW+gap;}
+        // Yield to the browser every ~50ms so the progress bar repaints.
+        if(performance.now()-lastYield>50){pdfProgress(i+1,n);await uiYield();lastYield=performance.now();}
       }
+      pdfProgress(n,n);
       const pages=doc.getNumberOfPages();
       for(let p=1;p<=pages;p++){doc.setPage(p);
         pdfHRuler(doc,m,m+contentH+RGAP,contentW);
@@ -653,7 +686,7 @@ function downloadPdf(){
       const wmm=cv.width*mmpx,hmm=cv.height*mmpx;
       const capH=data?hriLines(data,wmm-1)*lineHmm+1.5:0;
       const cH=hmm+(capH?2+capH:0);
-      const doc=new J({unit:'mm',format:[Math.max(wmm,10)+RGAP+RBAND,cH+RGAP+RBAND]});
+      const doc=new J({unit:'mm',format:[Math.max(wmm,10)+RGAP+RBAND,cH+RGAP+RBAND],compress:true});
       doc.addImage(cv.toDataURL('image/png'),'PNG',0,0,wmm,hmm);
       if(capH)drawHriPdf(doc,data,wmm/2,hmm+2,wmm-1);
       pdfHRuler(doc,0,cH+RGAP,wmm);
@@ -661,7 +694,15 @@ function downloadPdf(){
       pdfVernier(doc,wmm+RGAP,cH+RGAP);
       doc.save('qseq-code.pdf');
     }
-  }catch(e){$('err').textContent=String(e);}
+  }catch(e){
+    // jsPDF assembles the whole document as one in-memory string; an oversized
+    // serialized sheet overflows it (RangeError: Invalid string length).
+    const tooBig=e instanceof RangeError||/string length/i.test(String(e&&e.message||e));
+    $('err').textContent=tooBig
+      ? 'This sheet is too large to build as a single PDF in the browser. Lower the DPI, reduce the serial count, or split it into smaller runs — then export again.'
+      : String(e);
+  }
+  finally{pdfProgress(-1);if(btn)btn.disabled=false;}
 }
 
 function downloadSvg(){
