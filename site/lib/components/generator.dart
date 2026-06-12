@@ -1008,9 +1008,13 @@ class GeneratorState extends State<Generator> {
   String _resolverPreset(String domain) =>
       _knownResolvers.contains(domain) ? domain : 'custom';
 
+  // Every control is keyed by its label: unkeyed positional diffing would
+  // re-purpose a DOM element for a *different* control when the surrounding
+  // list changes (e.g. switching workspaces re-purposed the "SGTIN format"
+  // <select> as the "Resolver" one, leaving it with no selection).
   Component _select(String lbl0, String value, List<(String, String)> opts,
       void Function(String) on) {
-    return label([
+    return label(key: ValueKey('ctl-$lbl0'), [
       text(lbl0),
       select(
         [
@@ -1026,11 +1030,12 @@ class GeneratorState extends State<Generator> {
   }
 
   Component _text(String lbl0, String value, void Function(String) on) =>
-      label([text(lbl0), input(value: value, onInput: on)]);
+      label(key: ValueKey('ctl-$lbl0'),
+          [text(lbl0), input(value: value, onInput: on)]);
 
   Component _num(String lbl0, double value, void Function(double) on,
       {double min = 0, double max = 1000000000}) {
-    return label([
+    return label(key: ValueKey('ctl-$lbl0'), [
       text(lbl0),
       input(
         attributes: const {'type': 'number', 'step': 'any'},
@@ -1055,7 +1060,7 @@ class GeneratorState extends State<Generator> {
   }
 
   Component _check(String lbl0, bool value, void Function(bool) on) =>
-      label(classes: 'check', [
+      label(key: ValueKey('ctl-$lbl0'), classes: 'check', [
         input(
             attributes: const {'type': 'checkbox'},
             checked: value,
