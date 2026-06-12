@@ -52,12 +52,26 @@ verify `flutter build`) is a later step — do it with the desktop build watched
 - mission/about/support sections + copy-button; Windows installer asset.
 - SEO head ported (title, description, OG, canonical, GA, favicon) + dark theme.
 
+## Done (full parity push, overnight 2026-06-11→12)
+
+- **All 8 workspaces** incl. Combined 1D+2D (stacked/side-by-side, gap, padding)
+  and the **Label designer** (single + serialized): drag/resize with snapping,
+  element toggles, title, ONE shared HRI, dashed cut-frame (show/print),
+  background import + at-scale template export (offline round-trip).
+- **Logo dead-space** (auto 15% EC share, module-snapped knockout, logo image,
+  budget readout) · **page formats/orientation/columns + pagination + tabs** ·
+  **bold-counter captions** · **mm/inch/vernier rulers** · **serialization log**
+  · **.qseq project save/load** · **PDF via the page's jsPDF** (single + sheets).
+- Engine is mm-true SVG in `site/lib/qseq/` (svgkit/generate/label/project);
+  VM smoke test `site/tool/smoke.dart` covers every mode — run
+  `dart run tool/smoke.dart` from `site/`.
+
 ## Remaining (in rough priority)
 
-1. **PDF export** — the `pdf` package OOMs dart2js, so PDF needs a lighter client
-   lib, canvas→jsPDF interop, or a small server route. Do NOT add `pdf` to the
-   client deps.
-2. **Combined label + label designer** — the feature built in JS on branch
+1. **Human click-through** of the hydrated preview (drag, downloads, pickers).
+2. Minor desktop deltas: copy-PNG-to-clipboard, pHYs DPI chunk in PNG, rulers
+   inside the PDF.
+3. **Combined label + label designer** — DONE in Dart; the older JS version on branch
    `js-label-designer` (2D-left/1D-right, shared HRI, dashed cut-frame, free
    drag/resize, background-image offline round-trip, serialized label sheets).
    Port to Jaspr with a `<canvas>` via `package:web` (client-only).
