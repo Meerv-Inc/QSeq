@@ -9,3 +9,6 @@ import 'dart:typed_data';
 void downloadText(String filename, String text, String mime) {}
 
 void downloadBytes(String filename, Uint8List bytes, String mime) {}
+
+Future<void> downloadSvgPng(
+    String filename, String svg, int wPx, int hPx) async {}

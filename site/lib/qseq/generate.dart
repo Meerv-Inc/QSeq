@@ -104,3 +104,67 @@ GenOutput generate(GenInput i) {
     );
   }
 }
+
+class SheetOutput {
+  final String? svg;
+  final int count;
+  final double width;
+  final double height;
+  final String? error;
+  const SheetOutput(
+      {this.svg, this.count = 0, this.width = 0, this.height = 0, this.error});
+}
+
+String _xml(String s) =>
+    s.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+
+/// Composes a serialized sheet: [count] codes (each serial = prefix + a
+/// zero-padded incrementing number) tiled into one SVG, captioned with the
+/// serial. Pure Dart — same on server and client.
+SheetOutput buildSheet(
+  GenInput i, {
+  required String prefix,
+  required int start,
+  required int count,
+  required int pad,
+  int cols = 6,
+}) {
+  if (count < 1) return const SheetOutput(error: 'Count must be at least 1.');
+  count = count.clamp(1, 2000);
+  final is1d = i.oneD;
+  final codeW = is1d ? 200.0 : 120.0;
+  final codeH = is1d ? 86.0 : 120.0;
+  const capH = 16.0;
+  const padCell = 12.0;
+  final cellW = codeW + padCell;
+  final cellH = codeH + capH + padCell;
+  final rows = (count / cols).ceil();
+  final totalW = cols * cellW;
+  final totalH = rows * cellH;
+  final bc = _barcode(i);
+  final b = StringBuffer()
+    ..write('<svg xmlns="http://www.w3.org/2000/svg" width="$totalW" '
+        'height="$totalH" viewBox="0 0 $totalW $totalH">')
+    ..write('<rect width="$totalW" height="$totalH" fill="#ffffff"/>');
+  try {
+    for (var n = 0; n < count; n++) {
+      final serial = '$prefix${(start + n).toString().padLeft(pad, '0')}';
+      final data = i.data.encodeWith(serial: serial);
+      final cell =
+          bc.toSvg(data, width: codeW, height: codeH, drawText: is1d, color: 0x000000);
+      final x = (n % cols) * cellW + padCell / 2;
+      final y = (n ~/ cols) * cellH + padCell / 2;
+      b
+        ..write('<g transform="translate($x,$y)">')
+        ..write(cell)
+        ..write('<text x="${codeW / 2}" y="${codeH + 12}" font-family="monospace" '
+            'font-size="11" text-anchor="middle" fill="#000">${_xml(serial)}</text>')
+        ..write('</g>');
+    }
+  } catch (e) {
+    return SheetOutput(error: e is FormatException ? e.message : e.toString());
+  }
+  b.write('</svg>');
+  return SheetOutput(
+      svg: b.toString(), count: count, width: totalW, height: totalH);
+}

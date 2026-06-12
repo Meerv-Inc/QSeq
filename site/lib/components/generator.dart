@@ -23,6 +23,11 @@ class Generator extends StatefulComponent {
 class GeneratorState extends State<Generator> {
   DataSourceInput data = const DataSourceInput();
   bool oneD = false;
+  bool serial = false;
+  String sPrefix = '';
+  int sStart = 1;
+  int sCount = 24;
+  int sPad = 5;
   Symbology twoD = Symbology.qrCode;
   Symbology oneDSym = Symbology.gs1_128;
   QrEcLevel ec = QrEcLevel.medium;
@@ -51,19 +56,46 @@ class GeneratorState extends State<Generator> {
     }
   }
 
+  Future<void> _downloadPng(GenOutput out) async {
+    if (out.svg == null) return;
+    final is2D = !oneD;
+    final svgW = is2D ? 300.0 : 360.0;
+    final svgH = is2D ? 300.0 : 130.0;
+    var targetW = out.size?.outer.widthPx ?? (svgW * 2).round();
+    if (targetW < 64) targetW = (svgW * 2).round();
+    if (targetW > 5000) targetW = 5000;
+    final targetH = (targetW * svgH / svgW).round();
+    await downloadSvgPng('qseq-code.png', out.svg!, targetW, targetH);
+  }
+
 
   @override
   Component build(BuildContext context) {
-    final out = generate(_input);
+    final isSheet = serial;
+    final out = isSheet ? const GenOutput() : generate(_input);
+    final sheet = isSheet
+        ? buildSheet(_input,
+            prefix: sPrefix,
+            start: sStart,
+            count: sCount.clamp(1, 48),
+            pad: sPad)
+        : null;
+    final error = isSheet ? sheet!.error : out.error;
     final k = data.kind;
     return section(id: 'generator', classes: 'generator', [
       // ---- inputs ----
       div(classes: 'panel inputs', [
         h2([text('Generator')]),
-        _select('Workspace', oneD ? '1d' : '2d', const [
-          ('2d', '2D'),
-          ('1d', '1D'),
-        ], (v) => _set(() => oneD = v == '1d')),
+        _select('Workspace', '${oneD ? '1d' : '2d'}${serial ? 'Serial' : ''}',
+            const [
+              ('2d', '2D'),
+              ('2dSerial', '2D — Serialized sheet'),
+              ('1d', '1D'),
+              ('1dSerial', '1D — Serialized sheet'),
+            ], (v) => _set(() {
+                  oneD = v.startsWith('1d');
+                  serial = v.endsWith('Serial');
+                })),
         _select('Data source', k.name, const [
           ('sgtin', 'SGTIN'),
           ('nsn', 'NATO Stock Number'),
@@ -118,22 +150,76 @@ class GeneratorState extends State<Generator> {
           _num('X-dimension (mm)', xdim, (v) => _set(() => xdim = v)),
         ]),
         if (oneD) _num('Bar height (mm)', barh, (v) => _set(() => barh = v)),
+        if (isSheet) ...[
+          _text('Prefix', sPrefix, (v) => _set(() => sPrefix = v)),
+          div(classes: 'grid2', [
+            _num('Start', sStart.toDouble(),
+                (v) => _set(() => sStart = v.round())),
+            _num('Count', sCount.toDouble(),
+                (v) => _set(() => sCount = v.round())),
+          ]),
+          _num('Zero-pad', sPad.toDouble(), (v) => _set(() => sPad = v.round())),
+        ],
         div(classes: 'downloads', [
-          button([text('Download SVG')],
-              classes: 'btn primary',
-              disabled: out.svg == null,
-              onClick: () => _downloadSvg(out)),
+          if (!isSheet) ...[
+            button([text('Download PNG')],
+                classes: 'btn primary',
+                disabled: out.svg == null,
+                onClick: () => _downloadPng(out)),
+            button([text('Download SVG')],
+                classes: 'btn',
+                disabled: out.svg == null,
+                onClick: () => _downloadSvg(out)),
+          ] else ...[
+            button([text('Download SVG sheet')],
+                classes: 'btn primary',
+                disabled: sheet!.svg == null,
+                onClick: _downloadSheetSvg),
+            button([text('Download PNG sheet')],
+                classes: 'btn',
+                disabled: sheet!.svg == null,
+                onClick: _downloadSheetPng),
+          ],
         ]),
-        if (out.error != null) p(classes: 'err', [text(out.error!)]),
+        if (error != null) p(classes: 'err', [text(error)]),
       ]),
       // ---- preview ----
       div(classes: 'panel preview', [
         div(classes: 'stage', [
-          if (out.svg != null) div(classes: 'card', [RawText(out.svg!)]),
+          if (isSheet && sheet!.svg != null)
+            div(classes: 'card', [RawText(sheet.svg!)])
+          else if (!isSheet && out.svg != null)
+            div(classes: 'card', [RawText(out.svg!)]),
         ]),
-        if (out.size != null) _readout(out.size!),
+        if (isSheet && sheet!.svg != null && sheet.count < sCount)
+          p(classes: 'cap', [
+            text('Showing first ${sheet.count} of $sCount · the full sheet exports')
+          ]),
+        if (!isSheet && out.size != null) _readout(out.size!),
       ]),
     ]);
+  }
+
+  void _downloadSheetSvg() {
+    final s = buildSheet(_input,
+        prefix: sPrefix, start: sStart, count: sCount, pad: sPad);
+    if (s.svg != null) downloadText('qseq-sheet.svg', s.svg!, 'image/svg+xml');
+  }
+
+  Future<void> _downloadSheetPng() async {
+    final s = buildSheet(_input,
+        prefix: sPrefix, start: sStart, count: sCount, pad: sPad);
+    if (s.svg == null) return;
+    var w = s.width.round();
+    var h = s.height.round();
+    const maxDim = 4000;
+    final big = w > h ? w : h;
+    if (big > maxDim) {
+      final k = maxDim / big;
+      w = (w * k).round();
+      h = (h * k).round();
+    }
+    await downloadSvgPng('qseq-sheet.png', s.svg!, w, h);
   }
 
   // ---- input helpers (reuse the existing .inputs CSS) ----
