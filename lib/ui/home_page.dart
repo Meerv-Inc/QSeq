@@ -1,4 +1,4 @@
-// QSeq — Sustainable Identity on Every Thing
+﻿// QSeq — Sustainable Identity on Every Thing
 // Copyright (c) 2026 Meerv Inc.  Required Notice: https://qseq.app
 // Licensed under the PolyForm Noncommercial License 1.0.0 — noncommercial use
 // only; reuse requires attribution to Meerv Inc. See LICENSE for terms.
@@ -26,6 +26,19 @@ class HomePage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // macos_ui leaves undecorated sidebars TRANSPARENT, expecting macOS window
+    // vibrancy behind them. On Windows there is none — they composite over the
+    // native window surface, which follows the OS theme. When the in-app theme
+    // disagrees with the OS, that produced white-on-white (or black) panels.
+    // Paint everything opaquely. The brightness comes straight from the theme
+    // toggle (MacosTheme.of at this level still reflects the OS theme).
+    final mode = ref.watch(themeModeProvider);
+    final dark = mode == ThemeMode.dark ||
+        (mode == ThemeMode.system &&
+            MediaQuery.platformBrightnessOf(context) == Brightness.dark);
+    final windowBg =
+        dark ? const Color(0xFF1E1F21) : const Color(0xFFF6F6F8);
+    final sideBg = dark ? const Color(0xFF26282A) : const Color(0xFFEFF0F2);
     return PlatformMenuBar(
       menus: [
         PlatformMenu(label: 'QSeq', menus: [
@@ -47,23 +60,37 @@ class HomePage extends ConsumerWidget {
         ]),
       ],
       child: MacosWindow(
+      backgroundColor: windowBg,
+      // macos_ui clears the sidebar surface with BlendMode.clear (expecting
+      // macOS window vibrancy behind it) — on Windows that erases ANY
+      // background set via decoration, leaving the raw compositor surface
+      // (black or white depending on the OS theme), which made panels
+      // unreadable whenever the in-app theme differed. Painting INSIDE the
+      // builder happens after the clear, so it sticks. topOffset: 0 removes
+      // the macOS traffic-light inset that left an unpainted strip.
       sidebar: Sidebar(
         minWidth: 320,
         maxWidth: 420,
         startWidth: 360,
-        builder: (context, _) => const InputsPanel(),
+        topOffset: 0,
+        builder: (context, _) =>
+            ColoredBox(color: sideBg, child: const InputsPanel()),
       ),
       endSidebar: Sidebar(
         minWidth: 240,
         maxWidth: 360,
         startWidth: 280,
         shownByDefault: true,
-        builder: (context, _) => const SerializationLog(),
+        topOffset: 0,
+        builder: (context, _) =>
+            ColoredBox(color: sideBg, child: const SerializationLog()),
       ),
       child: MacosScaffold(
         toolBar: ToolBar(
           title: _titleRow(context, ref),
           titleWidth: 330,
+          decoration: BoxDecoration(
+              color: dark ? const Color(0xFF2A2C2E) : const Color(0xFFF2F3F5)),
           actions: [
             _toolButton(
                 label: ref.watch(themeModeProvider) == ThemeMode.dark

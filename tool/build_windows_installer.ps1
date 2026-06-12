@@ -41,6 +41,11 @@ function Find-SignTool {
 }
 
 $dlib = $env:QSEQ_SIGN_DLIB
+if (-not $dlib) {
+    # Microsoft Artifact Signing client tools default install location.
+    $candidate = Join-Path $env:LOCALAPPDATA 'Microsoft\MicrosoftArtifactSigningClientTools\Azure.CodeSigning.Dlib.dll'
+    if (Test-Path $candidate) { $dlib = $candidate }
+}
 $metadata = Join-Path $repo 'installer\signing-metadata.json'
 $signtool = Find-SignTool
 $signing = $dlib -and (Test-Path $dlib) -and (Test-Path $metadata) -and $signtool

@@ -4,6 +4,7 @@
 // only; reuse requires attribution to Meerv Inc. See LICENSE for terms.
 // https://polyformproject.org/licenses/noncommercial/1.0.0/
 
+import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:macos_ui/macos_ui.dart';
@@ -21,12 +22,30 @@ class QrStudioApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final mode = ref.watch(themeModeProvider);
     return MacosApp(
       title: 'QSeq',
       theme: MacosThemeData.light(),
       darkTheme: MacosThemeData.dark(),
-      themeMode: ref.watch(themeModeProvider),
+      themeMode: mode,
       debugShowCheckedModeBanner: false,
+      // macos_ui paints the window chrome (title bar, toolbar, sidebars) from
+      // the PLATFORM brightness, while widgets follow themeMode — when the
+      // in-app toggle disagrees with the OS theme they split (white-on-white
+      // text/icons). Force the platform brightness to match the toggle so
+      // chrome and content always agree.
+      builder: (context, child) {
+        final mq = MediaQuery.of(context);
+        final brightness = mode == ThemeMode.dark
+            ? Brightness.dark
+            : mode == ThemeMode.light
+                ? Brightness.light
+                : mq.platformBrightness;
+        return MediaQuery(
+          data: mq.copyWith(platformBrightness: brightness),
+          child: child ?? const SizedBox(),
+        );
+      },
       home: const LicenseGate(child: HomePage()),
     );
   }
