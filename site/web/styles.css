@@ -157,3 +157,16 @@ footer{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;max-wid
 footer a{color:var(--accent);font-family:var(--mono);text-decoration:none;user-select:all;-webkit-user-select:all}
 footer a:hover{text-decoration:underline}
 [hidden]{display:none!important}
+
+/* Jaspr generator additions */
+.resolved{width:100%;margin:2px 0 12px;background:var(--panel2);border:1px solid var(--line);
+  color:var(--ink);border-radius:8px;padding:8px 10px;font-family:var(--mono);font-size:.78rem;
+  word-break:break-all;line-height:1.4}
+.resolved.bad{color:var(--err);border-color:var(--err)}
+.label-toggles{display:flex;flex-wrap:wrap;gap:8px 16px;margin:8px 0}
+.label-toggles .check{margin:0}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.loglist.scrolly{scrollbar-width:thin;-ms-overflow-style:auto}
+.loglist.scrolly::-webkit-scrollbar{width:8px;height:8px;display:block}
+.loglist.scrolly::-webkit-scrollbar-thumb{background:#2a333d;border-radius:4px}
+#artwork svg{display:block}

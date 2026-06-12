@@ -32,6 +32,8 @@ void main() {
       RawText('<meta name="twitter:card" content="summary" />'),
       RawText('<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'%3E%3Crect width=\'100\' height=\'100\' rx=\'18\' fill=\'%230b0d10\'/%3E%3Cg fill=\'%237cf6c8\'%3E%3Crect x=\'18\' y=\'18\' width=\'20\' height=\'20\'/%3E%3Crect x=\'62\' y=\'18\' width=\'20\' height=\'20\'/%3E%3Crect x=\'18\' y=\'62\' width=\'20\' height=\'20\'/%3E%3Crect x=\'48\' y=\'48\' width=\'10\' height=\'10\'/%3E%3Crect x=\'62\' y=\'62\' width=\'10\' height=\'10\'/%3E%3Crect x=\'72\' y=\'72\' width=\'10\' height=\'10\'/%3E%3C/g%3E%3C/svg%3E" />'),
       RawText('<link rel="stylesheet" href="/styles.css" />'),
+      RawText('<link rel="preconnect" href="https://cdn.jsdelivr.net" />'),
+      RawText('<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js" defer></script>'),
       RawText('<script async src="https://www.googletagmanager.com/gtag/js?id=G-015RDZXKP2"></script>'),
       RawText('<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag("js",new Date());gtag("config","G-015RDZXKP2");</script>'),
       // Copy-to-clipboard for the mission "Source code" button.

@@ -16,6 +16,9 @@ dependencies:
   barcode: ^2.2.9
   # Browser APIs (blobs, downloads) for client-only export code.
   web: ^1.1.0
+  # Server-safe browser API shims (what Jaspr's event callbacks use) — lets the
+  # label designer read pointer coordinates in shared component code.
+  universal_web: ^1.1.0
 
 dev_dependencies:
   build_runner: ^2.10.0
