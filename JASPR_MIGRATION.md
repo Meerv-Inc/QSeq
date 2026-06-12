@@ -3,8 +3,9 @@
 Status as of 2026-06-12 (branch `jaspr-migration`): **CUT OVER** — `qseq.app`
 now serves the Jaspr build (`site/build/jaspr`, deployed via `vercel --prod`).
 The old static `website/` is retired from production but kept in the repo for
-reference. Caveat: `/QSeq.dmg` 404s (it was already missing from the previous
-production deployment — re-add the macOS build to `site/web/` when available).
+reference. The notarized, universal macOS download lives at `site/web/QSeq.dmg`
+(tracked alongside `site/web/qseq-windows-setup.exe`), so `/QSeq.dmg` resolves on
+qseq.app and is reproduced by `jaspr build`.
 
 ## Why
 
