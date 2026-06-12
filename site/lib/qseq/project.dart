@@ -72,7 +72,6 @@ String projectJson({
       'sgtinFormat': d.sgtinFormat.name,
       'companyPrefixLength': d.companyPrefixLength,
       'digitalLinkDomain': d.digitalLinkDomain,
-      'nsn': d.nsn,
       'rawText': d.rawText,
     },
     'print': {'dpi': i.dpi, 'xDimensionMm': i.xdim, 'barHeightMm': i.barh},
@@ -158,7 +157,6 @@ T? _enumByName<T extends Enum>(List<T> values, String? name) =>
           (d['companyPrefixLength'] as num?)?.toInt().clamp(6, 12) ?? 7,
       digitalLinkDomain:
           d['digitalLinkDomain'] as String? ?? 'https://id.gs1.org',
-      nsn: d['nsn'] as String? ?? '9515-00-003-6945',
       rawText: d['rawText'] as String? ?? 'https://example.com',
     ),
     twoD: _enumByName(

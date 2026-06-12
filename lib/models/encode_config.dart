@@ -1,4 +1,4 @@
-// QSeq — Sustainable Identity on Every Thing
+﻿// QSeq — Sustainable Identity on Every Thing
 // Copyright (c) 2026 Meerv Inc.  Required Notice: https://qseq.app
 // Licensed under the PolyForm Noncommercial License 1.0.0 — noncommercial use
 // only; reuse requires attribution to Meerv Inc. See LICENSE for terms.
@@ -11,7 +11,7 @@ class EncodeConfig {
   final Symbology symbology;
 
   /// The raw string to encode (already assembled from the data source —
-  /// SGTIN element string, Digital Link URI, EPC URI, NSN payload or free text).
+  /// SGTIN element string, Digital Link URI, EPC URI or free text).
   final String data;
 
   final QrEcLevel ecLevel;

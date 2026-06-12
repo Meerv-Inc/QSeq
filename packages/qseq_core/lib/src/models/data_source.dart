@@ -5,12 +5,11 @@
 // https://polyformproject.org/licenses/noncommercial/1.0.0/
 
 import '../encoders/gs1.dart';
-import '../encoders/nsn.dart';
 import '../encoders/sgtin.dart';
 import 'caption.dart';
 
 /// What kind of data the user is encoding.
-enum DataSourceKind { rawText, sgtin, nsn }
+enum DataSourceKind { rawText, sgtin }
 
 /// The three SGTIN output representations the app supports.
 enum SgtinFormat {
@@ -39,9 +38,6 @@ class DataSourceInput {
   final int companyPrefixLength;
   final String digitalLinkDomain;
 
-  // NSN input
-  final String nsn;
-
   const DataSourceInput({
     this.kind = DataSourceKind.sgtin,
     this.rawText = 'https://example.com',
@@ -50,7 +46,6 @@ class DataSourceInput {
     this.sgtinFormat = SgtinFormat.digitalLink,
     this.companyPrefixLength = 7,
     this.digitalLinkDomain = 'https://id.gs1.org',
-    this.nsn = '9515-00-003-6945',
   });
 
   DataSourceInput copyWith({
@@ -61,7 +56,6 @@ class DataSourceInput {
     SgtinFormat? sgtinFormat,
     int? companyPrefixLength,
     String? digitalLinkDomain,
-    String? nsn,
   }) {
     return DataSourceInput(
       kind: kind ?? this.kind,
@@ -71,7 +65,6 @@ class DataSourceInput {
       sgtinFormat: sgtinFormat ?? this.sgtinFormat,
       companyPrefixLength: companyPrefixLength ?? this.companyPrefixLength,
       digitalLinkDomain: digitalLinkDomain ?? this.digitalLinkDomain,
-      nsn: nsn ?? this.nsn,
     );
   }
 
@@ -83,7 +76,6 @@ class DataSourceInput {
             ? (data: null, error: 'Enter some text to encode')
             : (data: rawText, error: null),
         DataSourceKind.sgtin => (data: _resolveSgtin(), error: null),
-        DataSourceKind.nsn => (data: Nsn(nsn).payload, error: null),
       };
     } on FormatException catch (e) {
       return (data: null, error: e.message);
@@ -108,8 +100,6 @@ class DataSourceInput {
         };
       case DataSourceKind.rawText:
         return serial == null ? rawText : '$rawText$serial';
-      case DataSourceKind.nsn:
-        return serial ?? Nsn(nsn).payload;
     }
   }
 
@@ -127,12 +117,10 @@ class DataSourceInput {
   }
 
   /// The serialized-number caption shown under the code. For an SGTIN it is the
-  /// serial (bold); for an NSN the dashed number; free text has no serial.
+  /// serial (bold); free text has no serial.
   LabelCaption caption() {
     return switch (kind) {
       DataSourceKind.sgtin => LabelCaption(bold: serial),
-      DataSourceKind.nsn =>
-        LabelCaption(prefix: Nsn.tryParse(nsn)?.formatted ?? nsn),
       DataSourceKind.rawText => const LabelCaption(),
     };
   }

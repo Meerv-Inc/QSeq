@@ -12,6 +12,7 @@ import 'package:file_selector/file_selector.dart';
 import '../models/batch.dart';
 import '../models/combined_label.dart';
 import '../models/data_source.dart';
+import '../models/label_spec.dart';
 import '../models/symbology.dart';
 import 'app_controller.dart';
 
@@ -26,13 +27,14 @@ class ProjectIo {
 
   // --- mapping -------------------------------------------------------------
 
-  static Map<String, dynamic> toMap(AppSettings s) {
+  static Map<String, dynamic> toMap(AppSettings s, {LabelSpec? label}) {
     final d = s.data;
     return {
       'format': formatName,
       'version': formatVersion,
       'workspace': {
         'mode': s.mode.name,
+        'labelOn': s.labelOn,
         'oneDSymbology': s.oneDSymbology.name,
         'twoDSymbology': s.twoDSymbology.name,
         'errorCorrection': s.ecLevel.name,
@@ -44,7 +46,6 @@ class ProjectIo {
         'sgtinFormat': d.sgtinFormat.name,
         'companyPrefixLength': d.companyPrefixLength,
         'digitalLinkDomain': d.digitalLinkDomain,
-        'nsn': d.nsn,
         'rawText': d.rawText,
       },
       'print': {
@@ -63,10 +64,14 @@ class ProjectIo {
         'onScreen': s.rulersOnScreen,
         'inExports': s.rulersInExports,
       },
+      // One 'label' block shared with the web app: the designer spec's keys
+      // (wMm/hMm/on/el/…) plus the desktop combined-label layout keys. Each
+      // reader picks the fields it knows.
       'label': {
         'arrangement': s.arrangement.name,
         'gapMm': s.labelGapMm,
         'paddingMm': s.labelPaddingMm,
+        if (label != null) ...label.toJson(),
       },
       // prefix/start/zero-pad derive from the data serial itself now (legacy
       // keys are ignored on load).
@@ -98,8 +103,21 @@ class ProjectIo {
     String str(Object? v, String fb) => v is String ? v : fb;
 
     const def = AppSettings();
+    // Web files store the manual dead-space under 'manualMm' (their 'sideMm'
+    // is a legacy on-flag); desktop files store the true side in 'sideMm'.
+    final manualMm = dbl(lg['manualMm'], 0);
+    final sideMm = dbl(lg['sideMm'], def.logoSideMm);
+    final modeStr = w['mode'];
     return AppSettings(
-      mode: _byName(AppMode.values, w['mode'], def.mode),
+      // Web legacy: 'label'/'labelSerial' workspaces = combo + overlay.
+      mode: modeStr == 'label'
+          ? AppMode.combo
+          : modeStr == 'labelSerial'
+              ? AppMode.comboSerial
+              : _byName(AppMode.values, modeStr, def.mode),
+      labelOn: w['labelOn'] == true ||
+          modeStr == 'label' ||
+          modeStr == 'labelSerial',
       oneDSymbology:
           _byName(Symbology.values, w['oneDSymbology'], def.oneDSymbology),
       twoDSymbology:
@@ -115,16 +133,16 @@ class ProjectIo {
             integer(d['companyPrefixLength'], def.data.companyPrefixLength),
         digitalLinkDomain:
             str(d['digitalLinkDomain'], def.data.digitalLinkDomain),
-        nsn: str(d['nsn'], def.data.nsn),
         rawText: str(d['rawText'], def.data.rawText),
       ),
       dpi: dbl(p['dpi'], def.dpi),
       xDimensionMm: dbl(p['xDimensionMm'], def.xDimensionMm),
       barHeightMm: dbl(p['barHeightMm'], def.barHeightMm),
-      logoSideMm: dbl(lg['sideMm'], def.logoSideMm),
+      logoSideMm: manualMm > 0 ? manualMm : sideMm,
       logoEcBudget: dbl(lg['ecBudget'], def.logoEcBudget),
-      logoEcShare: dbl(lg['ecShare'], def.logoEcShare).clamp(0.05, 0.5),
-      logoManual: lg['manual'] == true,
+      logoEcShare: dbl(lg['ecShare'], dbl(lg['ecBudget'], def.logoEcShare))
+          .clamp(0.05, 0.5),
+      logoManual: lg['manual'] == true || manualMm > 0,
       logoImagePath: lg['imagePath'] is String ? lg['imagePath'] as String : null,
       rulersOnScreen: ru['onScreen'] is bool
           ? ru['onScreen'] as bool
@@ -145,6 +163,14 @@ class ProjectIo {
     );
   }
 
+  /// The label-designer spec carried in the file's `label` block (the same
+  /// JSON shape the web app reads/writes), or null when the file predates it.
+  static LabelSpec? labelFromMap(Map<String, dynamic> m) {
+    final lb = (m['label'] as Map?)?.cast<String, dynamic>();
+    if (lb == null || (lb['wMm'] == null && lb['el'] == null)) return null;
+    return LabelSpec()..applyJson(lb);
+  }
+
   static T _byName<T extends Enum>(List<T> values, Object? name, T fallback) {
     if (name is! String) return fallback;
     for (final v in values) {
@@ -156,8 +182,8 @@ class ProjectIo {
   // --- text <-> settings ---------------------------------------------------
 
   /// Pretty-printed JSON for the given settings (2-space indent).
-  static String encode(AppSettings s) =>
-      const JsonEncoder.withIndent('  ').convert(toMap(s));
+  static String encode(AppSettings s, {LabelSpec? label}) =>
+      const JsonEncoder.withIndent('  ').convert(toMap(s, label: label));
 
   static AppSettings decode(String json) =>
       fromMap((jsonDecode(json) as Map).cast<String, dynamic>());
@@ -167,23 +193,36 @@ class ProjectIo {
   static const _group =
       XTypeGroup(label: 'QSeq Project', extensions: ['qseq', 'json']);
 
-  /// Saves [s] to a user-chosen `.qseq` file. Returns false if cancelled.
-  static Future<bool> save(AppSettings s) async {
-    final location = await getSaveLocation(
-      suggestedName: 'design.qseq',
-      acceptedTypeGroups: const [_group],
-    );
-    if (location == null) return false;
-    await File(location.path).writeAsString(encode(s));
-    return true;
+  /// Saves to [toPath] when given (the open project), otherwise asks for a
+  /// location. Returns the saved path, or null if cancelled.
+  static Future<String?> save(AppSettings s,
+      {LabelSpec? label, String? toPath}) async {
+    var path = toPath;
+    if (path == null) {
+      final location = await getSaveLocation(
+        suggestedName: 'design.qseq',
+        acceptedTypeGroups: const [_group],
+      );
+      if (location == null) return null;
+      path = location.path;
+    }
+    await File(path).writeAsString(encode(s, label: label));
+    return path;
   }
 
   /// Opens and parses a project file. Returns null if cancelled or invalid.
-  static Future<AppSettings?> open() async {
+  static Future<({AppSettings settings, LabelSpec? label, String path})?>
+      open() async {
     final file = await openFile(acceptedTypeGroups: const [_group]);
     if (file == null) return null;
     try {
-      return decode(await file.readAsString());
+      final m = (jsonDecode(await file.readAsString()) as Map)
+          .cast<String, dynamic>();
+      return (
+        settings: fromMap(m),
+        label: labelFromMap(m),
+        path: file.path,
+      );
     } catch (_) {
       return null;
     }

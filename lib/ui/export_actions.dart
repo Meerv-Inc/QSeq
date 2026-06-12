@@ -14,9 +14,11 @@ import '../encoders/sgtin.dart';
 import '../models/caption.dart';
 import '../models/combined_label.dart';
 import '../models/encode_config.dart';
+import '../models/label_spec.dart';
 import '../models/size_result.dart';
 import '../render/batch_pdf.dart';
 import '../render/clipboard_export.dart';
+import '../render/label_export.dart';
 import '../render/label_renderer.dart';
 import '../render/pdf_exporter.dart';
 import '../render/raster_renderer.dart';
@@ -47,13 +49,19 @@ class ExportActions {
     return side <= 0 ? 0 : (cfg.logoSideMm / side);
   }
 
-  /// Renders the current static workspace to a [ui.Image] (single or combo).
-  /// Serialized sheets are exported as PDF, not a single raster.
-  static Future<ui.Image?> renderImage(AppSettings s) async {
+  /// Renders the current static workspace to a [ui.Image] (single, combo, or
+  /// the designed label). Serialized sheets are exported as PDF, not a raster.
+  static Future<ui.Image?> renderImage(AppSettings s,
+      {LabelSpec? label}) async {
     final logo = await loadLogo(s.logoImagePath);
+    if (s.labelOn && label != null && !s.mode.isSerialized) {
+      return LabelExport.renderImage(s, label, logo: logo);
+    }
     if (s.mode == AppMode.combo) {
-      final label = _combined(s);
-      return label == null ? null : LabelRenderer.render(label, logo: logo);
+      final combined = _combined(s);
+      return combined == null
+          ? null
+          : LabelRenderer.render(combined, logo: logo);
     }
     if (s.resolved.data == null) return null;
     return RasterRenderer.render(s.singleConfig,
@@ -80,16 +88,16 @@ class ExportActions {
     }
   }
 
-  static Future<bool> exportPng(AppSettings s) async {
-    var image = await renderImage(s);
+  static Future<bool> exportPng(AppSettings s, {LabelSpec? label}) async {
+    var image = await renderImage(s, label: label);
     if (image == null) return false;
     if (s.rulersInExports) image = await Ruler.addRulers(image, s.safeDpi);
     final bytes = await RasterRenderer.toPng(image, s.safeDpi);
     return _save(bytes, 'code.png', 'PNG image', ['png']);
   }
 
-  static Future<bool> copyPng(AppSettings s) async {
-    var image = await renderImage(s);
+  static Future<bool> copyPng(AppSettings s, {LabelSpec? label}) async {
+    var image = await renderImage(s, label: label);
     if (image == null) return false;
     if (s.rulersInExports) image = await Ruler.addRulers(image, s.safeDpi);
     final bytes = await RasterRenderer.toPng(image, s.safeDpi);
@@ -97,8 +105,12 @@ class ExportActions {
   }
 
   static Future<bool> exportSvg(AppSettings s, SizeResult? size) async {
-    // SVG export covers static single codes; combos and sheets use PNG/PDF.
-    if (s.mode.isCombo || s.mode.isSerialized || s.resolved.data == null) {
+    // SVG export covers static single codes; combos, designed labels and
+    // sheets use PNG/PDF.
+    if (s.labelOn ||
+        s.mode.isCombo ||
+        s.mode.isSerialized ||
+        s.resolved.data == null) {
       return false;
     }
     final cfg = s.singleConfig;
@@ -117,7 +129,7 @@ class ExportActions {
     return _saveString(svg, 'code.svg', 'SVG image', ['svg']);
   }
 
-  static Future<bool> exportBatchPdf(AppSettings s) async {
+  static Future<bool> exportBatchPdf(AppSettings s, {LabelSpec? label}) async {
     final batch = buildBatchFor(s);
     if (batch == null || batch.items.isEmpty) return false;
     Uint8List? logoPng;
@@ -126,13 +138,24 @@ class ExportActions {
         logoPng = await File(s.logoImagePath!).readAsBytes();
       } catch (_) {}
     }
-    final bytes = await BatchPdf.build(batch,
-        logoPng: logoPng, includeRulers: s.rulersInExports);
+    // Label overlay: tile the designed label per serial instead of bare cells.
+    final bytes = s.labelOn && label != null
+        ? await LabelExport.sheetPdf(s, label, batch, logoPng: logoPng)
+        : await BatchPdf.build(batch,
+            logoPng: logoPng, includeRulers: s.rulersInExports);
     return _save(bytes, 'batch.pdf', 'PDF document', ['pdf']);
   }
 
-  static Future<bool> exportPdf(AppSettings s, SizeResult? size) async {
-    if (s.mode.isSerialized) return exportBatchPdf(s);
+  static Future<bool> exportPdf(AppSettings s, SizeResult? size,
+      {LabelSpec? label}) async {
+    if (s.mode.isSerialized) return exportBatchPdf(s, label: label);
+    if (s.labelOn && label != null) {
+      var image = await renderImage(s, label: label);
+      if (image == null) return false;
+      if (s.rulersInExports) image = await Ruler.addRulers(image, s.safeDpi);
+      final bytes = await LabelExport.singlePdf(image, s.safeDpi);
+      return _save(bytes, 'label.pdf', 'PDF document', ['pdf']);
+    }
     Uint8List bytes;
     if (s.mode.isCombo) {
       var image = await renderImage(s);

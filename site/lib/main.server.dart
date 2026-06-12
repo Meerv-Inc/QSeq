@@ -10,7 +10,7 @@ import 'main.server.options.dart';
 
 const _description =
     'QSeq generates Barcodes, QR Codes and Data Matrix codes for SGTINs, '
-    'GS1 Digital Links and NATO Stock Numbers — with a print-true size '
+    'GS1 Digital Links and EPC URIs — with a print-true size '
     'calculator. Source-available, for Sustainable Identity on Every Thing.';
 
 void main() {
@@ -27,7 +27,7 @@ void main() {
       RawText('<meta property="og:type" content="website" />'),
       RawText('<meta property="og:site_name" content="QSeq" />'),
       RawText('<meta property="og:title" content="QSeq — Sustainable Identity on Every Thing" />'),
-      RawText('<meta property="og:description" content="Native macOS/Windows &amp; web generator for Barcodes, QR Codes and Data Matrix — SGTINs, GS1 Digital Links, EPC URIs and NATO Stock Numbers, with a print-true physical-size calculator." />'),
+      RawText('<meta property="og:description" content="Native macOS/Windows &amp; web generator for Barcodes, QR Codes and Data Matrix — SGTINs, GS1 Digital Links and EPC URIs, with a print-true physical-size calculator." />'),
       RawText('<meta property="og:url" content="https://qseq.app/" />'),
       RawText('<meta name="twitter:card" content="summary" />'),
       RawText('<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'%3E%3Crect width=\'100\' height=\'100\' rx=\'18\' fill=\'%230b0d10\'/%3E%3Cg fill=\'%237cf6c8\'%3E%3Crect x=\'18\' y=\'18\' width=\'20\' height=\'20\'/%3E%3Crect x=\'62\' y=\'18\' width=\'20\' height=\'20\'/%3E%3Crect x=\'18\' y=\'62\' width=\'20\' height=\'20\'/%3E%3Crect x=\'48\' y=\'48\' width=\'10\' height=\'10\'/%3E%3Crect x=\'62\' y=\'62\' width=\'10\' height=\'10\'/%3E%3Crect x=\'72\' y=\'72\' width=\'10\' height=\'10\'/%3E%3C/g%3E%3C/svg%3E" />'),

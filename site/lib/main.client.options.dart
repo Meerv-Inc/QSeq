@@ -7,6 +7,7 @@
 import 'package:jaspr/client.dart';
 
 import 'package:site/components/generator.dart' deferred as _generator;
+import 'package:site/components/license_gate.dart' deferred as _license_gate;
 
 /// Default [ClientOptions] for use with your Jaspr project.
 ///
@@ -29,6 +30,10 @@ ClientOptions get defaultClientOptions => ClientOptions(
     'generator': ClientLoader(
       (p) => _generator.Generator(),
       loader: _generator.loadLibrary,
+    ),
+    'license_gate': ClientLoader(
+      (p) => _license_gate.LicenseGate(),
+      loader: _license_gate.loadLibrary,
     ),
   },
 );

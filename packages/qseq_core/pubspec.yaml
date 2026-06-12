@@ -1,6 +1,6 @@
-name: qseq_core
+﻿name: qseq_core
 description: >-
-  Pure-Dart domain core for QSeq — GS1/SGTIN/NSN encoders and the print-true
+  Pure-Dart domain core for QSeq — GS1/SGTIN encoders and the print-true
   sizing engine. Shared by the Flutter desktop app and the Jaspr web app so the
   encoders and capacity tables have a single source of truth.
 publish_to: 'none'

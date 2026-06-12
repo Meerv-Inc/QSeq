@@ -15,13 +15,6 @@ void main() {
     );
   });
 
-  test('NSN parser validates structure', () {
-    final nsn = Nsn('9515-00-003-6945');
-    expect(nsn.payload, '9515000036945');
-    expect(nsn.formatted, '9515-00-003-6945');
-    expect(Nsn.tryParse('nope'), isNull);
-  });
-
   test('Sizer computes a print-true size for a QR Digital Link', () {
     final url = Sgtin(gtin: '80614141123458', serial: '6789').toDigitalLink();
     final r = Sizer.compute(EncodeConfig(symbology: Symbology.qrCode, data: url));

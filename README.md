@@ -4,8 +4,8 @@
 
 A native **macOS and Windows** (Flutter) generator for Barcodes, QR Codes and
 Data Matrix codes — plus the **[qseq.app](https://qseq.app)** web app, written
-in **Dart/Jaspr** from the same core — built for GS1 supply-chain and defense
-logistics use. Its defining feature is a **live physical-size calculator**: the
+in **Dart/Jaspr** from the same core — built for GS1 supply-chain use. Its
+defining feature is a **live physical-size calculator**: the
 printed outer perimeter is shown as a function of the centre logo dead-space,
 the byte count, the printing resolution (DPI) and the error-correction level.
 
@@ -18,8 +18,8 @@ identities for physical things** — and to do it in a way that anyone can use,
 audit and build on.
 
 Every object in a modern supply chain needs an identity that a scanner can read
-and a server can resolve: a **GTIN**, a serialized **SGTIN**, a web-resolvable
-**GS1 Digital Link**, or a **NATO Stock Number**. Getting that right is fiddly —
+and a server can resolve: a **GTIN**, a serialized **SGTIN**, or a
+web-resolvable **GS1 Digital Link**. Getting that right is fiddly —
 the data must follow GS1/EPC rules, the symbol must hold the bytes at the chosen
 error-correction level, a logo must not destroy the code, and the print must come
 out at the *exact* physical size on the label. Most tools get one or two of
@@ -78,8 +78,6 @@ QSeq exists so every code it mints passes both.
   - GS1 Digital Link URI — `https://id.gs1.org/01/<gtin>/21/<serial>`
   - EPC Tag URI — `urn:epc:id:sgtin:<companyPrefix>.<indicator+itemRef>.<serial>`
 - **GS1 Digital Links** for web-resolvable QR / Data Matrix.
-- **NATO Stock Numbers (NSN):** 13-digit structural parser (NSC / NCB / NIIN).
-  NSNs have no standardized check digit — only structure is validated.
 - **Live outer-size readout** in mm, inches and pixels at the target DPI.
 - **Logo dead-space ⇄ error-correction budget:** for QR/Data Matrix the centre
   logo is checked against the recoverable EC fraction (with a safety margin) and
@@ -107,8 +105,8 @@ QSeq exists so every code it mints passes both.
 ## Architecture
 
 ```
-packages/qseq_core/   pure-Dart shared core: encoders (gtin, sgtin, gs1/FNC1,
-                      nsn), sizing (capacity tables, logo_ec, dpi, Sizer) and
+packages/qseq_core/   pure-Dart shared core: encoders (gtin, sgtin, gs1/FNC1),
+                      sizing (capacity tables, logo_ec, dpi, Sizer) and
                       models — the single source of truth for every surface
 site/                 the qseq.app web app (Dart/Jaspr, statically prerendered;
                       mm-true SVG engine, label designer, serialized sheets)

@@ -6,10 +6,11 @@ import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 
 import 'components/generator.dart';
+import 'components/license_gate.dart';
 
 /// Single source of truth for the displayed site version — keep in sync with
 /// site/pubspec.yaml and the CHANGELOG.
-const qseqVersion = '1.4.0';
+const qseqVersion = '1.5.0';
 
 /// The page shell. Static marketing chrome is injected as raw HTML (identical to
 /// the previous static site); the interactive generator is a hydrated @client
@@ -20,6 +21,7 @@ class App extends StatelessComponent {
   @override
   Component build(BuildContext context) {
     return Component.fragment([
+      const LicenseGate(),
       RawText(_header),
       RawText(_hero),
       const Generator(),
@@ -53,7 +55,7 @@ const _hero = r'''
 <section class="hero">
   <p class="kicker">Sustainable Identity on Every&nbsp;Thing</p>
   <h1><span class="meerv">Sustainable Identity Generator</span><br/>for <span>Every Thing</span></h1>
-  <p class="lede">QSeq mints Barcodes, QR&nbsp;Codes and Data&nbsp;Matrix carriers for <b>SGTINs</b>, <b>GS1&nbsp;Digital&nbsp;Links</b>, <b>EPC&nbsp;URIs</b> and <b>NATO&nbsp;Stock&nbsp;Numbers</b> — with a print-true physical-size calculator so what you design is exactly what prints.</p>
+  <p class="lede">QSeq mints Barcodes, QR&nbsp;Codes and Data&nbsp;Matrix carriers for <b>SGTINs</b>, <b>GS1&nbsp;Digital&nbsp;Links</b> and <b>EPC&nbsp;URIs</b> — with a print-true physical-size calculator so what you design is exactly what prints.</p>
   <div class="cta">
     <a class="btn primary" href="#generator">Open the generator</a>
     <a class="btn" href="/QSeq.dmg" download>Download for macOS</a>

@@ -196,7 +196,6 @@ class GeneratorState extends State<Generator> {
           k.name,
           const [
             ('sgtin', 'SGTIN'),
-            ('nsn', 'NATO Stock Number'),
             ('rawText', 'Free text'),
           ],
           (v) => _d((d) => d.copyWith(kind: DataSourceKind.values.byName(v)))),
@@ -240,9 +239,6 @@ class GeneratorState extends State<Generator> {
               (v) => _d((d) => d.copyWith(digitalLinkDomain: v))),
         ],
       ],
-      if (k == DataSourceKind.nsn)
-        _text('NATO Stock Number', data.nsn,
-            (v) => _d((d) => d.copyWith(nsn: v))),
       if (k == DataSourceKind.rawText)
         _text(mode.isSerialized ? 'Text (serial appended)' : 'Text',
             data.rawText, (v) => _d((d) => d.copyWith(rawText: v))),

@@ -6,7 +6,6 @@
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:qr_studio/models/data_source.dart';
 import 'package:qr_studio/models/symbology.dart';
 import 'package:qr_studio/state/app_controller.dart';
 
@@ -46,17 +45,4 @@ void main() {
     expect(AppMode.comboSerial.isSerialized, isTrue);
   });
 
-  test('NSN data source resolves to the plain 13-digit payload', () {
-    final container = ProviderContainer();
-    addTearDown(container.dispose);
-
-    container.read(appControllerProvider.notifier).update(
-          (s) => s.copyWith(
-            mode: AppMode.twoD,
-            data: const DataSourceInput(kind: DataSourceKind.nsn),
-          ),
-        );
-    final s = container.read(appControllerProvider);
-    expect(s.resolved.data, '9515000036945');
-  });
 }

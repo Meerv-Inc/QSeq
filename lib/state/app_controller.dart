@@ -4,6 +4,7 @@
 // only; reuse requires attribution to Meerv Inc. See LICENSE for terms.
 // https://polyformproject.org/licenses/noncommercial/1.0.0/
 
+import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../encoders/sgtin.dart';
@@ -11,6 +12,7 @@ import '../models/batch.dart';
 import '../models/combined_label.dart';
 import '../models/data_source.dart';
 import '../models/encode_config.dart';
+import '../models/label_spec.dart';
 import '../models/size_result.dart';
 import '../models/symbology.dart';
 import '../sizing/sizer.dart';
@@ -93,6 +95,10 @@ class AppSettings {
   final bool rulersOnScreen;
   final bool rulersInExports;
 
+  /// Label designer overlay: lay the workspace's code(s) out on a sized label
+  /// (single modes → one label; sheet modes → label sheets in the PDF).
+  final bool labelOn;
+
   // Combined-label layout
   final LabelArrangement arrangement;
   final double labelGapMm;
@@ -123,6 +129,7 @@ class AppSettings {
     this.logoManual = false,
     this.rulersOnScreen = true,
     this.rulersInExports = true,
+    this.labelOn = false,
     this.arrangement = LabelArrangement.stacked,
     this.labelGapMm = 3,
     this.labelPaddingMm = 2,
@@ -149,6 +156,7 @@ class AppSettings {
     bool? logoManual,
     bool? rulersOnScreen,
     bool? rulersInExports,
+    bool? labelOn,
     LabelArrangement? arrangement,
     double? labelGapMm,
     double? labelPaddingMm,
@@ -176,6 +184,7 @@ class AppSettings {
       logoManual: logoManual ?? this.logoManual,
       rulersOnScreen: rulersOnScreen ?? this.rulersOnScreen,
       rulersInExports: rulersInExports ?? this.rulersInExports,
+      labelOn: labelOn ?? this.labelOn,
       arrangement: arrangement ?? this.arrangement,
       labelGapMm: labelGapMm ?? this.labelGapMm,
       labelPaddingMm: labelPaddingMm ?? this.labelPaddingMm,
@@ -237,6 +246,81 @@ class AppController extends Notifier<AppSettings> {
 
 final appControllerProvider =
     NotifierProvider<AppController, AppSettings>(AppController.new);
+
+/// Dark / light theme. Defaults to following the system.
+class ThemeModeController extends Notifier<ThemeMode> {
+  @override
+  ThemeMode build() => ThemeMode.system;
+  void set(ThemeMode m) => state = m;
+}
+
+final themeModeProvider =
+    NotifierProvider<ThemeModeController, ThemeMode>(ThemeModeController.new);
+
+/// The label designer spec (overlay state lives in [AppSettings.labelOn]).
+class LabelSpecController extends Notifier<LabelSpec> {
+  @override
+  LabelSpec build() => LabelSpec();
+
+  /// Clone-mutate-replace so dependents rebuild.
+  void mutate(void Function(LabelSpec) fn) {
+    final next = state.clone();
+    fn(next);
+    state = next;
+  }
+
+  void set(LabelSpec next) => state = next;
+}
+
+final labelSpecProvider =
+    NotifierProvider<LabelSpecController, LabelSpec>(LabelSpecController.new);
+
+/// Which label element is selected in the designer (a [labelElementKeys] key).
+class LabelSelectionController extends Notifier<String?> {
+  @override
+  String? build() => null;
+  void set(String? key) => state = key;
+}
+
+final labelSelectionProvider = NotifierProvider<LabelSelectionController,
+    String?>(LabelSelectionController.new);
+
+/// The open project file and its save status, shown in the title bar.
+class ProjectMeta {
+  final String? path; // null = untitled (never saved)
+  final bool dirty;
+  const ProjectMeta({this.path, this.dirty = false});
+  String get name {
+    final p = path;
+    if (p == null) return 'Untitled';
+    final cut = p.replaceAll('\\', '/').split('/').last;
+    return cut.isEmpty ? 'Untitled' : cut;
+  }
+}
+
+class ProjectMetaController extends Notifier<ProjectMeta> {
+  @override
+  ProjectMeta build() {
+    // Any settings or label-designer change marks the project dirty.
+    ref.listen(appControllerProvider, (prev, next) {
+      if (prev != next) markDirty();
+    });
+    ref.listen(labelSpecProvider, (prev, next) {
+      if (!identical(prev, next)) markDirty();
+    });
+    return const ProjectMeta();
+  }
+
+  void markDirty() {
+    if (!state.dirty) state = ProjectMeta(path: state.path, dirty: true);
+  }
+
+  void saved(String path) => state = ProjectMeta(path: path, dirty: false);
+  void opened(String path) => state = ProjectMeta(path: path, dirty: false);
+}
+
+final projectMetaProvider = NotifierProvider<ProjectMetaController,
+    ProjectMeta>(ProjectMetaController.new);
 
 /// Which printed page the serialized-sheet preview is showing (0-based). Read
 /// clamped to the live page count; stays put across edits unless out of range.

@@ -22,11 +22,7 @@ void main() {
     expect(cap.isNotEmpty, isTrue);
   });
 
-  test('NSN caption is the dashed number; raw text has none', () {
-    expect(const DataSourceInput(kind: DataSourceKind.nsn, nsn: '9515000036945')
-            .caption()
-            .text,
-        '9515-00-003-6945');
+  test('raw text has no caption', () {
     expect(const DataSourceInput(kind: DataSourceKind.rawText).caption().isEmpty,
         isTrue);
   });

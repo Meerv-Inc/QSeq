@@ -56,7 +56,7 @@ void main() {
       }
     }
   }
-  // 1D symbologies + NSN + text + EPC
+  // 1D symbologies + text + EPC
   for (final s in Symbology.values.where((s) => !s.is2D)) {
     // Match each symbology's charset: Code 39 is uppercase-only, EAN/UPC are
     // fixed-length numeric (the check digit is computed from 12/11 digits).
@@ -72,11 +72,6 @@ void main() {
     check('1d ${s.name}',
         buildSingle(GenInput(mode: WebMode.oneD, data: d, oneDSym: s)));
   }
-  check(
-      'nsn',
-      buildSingle(const GenInput(
-          mode: WebMode.twoD,
-          data: DataSourceInput(kind: DataSourceKind.nsn))));
   check(
       'epc',
       buildSingle(const GenInput(

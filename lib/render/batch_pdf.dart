@@ -146,14 +146,18 @@ class BatchPdf {
           buildForeground: (context) => pw.Stack(
             overflow: pw.Overflow.visible,
             children: [
+              // Keep the bands INSIDE the printable area (offset by the
+              // reserved gutter, not the full outer margin): bleeding to the
+              // paper edge made print drivers shrink-to-fit the whole page by
+              // ~3–4%, breaking print-true sizing.
               if (ruler != null) ...[
                 pw.Positioned(
-                    left: 0, bottom: -outerMm * mm, child: ruler.horizontal),
+                    left: 0, bottom: -gutterMm * mm, child: ruler.horizontal),
                 pw.Positioned(
-                    top: 0, right: -outerMm * mm, child: ruler.vertical),
+                    top: 0, right: -gutterMm * mm, child: ruler.vertical),
                 pw.Positioned(
-                    right: -outerMm * mm,
-                    bottom: -outerMm * mm,
+                    right: -gutterMm * mm,
+                    bottom: -gutterMm * mm,
                     child: ruler.vernier),
               ],
             ],

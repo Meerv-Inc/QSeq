@@ -8,23 +8,26 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:macos_ui/macos_ui.dart';
 
+import 'state/app_controller.dart';
 import 'ui/home_page.dart';
+import 'ui/license_pane.dart';
 
 void main() {
   runApp(const ProviderScope(child: QrStudioApp()));
 }
 
-class QrStudioApp extends StatelessWidget {
+class QrStudioApp extends ConsumerWidget {
   const QrStudioApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return MacosApp(
       title: 'QSeq',
       theme: MacosThemeData.light(),
       darkTheme: MacosThemeData.dark(),
+      themeMode: ref.watch(themeModeProvider),
       debugShowCheckedModeBanner: false,
-      home: const HomePage(),
+      home: const LicenseGate(child: HomePage()),
     );
   }
 }

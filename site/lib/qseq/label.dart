@@ -107,7 +107,7 @@ class LabelSpec {
 }
 
 /// Per-render payloads for the label: 2D carries the Digital Link URL, 1D the
-/// element string (SGTIN) / payload (NSN/text); the shared HRI is the URL once.
+/// element string (SGTIN) / payload (text); the shared HRI is the URL once.
 ({String d2, String d1, String hri}) labelTexts(GenInput i,
     {String? serial}) {
   switch (i.data.kind) {
@@ -117,9 +117,6 @@ class LabelSpec {
       final d1 = i.data
           .encodeWith(format: SgtinFormat.elementString, serial: serial);
       return (d2: d2, d1: d1, hri: d2);
-    case DataSourceKind.nsn:
-      final p = i.data.encodeWith(serial: serial);
-      return (d2: p, d1: p, hri: Nsn.tryParse(p)?.formatted ?? p);
     case DataSourceKind.rawText:
       final p = i.data.encodeWith(serial: serial);
       return (d2: p, d1: p, hri: p);

@@ -9,11 +9,14 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:macos_ui/macos_ui.dart';
 
+import 'package:flutter/material.dart' show ThemeMode;
+
 import '../state/app_controller.dart';
 import '../state/project_io.dart';
 import 'about_pane.dart';
 import 'export_actions.dart';
 import 'inputs_panel.dart';
+import 'license_pane.dart';
 import 'preview_pane.dart';
 import 'serialization_log.dart';
 import 'size_readout.dart';
@@ -59,9 +62,17 @@ class HomePage extends ConsumerWidget {
       ),
       child: MacosScaffold(
         toolBar: ToolBar(
-          title: const Text('QSeq'),
-          titleWidth: 180,
+          title: _titleRow(context, ref),
+          titleWidth: 330,
           actions: [
+            _toolButton(
+                label: ref.watch(themeModeProvider) == ThemeMode.dark
+                    ? 'Light'
+                    : 'Dark',
+                icon: ref.watch(themeModeProvider) == ThemeMode.dark
+                    ? CupertinoIcons.sun_max
+                    : CupertinoIcons.moon,
+                onPressed: () => _toggleTheme(context, ref)),
             _toolButton(
                 label: 'Open',
                 icon: CupertinoIcons.folder,
@@ -77,11 +88,19 @@ class HomePage extends ConsumerWidget {
             _toolButton(
                 label: 'Copy',
                 icon: CupertinoIcons.doc_on_clipboard,
-                onPressed: () => _run(context, ref, ExportActions.copyPng)),
+                onPressed: () => _run(
+                    context,
+                    ref,
+                    (s) => ExportActions.copyPng(s,
+                        label: ref.read(labelSpecProvider)))),
             _toolButton(
                 label: 'PNG',
                 icon: CupertinoIcons.photo_fill,
-                onPressed: () => _run(context, ref, ExportActions.exportPng)),
+                onPressed: () => _run(
+                    context,
+                    ref,
+                    (s) => ExportActions.exportPng(s,
+                        label: ref.read(labelSpecProvider)))),
             _toolButton(
                 label: 'SVG',
                 icon: CupertinoIcons.doc_text,
@@ -94,6 +113,10 @@ class HomePage extends ConsumerWidget {
                 label: 'About',
                 icon: CupertinoIcons.info_circle,
                 onPressed: () => showAboutSheet(context)),
+            _toolButton(
+                label: 'License',
+                icon: CupertinoIcons.doc_checkmark,
+                onPressed: () => showLicenseSheet(context)),
           ],
         ),
         children: [
@@ -168,14 +191,62 @@ class HomePage extends ConsumerWidget {
     );
   }
 
+  /// "QSeq · <project>.qseq — edited/saved" in the toolbar title.
+  Widget _titleRow(BuildContext context, WidgetRef ref) {
+    final meta = ref.watch(projectMetaProvider);
+    final status = meta.path == null
+        ? (meta.dirty ? 'not saved' : 'new')
+        : (meta.dirty ? 'edited' : 'saved');
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Text('QSeq'),
+        const SizedBox(width: 10),
+        Flexible(
+          child: Text(
+            '${meta.name} — $status',
+            overflow: TextOverflow.ellipsis,
+            style: MacosTheme.of(context).typography.caption1.copyWith(
+                color: meta.dirty
+                    ? MacosColors.systemOrangeColor
+                    : MacosColors.systemGrayColor),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _toggleTheme(BuildContext context, WidgetRef ref) {
+    final mode = ref.read(themeModeProvider);
+    // From "system", flip away from whatever is currently showing.
+    final dark = mode == ThemeMode.dark ||
+        (mode == ThemeMode.system &&
+            MacosTheme.of(context).brightness == Brightness.dark);
+    ref
+        .read(themeModeProvider.notifier)
+        .set(dark ? ThemeMode.light : ThemeMode.dark);
+  }
+
   Future<void> _saveProject(WidgetRef ref) async {
-    await ProjectIo.save(ref.read(appControllerProvider));
+    final meta = ref.read(projectMetaProvider);
+    final path = await ProjectIo.save(
+      ref.read(appControllerProvider),
+      label: ref.read(labelSpecProvider),
+      toPath: meta.path,
+    );
+    if (path != null) {
+      ref.read(projectMetaProvider.notifier).saved(path);
+    }
   }
 
   Future<void> _openProject(WidgetRef ref) async {
     final loaded = await ProjectIo.open();
     if (loaded != null) {
-      ref.read(appControllerProvider.notifier).set(loaded);
+      ref.read(appControllerProvider.notifier).set(loaded.settings);
+      if (loaded.label != null) {
+        ref.read(labelSpecProvider.notifier).set(loaded.label!);
+      }
+      ref.read(projectMetaProvider.notifier).opened(loaded.path);
     }
   }
 
@@ -207,7 +278,8 @@ class HomePage extends ConsumerWidget {
   Future<void> _runPdf(BuildContext context, WidgetRef ref) async {
     final s = ref.read(appControllerProvider);
     final size = ref.read(singleSizeProvider);
-    final ok = await ExportActions.exportPdf(s, size);
+    final ok = await ExportActions.exportPdf(s, size,
+        label: ref.read(labelSpecProvider));
     if (context.mounted) _toast(context, ok);
   }
 

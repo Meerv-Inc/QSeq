@@ -6,6 +6,40 @@ releases.
 
 © 2026 Meerv Inc. — PolyForm Noncommercial License 1.0.0.
 
+## [1.5.0] — 2026-06-12
+
+The label designer reaches the desktop, projects travel between every
+surface, and printed pages are exactly true to size.
+
+### Added
+- **Label designer on macOS / Windows** — the web designer ported native:
+  an overlay on any workspace with free drag/resize (snapping), title,
+  shared HRI with adjustable font, cut-frame, background image, and
+  print-true PNG / PDF export; serialized and copies sheets export as
+  vector label sheets, one label per identifier.
+- **Portable projects** — the desktop saves/loads the same `.qseq` JSON the
+  web writes (including the label-designer block and legacy web files), so
+  one project file moves between macOS, Windows and qseq.app.
+- **Project title-bar status (desktop)** — the open project's name with a
+  live edited/saved indicator; Save writes back to the open file.
+- **License** — a License button beside About explaining the PolyForm
+  Noncommercial 1.0.0 grant from Meerv Inc., and a consent gate on first
+  use (web and desktop) re-confirmed every 30 days.
+- **Dark / light switch (desktop)** in the toolbar, like the web's.
+- **Export progress (web)** — preparing a PNG/PDF shows a live progress
+  bar; sheet PNG exports now contain every cell, not the preview cap.
+
+### Fixed
+- **Printed PDFs measured ~3–4% small**: enabling rulers grew the page past
+  Letter/A4, so print drivers shrank it to fit. Ruler bands now live inside
+  the exact page size (web sheets and desktop batch PDFs). Always print at
+  100% / Actual size.
+
+### Removed
+- **NATO Stock Numbers** and defense-logistics positioning, across the web
+  app, desktop apps and documentation. Old projects with an NSN data source
+  open as SGTIN.
+
 ## [1.4.0] — 2026-06-12
 
 Serialization that starts where you say, in every sheet — and a site that
@@ -164,7 +198,6 @@ at [qseq.app](https://qseq.app).
   **EPC Tag URI** (`urn:epc:id:sgtin:…`), and **GS1 Digital Link**.
 - **GS1 Digital Links** with a selectable resolver — GS1 (`id.gs1.org`) or
   **QDat.io** (`tapdpp.qdat.io`).
-- **NATO Stock Numbers** (NSN) — structural parsing and encoding.
 
 ### Serialize
 - **1D / 2D / combined** workspaces, each as a single design or a **serialized

@@ -19,6 +19,7 @@ import '../models/encode_config.dart';
 import '../models/size_result.dart';
 import '../render/barcode_factory.dart';
 import '../state/app_controller.dart';
+import 'label_designer.dart';
 import 'ruler_strip.dart';
 
 class PreviewPane extends ConsumerWidget {
@@ -38,11 +39,16 @@ class PreviewPane extends ConsumerWidget {
           color: const Color(0xFFF2F2F4),
           alignment: Alignment.center,
           padding: const EdgeInsets.all(24),
-          child: s.mode.isSerialized
-              ? _batch(context, ref, s)
-              : s.mode.isCombo
-                  ? _combined(context, ref, s)
-                  : _single(context, ref, s),
+          // The label designer takes over single workspaces when the overlay
+          // is on; label SHEETS keep the standard sheet preview on screen
+          // (each cell exports as the designed label in the PDF).
+          child: s.labelOn && !s.mode.isSerialized
+              ? const LabelDesigner()
+              : s.mode.isSerialized
+                  ? _batch(context, ref, s)
+                  : s.mode.isCombo
+                      ? _combined(context, ref, s)
+                      : _single(context, ref, s),
         ),
       ),
     );
