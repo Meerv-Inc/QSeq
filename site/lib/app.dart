@@ -26,6 +26,7 @@ class App extends StatelessComponent {
       RawText(_mission),
       RawText(_about),
       RawText(_support),
+      RawText(_siot),
       RawText(_footer),
     ]);
   }
@@ -110,6 +111,18 @@ const _support = r'''
     <a class="btn primary" href="mailto:support@meerv.com?subject=QSeq%20support">Email support@meerv.com</a>
     <a class="btn" href="https://github.com/Meerv-Inc/QSeq/issues" target="_blank" rel="noopener">Open a GitHub issue →</a>
   </div>
+</section>
+''';
+
+const _siot = r'''
+<section id="siot" class="about">
+  <h2>What “Sustainable Identity” requires</h2>
+  <p>The phrase is a double condition, and both halves must hold — implicitly, anything that fails either one is outside it.</p>
+  <ul class="register">
+    <li><b>It must be an Identity.</b> A Stock Keeping Unit (SKU) — or any bare, class-level GTIN — names a <i>kind</i> of thing, not a thing. Unserialized, it is shared by every unit in the batch and can never resolve to the record of <i>this</i> one; it is ultimately not resolvable to a Digital Product Passport. So an SKU is <b>not an Identity</b>. Identity begins at serialization: an SGTIN carried in a web-resolvable GS1 Digital Link, where each physical item resolves to its own passport.</li>
+    <li><b>It must be Sustainable.</b> An identity printed in a way that is not sustainable is <b>not sustainable either</b>. A code printed at the wrong physical size, with its error-correction budget spent on a logo, or with no margin left for the scuffs, fading and curvature of real life stops scanning — and an identity that stops resolving takes reuse, repair, recall and end-of-life tracking with it. Print-true sizing and a protected error-correction margin are what let the identity survive as long as the thing it marks.</li>
+  </ul>
+  <p>An SKU alone fails the first condition; a fragile print fails the second. <b>Sustainable Identity on Every Thing means meeting both</b> — and QSeq exists so every code it mints does.</p>
 </section>
 ''';
 
