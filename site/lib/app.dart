@@ -61,7 +61,7 @@ const _hero = r'''
     <a class="btn" href="/QSeq.dmg" download>Download for macOS</a>
     <a class="btn" href="/qseq-windows-setup.exe" download>Download for Windows</a>
   </div>
-  <p class="muted small">Native macOS app (Apple silicon, signed &amp; notarized) &amp; Windows x64 (Authenticode-signed by Meerv Inc.) · © 2026 Meerv Inc.</p>
+  <p class="muted small">Native macOS app (Apple silicon, signed &amp; notarized) &amp; Windows x64 · the Windows build is also signed and SmartScreen reputation is accruing — click “More info → Run anyway” past SmartScreen · © 2026 Meerv Inc.</p>
 </section>
 ''';
 
