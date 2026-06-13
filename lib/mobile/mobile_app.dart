@@ -20,6 +20,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../encoders/gtin.dart';
 import '../models/data_source.dart';
 import '../models/symbology.dart';
 import '../render/barcode_factory.dart';
@@ -89,6 +90,35 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
     return '${m.group(1)}${n.toString().padLeft(m.group(2)!.length, '0')}';
   }
 
+  /// The barcode data appropriate for [sym]. Only 2D (QR / Data Matrix) can
+  /// carry the full SGTIN Digital Link; GS1-128 carries the element string;
+  /// retail/linear codes hold only a fixed-length numeric GTIN, so the serial
+  /// is dropped and the GTIN is trimmed + re-check-digited to stay valid
+  /// instead of overflowing the symbol. Returns null when the data can't encode.
+  String? _payloadFor(Symbology sym, {String? serial}) {
+    if (_data.kind != DataSourceKind.sgtin) {
+      final r = _data.resolve();
+      if (r.data == null) return null;
+      return serial == null ? r.data : _data.encodeWith(serial: serial);
+    }
+    try {
+      if (sym.is2D) return _data.encodeWith(serial: serial);
+      if (sym == Symbology.gs1_128) {
+        return _data.encodeWith(
+            format: SgtinFormat.elementString, serial: serial);
+      }
+      final g14 = Gtin.normalize14(_data.gtin);
+      final len = switch (sym) {
+        Symbology.ean13 => 13,
+        Symbology.upcA => 12,
+        _ => 14, // code128, code39 — bare GTIN-14, serial stripped
+      };
+      return len == 14 ? g14 : Gtin.withCheckDigit(g14.substring(0, len - 1));
+    } catch (_) {
+      return null;
+    }
+  }
+
   late final _gtin = TextEditingController(text: _data.gtin);
   late final _serial = TextEditingController(text: _data.serial);
   late final _domain = TextEditingController(text: _data.digitalLinkDomain);
@@ -110,7 +140,8 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
 
   // --- PDF (print-true) -----------------------------------------------------
 
-  Future<Uint8List> _buildPdf(String payload) async {
+  Future<Uint8List> _buildPdf() async {
+    final payload = _payloadFor(_sym) ?? '';
     final doc = pw.Document(title: 'QSeq');
     final w = _sizeMm;
     final h = _sym.is2D ? _sizeMm : _sizeMm * 0.5;
@@ -164,7 +195,7 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
           height: _sym.is2D ? s : s * 0.5,
           child: pw.BarcodeWidget(
             barcode: BarcodeFactory.build(_sym, ecLevel: _ec),
-            data: _data.encodeWith(serial: serial),
+            data: _payloadFor(_sym, serial: serial) ?? '',
             drawText: !_sym.is2D,
           ),
         ),
@@ -304,14 +335,13 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
     );
   }
 
-  Future<void> _withPdf(String? payload, Future<void> Function(Uint8List) use) async {
-    if (payload == null) return;
+  Future<void> _withPdf(Future<void> Function(Uint8List) use) async {
     try {
       await use(_labelMode
           ? await _buildLabelPdf()
           : _sheetMode
               ? await _buildSheetPdf()
-              : await _buildPdf(payload));
+              : await _buildPdf());
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
@@ -321,8 +351,8 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
   }
 
   /// Rasterise the print-true PDF to a PNG and share it through the OS sheet.
-  Future<void> _sharePng(String? payload) async {
-    await _withPdf(payload, (pdf) async {
+  Future<void> _sharePng() async {
+    await _withPdf((pdf) async {
       final dpi = (_sizeMm > 0 ? 2400 / _sizeMm : 300).clamp(150, 1200).toDouble();
       final raster = await Printing.raster(pdf, dpi: dpi).first;
       final png = await raster.toPng();
@@ -335,10 +365,13 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
   @override
   Widget build(BuildContext context) {
     final resolved = _data.resolve();
-    final payload = resolved.data;
-    final error = resolved.error;
+    final payload = _payloadFor(_sym);
+    final error = resolved.error ??
+        (payload == null && !_labelMode && !_sheetMode
+            ? 'Cannot encode this data as ${_sym.displayName}'
+            : null);
     final isSgtin = _data.kind == DataSourceKind.sgtin;
-    final canExport = payload != null;
+    final canExport = resolved.data != null;
 
     return Scaffold(
       appBar: AppBar(
@@ -352,12 +385,12 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
             onSelected: (v) {
               switch (v) {
                 case 'png':
-                  _sharePng(payload);
+                  _sharePng();
                 case 'pdf':
-                  _withPdf(payload,
+                  _withPdf(
                       (b) => Printing.sharePdf(bytes: b, filename: _pdfName));
                 case 'print':
-                  _withPdf(payload, (b) => Printing.layoutPdf(onLayout: (_) => b));
+                  _withPdf((b) => Printing.layoutPdf(onLayout: (_) => b));
               }
             },
             itemBuilder: (context) => const [
@@ -520,9 +553,8 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
             const SizedBox(height: 16),
 
             if (isSgtin) ...[
-              _field(_gtin, 'GTIN (8 / 12 / 13 / 14)',
-                  (v) => _update((d) => d.copyWith(gtin: v)),
-                  keyboard: TextInputType.number),
+              _gtinLengthSelector(),
+              _gtinField(),
               _field(_serial, 'Serial',
                   (v) => _update((d) => d.copyWith(serial: v))),
               SwitchListTile(
@@ -578,6 +610,28 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
                 _field(_domain, 'Digital Link domain',
                     (v) => _update((d) => d.copyWith(digitalLinkDomain: v))),
               ],
+              if (_data.sgtinFormat == SgtinFormat.sgtin96 ||
+                  _data.sgtinFormat == SgtinFormat.sgtin198)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4, bottom: 8),
+                  child: Row(
+                    children: [
+                      Text('GS1 Company Prefix: '
+                          '${_data.companyPrefixLength} digits'),
+                      Expanded(
+                        child: Slider(
+                          value: _data.companyPrefixLength.toDouble(),
+                          min: 6,
+                          max: 12,
+                          divisions: 6,
+                          label: '${_data.companyPrefixLength}',
+                          onChanged: (v) => _update((d) =>
+                              d.copyWith(companyPrefixLength: v.round())),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
             ] else
               _field(_text, 'Text',
                   (v) => _update((d) => d.copyWith(rawText: v))),
@@ -600,6 +654,109 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
             InputDecoration(labelText: label, border: const OutlineInputBorder()),
       ),
     );
+  }
+
+  /// Radio selector for the GTIN length, each option showing a valid example,
+  /// plus a button that fills the field with a freshly generated valid GTIN.
+  Widget _gtinLengthSelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        RadioGroup<int>(
+          groupValue: _data.gtinLength,
+          onChanged: (v) =>
+              _update((d) => d.copyWith(gtinLength: v ?? d.gtinLength)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (final len in Gtin.lengths)
+                RadioListTile<int>(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  value: len,
+                  title: Text('GTIN-$len'),
+                  subtitle: Text('e.g. ${Gtin.example(len)}'),
+                ),
+            ],
+          ),
+        ),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: _generateGtin,
+            icon: const Icon(Icons.casino_outlined),
+            label: Text('Generate valid GTIN-${_data.gtinLength}'),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Fills the GTIN field with a randomly generated, check-digit-valid GTIN of
+  /// the currently selected length.
+  void _generateGtin() {
+    final g = Gtin.generate(_data.gtinLength);
+    _gtin.value = TextEditingValue(
+      text: g,
+      selection: TextSelection.collapsed(offset: g.length),
+    );
+    _update((d) => d.copyWith(gtin: g));
+  }
+
+  /// GTIN field with a live check-digit helper. The last digit of a GTIN is a
+  /// GS1 mod-10 check digit derived from the others, so editing the body
+  /// invalidates it — here we surface the expected digit and a one-tap fix.
+  Widget _gtinField() {
+    final scheme = Theme.of(context).colorScheme;
+    final raw = _data.gtin.trim();
+    final validLen = const [8, 12, 13, 14].contains(raw.length);
+    final canCheck = Gtin.isAllDigits(raw) && validLen;
+    int? expected;
+    var ok = false;
+    if (canCheck) {
+      expected = Gtin.checkDigit(raw.substring(0, raw.length - 1));
+      ok = expected == raw.codeUnitAt(raw.length - 1) - 0x30;
+    }
+    final showFix = canCheck && !ok;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TextField(
+        controller: _gtin,
+        keyboardType: TextInputType.number,
+        maxLength: _data.gtinLength,
+        onChanged: (v) => _update((d) => d.copyWith(gtin: v)),
+        decoration: InputDecoration(
+          labelText: 'GTIN-${_data.gtinLength}',
+          hintText: 'e.g. ${Gtin.example(_data.gtinLength)}',
+          border: const OutlineInputBorder(),
+          helperText: ok
+              ? 'Check digit valid'
+              : showFix
+                  ? 'Check digit should be $expected'
+                  : null,
+          helperStyle: ok ? TextStyle(color: scheme.primary) : null,
+          suffixIcon: showFix
+              ? TextButton(
+                  onPressed: () => _fixGtinCheckDigit(raw, expected!),
+                  child: const Text('Fix'),
+                )
+              : ok
+                  ? Icon(Icons.check_circle, color: scheme.primary)
+                  : null,
+        ),
+      ),
+    );
+  }
+
+  /// Replaces the trailing digit of [raw] with its correct check digit and
+  /// pushes the result back into the field and the data model.
+  void _fixGtinCheckDigit(String raw, int expected) {
+    final fixed = '${raw.substring(0, raw.length - 1)}$expected';
+    _gtin.value = TextEditingValue(
+      text: fixed,
+      selection: TextSelection.collapsed(offset: fixed.length),
+    );
+    _update((d) => d.copyWith(gtin: fixed));
   }
 }
 
