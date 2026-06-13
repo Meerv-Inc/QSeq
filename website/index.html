@@ -19,17 +19,17 @@
   gtag('config', 'G-015RDZXKP2');
 </script>
 <title>QSeq — Sustainable Identity on Every Thing</title>
-<meta name="description" content="QSeq generates Barcodes, QR Codes and Data Matrix codes for SGTINs, GS1 Digital Links and NATO Stock Numbers — with a print-true size calculator. Source-available, for Sustainable Identity on Every Thing." />
+<meta name="description" content="QSeq generates Barcodes, QR Codes and Data Matrix codes for SGTINs and GS1 Digital Links — with a print-true size calculator. Source-available, for Sustainable Identity on Every Thing." />
 <link rel="canonical" href="https://qseq.app/" />
 <!-- Open Graph / link-share preview -->
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="QSeq" />
 <meta property="og:title" content="QSeq — Sustainable Identity on Every Thing" />
-<meta property="og:description" content="Native macOS/Windows & web generator for Barcodes, QR Codes and Data Matrix — SGTINs, GS1 Digital Links, EPC URIs and NATO Stock Numbers, with a print-true physical-size calculator." />
+<meta property="og:description" content="Native macOS/Windows & web generator for Barcodes, QR Codes and Data Matrix — SGTINs, GS1 Digital Links and EPC URIs, with a print-true physical-size calculator." />
 <meta property="og:url" content="https://qseq.app/" />
 <meta name="twitter:card" content="summary" />
 <meta name="twitter:title" content="QSeq — Sustainable Identity on Every Thing" />
-<meta name="twitter:description" content="Open identity tooling for every physical object: Barcodes, QR Codes and Data Matrix for SGTINs, GS1 Digital Links, EPC URIs and NATO Stock Numbers, with a print-true size calculator." />
+<meta name="twitter:description" content="Open identity tooling for every physical object: Barcodes, QR Codes and Data Matrix for SGTINs, GS1 Digital Links and EPC URIs, with a print-true size calculator." />
 <link rel="preconnect" href="https://cdn.jsdelivr.net" />
 <link rel="stylesheet" href="/styles.css" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='18' fill='%230b0d10'/%3E%3Cg fill='%237cf6c8'%3E%3Crect x='18' y='18' width='20' height='20'/%3E%3Crect x='62' y='18' width='20' height='20'/%3E%3Crect x='18' y='62' width='20' height='20'/%3E%3Crect x='48' y='48' width='10' height='10'/%3E%3Crect x='62' y='62' width='10' height='10'/%3E%3Crect x='72' y='72' width='10' height='10'/%3E%3C/g%3E%3C/svg%3E" />
@@ -52,7 +52,7 @@
 <section class="hero">
   <p class="kicker">Sustainable Identity on Every&nbsp;Thing</p>
   <h1>Open identity tooling for<br/><span>every physical object.</span></h1>
-  <p class="lede">QSeq mints Barcodes, QR&nbsp;Codes and Data&nbsp;Matrix carriers for <b>SGTINs</b>, <b>GS1&nbsp;Digital&nbsp;Links</b>, <b>EPC&nbsp;URIs</b> and <b>NATO&nbsp;Stock&nbsp;Numbers</b> — with a print-true physical-size calculator so what you design is exactly what prints.</p>
+  <p class="lede">QSeq mints Barcodes, QR&nbsp;Codes and Data&nbsp;Matrix carriers for <b>SGTINs</b>, <b>GS1&nbsp;Digital&nbsp;Links</b> and <b>EPC&nbsp;URIs</b> — with a print-true physical-size calculator so what you design is exactly what prints.</p>
   <div class="cta">
     <a class="btn primary" href="#generator">Open the generator</a>
     <a class="btn" href="/QSeq.dmg" download>Download for macOS</a>
@@ -79,7 +79,6 @@
     <label>Data source
       <select id="kind">
         <option value="sgtin">SGTIN</option>
-        <option value="nsn">NATO Stock Number</option>
         <option value="text">Free text</option>
       </select>
     </label>
@@ -113,11 +112,6 @@
       </label>
     </div>
 
-    <div data-when="nsn">
-      <label>NATO Stock Number
-        <input id="nsn" value="9515-00-003-6945" />
-      </label>
-    </div>
 
     <div data-when="text">
       <label>Text
@@ -263,7 +257,6 @@
   <ol class="register">
     <li><b>Core engine</b> — QR / Data Matrix / 1D generation with a live physical-size calculator.</li>
     <li><b>GS1 identity</b> — SGTIN as element string, EPC Tag URI and GS1 Digital Link.</li>
-    <li><b>Defense identity</b> — NATO Stock Number parsing (NSC / NCB / NIIN).</li>
     <li><b>Combined labels</b> — 1D + 2D for the same item.</li>
     <li><b>Serial captions</b> — serial printed under each code, incrementing digits in bold.</li>
     <li><b>Structure-aware dead-space</b> — logos never destroy QR finder/timing/alignment patterns.</li>
@@ -312,7 +305,7 @@
     <div class="rel">
       <div class="relv">v1.0.0 <span class="reld">· 2026-06-07</span></div>
       <ul>
-        <li>First release — QR, Data Matrix and 1D barcodes for SGTINs, GS1 Digital Links, EPC Tag URIs and NATO Stock Numbers.</li>
+        <li>First release — QR, Data Matrix and 1D barcodes for SGTINs, GS1 Digital Links and EPC Tag URIs.</li>
         <li>Print-true size calculator, structure-aware logo dead-space, mm/inch/vernier rulers, and PNG / SVG / PDF / JSON export.</li>
       </ul>
     </div>

@@ -3,7 +3,7 @@
 // Licensed under the PolyForm Noncommercial License 1.0.0.
 
 // The label designer: a sized label combining a 2D code (GS1 Digital Link), a
-// 1D barcode (element string / NSN), a free-text title, ONE shared
+// 1D barcode (element string), a free-text title, ONE shared
 // human-readable line, an optional imported background image (offline
 // round-trip), and a dashed cut-frame. Elements have free positions (drag on
 // the client, mm inputs everywhere). Pure Dart — prerenders and exports.

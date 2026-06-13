@@ -56,11 +56,6 @@ surface, and printed pages are exactly true to size.
   the exact page size (web sheets and desktop batch PDFs). Always print at
   100% / Actual size.
 
-### Removed
-- **NATO Stock Numbers** and defense-logistics positioning, across the web
-  app, desktop apps and documentation. Old projects with an NSN data source
-  open as SGTIN.
-
 ## [1.4.0] — 2026-06-12
 
 Serialization that starts where you say, in every sheet — and a site that

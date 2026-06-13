@@ -20,8 +20,6 @@ function sgtinElement(g,sn){return `(01)${gtin14(g)}(21)${sn}`;}
 function sgtinLink(g,sn,dom){return `${dom.replace(/\/$/,'')}/01/${gtin14(g)}/21/${encodeURIComponent(sn)}`;}
 function sgtinEpc(g,sn,cpl){const x=gtin14(g);if(cpl<6||cpl>12)throw 'Company prefix length must be 6–12';
   return `urn:epc:id:sgtin:${x.slice(1,1+cpl)}.${x[0]}${x.slice(1+cpl,13)}.${sn}`;}
-function nsnDigits(s){const x=s.replace(/[\s-]/g,'');if(!/^\d{13}$/.test(x))throw 'NSN must be exactly 13 digits';return x;}
-function nsnFormat(x){return `${x.slice(0,4)}-${x.slice(4,6)}-${x.slice(6,9)}-${x.slice(9,13)}`;}
 
 // ---- capacity tables -------------------------------------------------------
 const QR=[[17,14,11,7],[32,26,20,14],[53,42,32,24],[78,62,46,34],[106,84,60,44],[134,106,74,58],[154,122,86,64],[192,152,108,84],[230,180,130,98],[271,213,151,119],[321,251,177,137],[367,287,203,155],[425,331,241,177],[458,362,258,194],[520,412,292,220],[586,450,322,250],[644,504,364,280],[718,560,394,310],[792,624,442,338],[858,666,482,382],[929,711,509,403],[1003,779,565,439],[1091,857,611,461],[1171,911,661,511],[1273,997,715,535],[1367,1059,751,593],[1465,1125,805,625],[1528,1190,868,658],[1628,1264,908,698],[1732,1370,982,742],[1840,1452,1030,790],[1952,1538,1112,842],[2068,1628,1168,898],[2188,1722,1228,958],[2303,1809,1283,983],[2431,1911,1351,1051],[2563,1989,1423,1093],[2699,2099,1499,1139],[2809,2213,1579,1219],[2953,2331,1663,1273]];
@@ -60,7 +58,7 @@ const state=()=>{
   const s={
     mode:val('mode'),kind:val('kind'),gtin:val('gtin'),serial:val('serial'),
     sgtinFormat:val('sgtinFormat'),cpl:clampI('cpl',6,12,7),domain:val('domain'),
-    nsn:val('nsn'),text:val('text'),twoD:val('twoD'),ec:val('ec'),oneD:val('oneD'),
+    text:val('text'),twoD:val('twoD'),ec:val('ec'),oneD:val('oneD'),
     dpi:clampF('dpi',36,1200,300),xdim:clampF('xdim',0.05,5,0.5),
     // The logo is a checkbox: ticked → auto-sized to LOGO_EC_SHARE of the EC
     // budget (filled in below); cleared → no dead-space at all.
@@ -115,7 +113,6 @@ const bcid=s=>is1D(s)?s.oneD:s.twoD;
 // Build the encoded payload for a given serial (or the static serial).
 function encode(s,serialOverride){
   const sn=serialOverride!=null?serialOverride:s.serial;
-  if(s.kind==='nsn')return serialOverride!=null?serialOverride:nsnDigits(s.nsn);
   if(s.kind==='text')return serialOverride!=null?(s.text+serialOverride):s.text;
   // sgtin
   if(s.sgtinFormat==='element')return sgtinElement(s.gtin,sn);
@@ -124,7 +121,6 @@ function encode(s,serialOverride){
 }
 
 function captionParts(s){
-  if(s.kind==='nsn')return['',nsnFormat(nsnDigits(s.nsn))];
   if(s.kind==='text')return['',''];
   return['',s.serial];
 }
@@ -430,7 +426,7 @@ function budget(s,symMm,frac){
 function render(){
   const s=state();
   // toggle field visibility
-  show('sgtin',s.kind==='sgtin');show('nsn',s.kind==='nsn');show('text',s.kind==='text');
+  show('sgtin',s.kind==='sgtin');show('text',s.kind==='text');
   show('static',!isSerial(s));show('serial',isSerial(s));
   show('2d',!is1D(s));show('1d',is1D(s));show('qr',!is1D(s)&&s.twoD==='qrcode');
   show('epc',s.kind==='sgtin'&&s.sgtinFormat==='epc');
@@ -726,8 +722,8 @@ const TWOD_TO={qrcode:'qrCode',datamatrix:'dataMatrix'};
 const TWOD_FROM={qrCode:'qrcode',dataMatrix:'datamatrix'};
 const EC_TO={L:'low',M:'medium',Q:'quartile',H:'high'};
 const EC_FROM={low:'L',medium:'M',quartile:'Q',high:'H'};
-const KIND_TO={sgtin:'sgtin',nsn:'nsn',text:'rawText'};
-const KIND_FROM={sgtin:'sgtin',nsn:'nsn',rawText:'text'};
+const KIND_TO={sgtin:'sgtin',text:'rawText'};
+const KIND_FROM={sgtin:'sgtin',rawText:'text'};
 const FMT_TO={element:'elementString',dl:'digitalLink',epc:'epcTagUri'};
 const FMT_FROM={elementString:'element',digitalLink:'dl',epcTagUri:'epc'};
 const pick=(m,v,fb)=>(v!=null&&m[v]!=null)?m[v]:fb;
@@ -736,7 +732,7 @@ function downloadProject(){
   const s=state();
   const proj={format:'QSeq Project',version:1,
     workspace:{mode:pick(MODE_TO,s.mode,'twoD'),oneDSymbology:pick(ONED_TO,s.oneD,'gs1_128'),twoDSymbology:pick(TWOD_TO,s.twoD,'qrCode'),errorCorrection:pick(EC_TO,s.ec,'medium')},
-    data:{kind:pick(KIND_TO,s.kind,'sgtin'),gtin:s.gtin,serial:s.serial,sgtinFormat:pick(FMT_TO,s.sgtinFormat,'digitalLink'),companyPrefixLength:s.cpl,digitalLinkDomain:s.domain,nsn:s.nsn,rawText:s.text},
+    data:{kind:pick(KIND_TO,s.kind,'sgtin'),gtin:s.gtin,serial:s.serial,sgtinFormat:pick(FMT_TO,s.sgtinFormat,'digitalLink'),companyPrefixLength:s.cpl,digitalLinkDomain:s.domain,rawText:s.text},
     print:{dpi:s.dpi,xDimensionMm:s.xdim,barHeightMm:s.barh},
     logo:{sideMm:s.logo,ecBudget:s.ecbudget/100},
     serialization:{prefix:s.sprefix,start:s.sstart,count:s.scount,padDigits:s.spad,pageFormat:s.pageformat}};
@@ -786,7 +782,7 @@ function applyProject(p){
   setv('gtin',d.gtin);setv('serial',d.serial);
   setv('sgtinFormat',pick(FMT_FROM,d.sgtinFormat,'dl'));
   setv('cpl',d.companyPrefixLength);setv('domain',d.digitalLinkDomain);
-  setv('nsn',d.nsn);setv('text',d.rawText);
+  setv('text',d.rawText);
   setv('dpi',pr.dpi);setv('xdim',pr.xDimensionMm);setv('barh',pr.barHeightMm);
   // The logo is now a checkbox; a saved non-zero side reserves the dead-space.
   {const el=$('logoOn');if(el)el.checked=(parseFloat(lg.sideMm)||0)>0;}
