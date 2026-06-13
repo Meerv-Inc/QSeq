@@ -44,6 +44,8 @@ dependencies:
   # Share generated PNGs through the native share sheet.
   share_plus: ^10.1.4
   path_provider: ^2.1.5
+  # Pick a centre-logo image to drop into a 2D code's reserved dead-space.
+  image_picker: ^1.1.2
   image: ^4.8.0
   # PNG-to-clipboard via platform channels (no native Rust/cargokit, unlike
   # super_clipboard) so the app builds for iOS/Android too.

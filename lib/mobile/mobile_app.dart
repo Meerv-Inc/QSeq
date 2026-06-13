@@ -13,6 +13,7 @@ import 'dart:typed_data';
 
 import 'package:barcode_widget/barcode_widget.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -58,6 +59,19 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
   /// Printed size of the symbol, in millimetres (the long edge for 1D).
   double _sizeMm = 40;
 
+  // Centre-logo dead-space (2D only). The square knockout is sized as a
+  // fraction of the symbol; an optional picked image fills it.
+  bool _logoOn = false;
+  double _logoFrac = 0.18;
+  Uint8List? _logoBytes;
+
+  Future<void> _pickLogo() async {
+    final x = await ImagePicker().pickImage(source: ImageSource.gallery);
+    if (x == null) return;
+    final bytes = await x.readAsBytes();
+    if (mounted) setState(() => _logoBytes = bytes);
+  }
+
   late final _gtin = TextEditingController(text: _data.gtin);
   late final _serial = TextEditingController(text: _data.serial);
   late final _domain = TextEditingController(text: _data.digitalLinkDomain);
@@ -87,15 +101,31 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
         pageFormat: PdfPageFormat(
             (w + margin * 2) * PdfPageFormat.mm, (h + margin * 2 + 6) * PdfPageFormat.mm),
         margin: pw.EdgeInsets.all(margin * PdfPageFormat.mm),
-        build: (context) => pw.Center(
-          child: pw.BarcodeWidget(
+        build: (context) {
+          final code = pw.BarcodeWidget(
             barcode: BarcodeFactory.build(_sym, ecLevel: _ec),
             data: payload,
             width: w * PdfPageFormat.mm,
             height: h * PdfPageFormat.mm,
             drawText: !_sym.is2D,
-          ),
-        ),
+          );
+          if (!(_logoOn && _sym.is2D)) return pw.Center(child: code);
+          final box = w * _logoFrac * PdfPageFormat.mm;
+          return pw.Center(
+            child: pw.Stack(alignment: pw.Alignment.center, children: [
+              code,
+              pw.Container(
+                width: box,
+                height: box,
+                color: PdfColors.white,
+                padding: pw.EdgeInsets.all(box * 0.08),
+                child: _logoBytes != null
+                    ? pw.Image(pw.MemoryImage(_logoBytes!), fit: pw.BoxFit.contain)
+                    : null,
+              ),
+            ]),
+          );
+        },
       ),
     );
     return doc.save();
@@ -175,7 +205,14 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
           children: [
-            _Preview(symbology: _sym, ec: _ec, payload: payload, error: error),
+            _Preview(
+                symbology: _sym,
+                ec: _ec,
+                payload: payload,
+                error: error,
+                logoOn: _logoOn && _sym.is2D,
+                logoFrac: _logoFrac,
+                logoBytes: _logoBytes),
             const SizedBox(height: 8),
             if (payload != null)
               Center(
@@ -243,6 +280,53 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
             ),
             const SizedBox(height: 12),
 
+            // Centre logo (2D only)
+            if (_sym.is2D) ...[
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Centre logo dead-space'),
+                value: _logoOn,
+                onChanged: (v) => setState(() => _logoOn = v),
+              ),
+              if (_logoOn) ...[
+                Row(children: [
+                  const Text('Logo size'),
+                  Expanded(
+                    child: Slider(
+                      value: _logoFrac,
+                      min: 0.10,
+                      max: 0.28,
+                      divisions: 18,
+                      label: '${(_logoFrac * 100).round()}%',
+                      onChanged: (v) => setState(() => _logoFrac = v),
+                    ),
+                  ),
+                  SizedBox(
+                      width: 44,
+                      child: Text('${(_logoFrac * 100).round()}%',
+                          textAlign: TextAlign.end)),
+                ]),
+                Row(children: [
+                  OutlinedButton.icon(
+                      onPressed: _pickLogo,
+                      icon: const Icon(Icons.image_outlined),
+                      label: const Text('Pick image')),
+                  const SizedBox(width: 8),
+                  if (_logoBytes != null)
+                    TextButton(
+                        onPressed: () => setState(() => _logoBytes = null),
+                        child: const Text('Clear')),
+                ]),
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                      'Tip: set error correction to H so the code still scans.',
+                      style: Theme.of(context).textTheme.bodySmall),
+                ),
+              ],
+              const SizedBox(height: 12),
+            ],
+
             // Data source
             SegmentedButton<DataSourceKind>(
               segments: const [
@@ -308,11 +392,17 @@ class _Preview extends StatelessWidget {
   final QrEcLevel ec;
   final String? payload;
   final String? error;
+  final bool logoOn;
+  final double logoFrac;
+  final Uint8List? logoBytes;
   const _Preview(
       {required this.symbology,
       required this.ec,
       required this.payload,
-      required this.error});
+      required this.error,
+      required this.logoOn,
+      required this.logoFrac,
+      required this.logoBytes});
 
   @override
   Widget build(BuildContext context) {
@@ -339,9 +429,29 @@ class _Preview extends StatelessWidget {
               style: TextStyle(color: scheme.error)),
         ),
       );
-      child = symbology.is2D
-          ? AspectRatio(aspectRatio: 1, child: code)
-          : SizedBox(height: 120, child: code);
+      if (logoOn && symbology.is2D) {
+        child = AspectRatio(
+          aspectRatio: 1,
+          child: Stack(alignment: Alignment.center, children: [
+            Positioned.fill(child: code),
+            FractionallySizedBox(
+              widthFactor: logoFrac,
+              heightFactor: logoFrac,
+              child: Container(
+                color: Colors.white,
+                padding: const EdgeInsets.all(4),
+                child: logoBytes != null
+                    ? Image.memory(logoBytes!, fit: BoxFit.contain)
+                    : null,
+              ),
+            ),
+          ]),
+        );
+      } else {
+        child = symbology.is2D
+            ? AspectRatio(aspectRatio: 1, child: code)
+            : SizedBox(height: 120, child: code);
+      }
     }
 
     return Card(
