@@ -143,13 +143,13 @@ Future<void> showAboutSheet(BuildContext context) async {
                           'to the same idea: a quality-assured, ordered, '
                           'resolvable sequence of identity codes. That is QSeq.'),
                       h('How it was built'),
-                      p('QSeq was designed and written collaboratively with Claude '
-                          '(Anthropic) over a few focused pair-programming sessions '
-                          'in June 2026 — from an empty directory to tested, native '
-                          'macOS and Windows desktop applications and a companion '
-                          'website. Every feature below was added iteratively, each '
-                          'verified with automated tests and a real build before '
-                          'moving on. The domain core (encoders, capacity tables, '
+                      p('QSeq was designed and written from an empty directory '
+                          'to tested, native macOS and Windows desktop '
+                          'applications and a companion website. Every feature '
+                          'below was added '
+                          'iteratively, each verified with automated tests and a '
+                          'real build before moving on. The domain core (encoders, '
+                          'capacity tables, '
                           'sizing and rendering) is covered by 60+ unit and rendering '
                           'tests.'),
                       h('Development register'),
