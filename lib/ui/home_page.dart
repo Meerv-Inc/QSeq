@@ -78,8 +78,8 @@ class HomePage extends ConsumerWidget {
       ),
       endSidebar: Sidebar(
         minWidth: 240,
-        maxWidth: 360,
-        startWidth: 280,
+        maxWidth: 420,
+        startWidth: 320,
         shownByDefault: true,
         topOffset: 0,
         builder: (context, _) =>

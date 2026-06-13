@@ -62,8 +62,7 @@ class InputsPanel extends ConsumerWidget {
         onChanged: (v) => update((x) => x.copyWith(mode: v)),
       ),
       const SizedBox(height: 8),
-      _checkRow('Label designer — lay the code(s) out on a sized label',
-          s.labelOn, (v) {
+      _checkRow('Label designer', s.labelOn, (v) {
         update((x) => x.copyWith(labelOn: v));
         if (v) {
           // The label shows exactly this workspace's symbols; re-arrange.
