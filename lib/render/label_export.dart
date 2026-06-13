@@ -21,7 +21,9 @@ import '../models/encode_config.dart';
 import '../models/label_spec.dart';
 import '../state/app_controller.dart';
 import 'barcode_factory.dart';
+import 'pdf_ruler.dart';
 import 'raster_renderer.dart';
+import 'ruler.dart';
 
 class LabelExport {
   LabelExport._();
@@ -217,9 +219,21 @@ class LabelExport {
                 batch.page.widthMm * mm, batch.page.heightMm * mm));
 
     const margin = 10.0, cellGap = 3.0;
+    // Rulers (if enabled) are carved out of the existing margin budget — a
+    // gutter on the right + bottom — so the grid and pagination are unchanged.
+    final includeRulers = s.rulersInExports;
+    final gutterMm = Ruler.bandMm + 3;
+    final innerMm = includeRulers ? margin - gutterMm / 2 : margin;
+    final outerMm = includeRulers ? innerMm + gutterMm : margin;
+    final pageHmm =
+        batch.page.isContinuous ? batch.pageHeightMm : batch.effectiveHeightMm;
+    final ruler = includeRulers
+        ? await PdfRuler.build(batch.effectiveWidthMm - innerMm - outerMm,
+            pageHmm - innerMm - outerMm, s.safeDpi)
+        : null;
     final cols = math.max(
         1,
-        ((batch.effectiveWidthMm - 2 * margin + cellGap) /
+        ((batch.effectiveWidthMm - innerMm - outerMm + cellGap) /
                 (a.wMm + cellGap))
             .floor());
 
@@ -322,7 +336,30 @@ class LabelExport {
     doc.addPage(pw.MultiPage(
       pageTheme: pw.PageTheme(
         pageFormat: fmt,
-        margin: const pw.EdgeInsets.all(margin * mm),
+        margin: pw.EdgeInsets.only(
+            left: innerMm * mm,
+            top: innerMm * mm,
+            right: outerMm * mm,
+            bottom: outerMm * mm),
+        // Bleed the ruler bands into the reserved right/bottom gutter so they
+        // sit at the page edge without overlapping the labels.
+        buildForeground: ruler == null
+            ? null
+            : (context) => pw.Stack(
+                  overflow: pw.Overflow.visible,
+                  children: [
+                    pw.Positioned(
+                        left: 0,
+                        bottom: -gutterMm * mm,
+                        child: ruler.horizontal),
+                    pw.Positioned(
+                        top: 0, right: -gutterMm * mm, child: ruler.vertical),
+                    pw.Positioned(
+                        right: -gutterMm * mm,
+                        bottom: -gutterMm * mm,
+                        child: ruler.vernier),
+                  ],
+                ),
       ),
       build: (context) => [
         for (final row in rows)

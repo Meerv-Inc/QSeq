@@ -46,6 +46,8 @@ class ProjectIo {
         'sgtinFormat': d.sgtinFormat.name,
         'companyPrefixLength': d.companyPrefixLength,
         'digitalLinkDomain': d.digitalLinkDomain,
+        'gtinLength': d.gtinLength,
+        'serialize': d.serialize,
         'rawText': d.rawText,
       },
       'print': {
@@ -133,6 +135,8 @@ class ProjectIo {
             integer(d['companyPrefixLength'], def.data.companyPrefixLength),
         digitalLinkDomain:
             str(d['digitalLinkDomain'], def.data.digitalLinkDomain),
+        gtinLength: integer(d['gtinLength'], def.data.gtinLength),
+        serialize: d['serialize'] as bool? ?? def.data.serialize,
         rawText: str(d['rawText'], def.data.rawText),
       ),
       dpi: dbl(p['dpi'], def.dpi),

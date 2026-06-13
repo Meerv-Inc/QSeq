@@ -23,6 +23,7 @@ class BarcodeFactory {
       Symbology.code128 => Barcode.code128(),
       Symbology.code39 => Barcode.code39(),
       Symbology.ean13 => Barcode.ean13(),
+      Symbology.ean8 => Barcode.ean8(),
       Symbology.upcA => Barcode.upcA(),
     };
   }

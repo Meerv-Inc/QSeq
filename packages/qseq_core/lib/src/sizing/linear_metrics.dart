@@ -22,6 +22,7 @@ class LinearMetrics {
       Symbology.code128 || Symbology.gs1_128 => _code128(data),
       Symbology.code39 => _code39(data),
       Symbology.ean13 => 95, // fixed structure
+      Symbology.ean8 => 67, // fixed structure (3+28+5+28+3)
       Symbology.upcA => 95, // fixed structure
       _ => throw ArgumentError('${symbology.displayName} is not 1D'),
     };

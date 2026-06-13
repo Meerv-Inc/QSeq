@@ -56,6 +56,11 @@ enum AppMode {
       this == twoDSerial ||
       this == comboSerial;
   bool get isCombo => use1D && use2D;
+
+  /// A serialised run (incrementing serials) — needs a serial number, unlike a
+  /// plain sheet of identical copies. Gated by the Serialization checkbox.
+  bool get isSerialRun =>
+      this == oneDSerial || this == twoDSerial || this == comboSerial;
 }
 
 /// Sentinel so copyWith can distinguish "leave logoImagePath" from "clear it".
@@ -222,7 +227,9 @@ class AppSettings {
   /// The static single-symbol [EncodeConfig] (1D-only or 2D-only, not serial).
   EncodeConfig get singleConfig => EncodeConfig(
         symbology: activeSymbology,
-        data: resolved.data ?? '',
+        // payloadFor honours the symbology: retail 1D (EAN-13/EAN-8/UPC-A) carry
+        // the native GTIN-N rather than the SGTIN Digital Link / element string.
+        data: data.payloadFor(activeSymbology) ?? resolved.data ?? '',
         ecLevel: ecLevel,
         dpi: safeDpi,
         xDimensionMm: safeXDimensionMm,
@@ -404,10 +411,12 @@ Batch? buildBatchFor(AppSettings s) {
       // Digital Link; standalone 1D/2D honour the chosen SGTIN format.
       buildOneD: (serial) => s.mode.isCombo
           ? s.data.encodeWith(format: SgtinFormat.elementString, serial: serial)
-          : s.data.encodeWith(serial: serial),
+          : s.data.payloadFor(s.oneDSymbology, serial: serial) ??
+              s.data.encodeWith(serial: serial),
       buildTwoD: (serial) => s.mode.isCombo
           ? s.data.encodeWith(format: SgtinFormat.digitalLink, serial: serial)
-          : s.data.encodeWith(serial: serial),
+          : s.data.payloadFor(s.twoDSymbology, serial: serial) ??
+              s.data.encodeWith(serial: serial),
       ecLevel: s.ecLevel,
       dpi: s.safeDpi,
       xDimensionMm: s.safeXDimensionMm,

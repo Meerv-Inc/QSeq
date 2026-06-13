@@ -21,9 +21,8 @@ h1,h2,h3{line-height:1.1;letter-spacing:-0.02em}
 .nav{position:sticky;top:0;z-index:20;display:flex;justify-content:space-between;align-items:center;
   padding:14px 28px;background:rgba(11,13,16,.72);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
 .brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.02em}
-.logo{width:22px;height:22px;border-radius:6px;background:
-  conic-gradient(from 0deg,var(--accent),var(--accent2),var(--accent));
-  -webkit-mask:repeating-linear-gradient(90deg,#000 0 3px,transparent 3px 5px);}
+.brand-logo{height:30px;width:auto;display:block}
+.brand a{display:inline-flex;align-items:center}
 .nav nav{display:flex;gap:22px;align-items:center;font-size:.92rem;color:var(--muted)}
 .nav nav a:hover{color:var(--ink)}
 .nav .ghost{border:1px solid var(--line);padding:6px 12px;border-radius:8px;color:var(--ink)}
@@ -40,6 +39,10 @@ h1,h2,h3{line-height:1.1;letter-spacing:-0.02em}
 .btn:hover{border-color:#36424d;transform:translateY(-1px)}
 .btn.primary{background:linear-gradient(100deg,var(--accent),#67e6b4);color:#03130d;border:none;font-weight:600}
 .btn.primary:hover{filter:brightness(1.05)}
+/* GTIN generate / fix actions sit under the GTIN field. */
+.gtin-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:7px}
+.gtin-actions .btn{padding:6px 12px;font-size:.82rem;text-transform:none;letter-spacing:0}
+.gtin-ok{color:var(--accent);font-size:.78rem}
 
 .generator{display:grid;grid-template-columns:340px minmax(280px,1fr) 460px;gap:22px;width:100%;margin:0;padding:30px 28px 70px}
 /* The generator stays hidden until the visitor accepts the licence via "Open QSeq". */
@@ -66,6 +69,9 @@ body:not(.qseq-unlocked) .generator{display:none}
 .loglist .empty{color:var(--muted)}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px}
 .inputs h2,.preview h2{margin:0 0 16px;font-size:1.15rem}
+/* App heading: logo sits to the left of the "Codes & Labels App" title. */
+.app-title{display:flex;align-items:center;gap:10px}
+.app-title-logo{height:26px;width:auto;flex:none}
 .inputs label{display:block;font-size:.78rem;color:var(--muted);margin-bottom:12px;text-transform:uppercase;letter-spacing:.04em}
 .inputs input,.inputs select{width:100%;margin-top:5px;background:var(--panel2);border:1px solid var(--line);
   color:var(--ink);border-radius:9px;padding:9px 11px;font-size:.92rem;font-family:var(--mono)}

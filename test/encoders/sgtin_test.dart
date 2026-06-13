@@ -4,6 +4,8 @@
 // only; reuse requires attribution to Meerv Inc. See LICENSE for terms.
 // https://polyformproject.org/licenses/noncommercial/1.0.0/
 
+import 'dart:math';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:qseq/encoders/gtin.dart';
 import 'package:qseq/encoders/gs1.dart';
@@ -56,17 +58,25 @@ void main() {
     });
 
     test('EPC Tag URI moves the indicator into the item-reference field', () {
-      // companyPrefix 0614141 (len 7), itemRef 12345, indicator 8.
+      // companyPrefix 0614141 (len 7), itemRef 12345, indicator 8, filter 1,
+      // default scheme sgtin-198.
       expect(sgtin.toEpcTagUri(companyPrefixLength: 7),
-          'urn:epc:id:sgtin:0614141.812345.6789');
+          'urn:epc:tag:sgtin-198:1.0614141.812345.6789');
+    });
+
+    test('EPC Tag URI carries the chosen scheme and filter', () {
+      expect(
+          sgtin.toEpcTagUri(
+              companyPrefixLength: 7, scheme: SgtinScheme.sgtin96, filter: 3),
+          'urn:epc:tag:sgtin-96:3.0614141.812345.6789');
     });
 
     test('EPC Tag URI percent-escapes reserved chars in the serial', () {
-      // A '/' (and '&', '%' …) in a serial would otherwise break the URN's
-      // three-field grammar; they must be escaped per EPC TDS. A '.' stays as-is.
+      // A '/' (and '&', '%' …) in a serial would otherwise break the URI's
+      // field grammar; they must be escaped per EPC TDS. A '.' stays as-is.
       final s = Sgtin(gtin: '80614141123458', serial: 'A/B&C%D.9');
       expect(s.toEpcTagUri(companyPrefixLength: 7),
-          'urn:epc:id:sgtin:0614141.812345.A%2FB%26C%25D.9');
+          'urn:epc:tag:sgtin-198:1.0614141.812345.A%2FB%26C%25D.9');
     });
 
     test('EPC Tag URI rejects out-of-range company prefix length', () {
@@ -74,6 +84,55 @@ void main() {
           throwsArgumentError);
       expect(() => sgtin.toEpcTagUri(companyPrefixLength: 13),
           throwsArgumentError);
+    });
+
+    test('SGTIN-96 rejects non-numeric or oversized serials', () {
+      final alpha = Sgtin(gtin: '80614141123458', serial: 'AB12');
+      expect(
+          () => alpha.toEpcTagUri(
+              companyPrefixLength: 7, scheme: SgtinScheme.sgtin96),
+          throwsFormatException);
+      final leadingZero = Sgtin(gtin: '80614141123458', serial: '0123');
+      expect(
+          () => leadingZero.toEpcTagUri(
+              companyPrefixLength: 7, scheme: SgtinScheme.sgtin96),
+          throwsFormatException);
+      final tooBig =
+          Sgtin(gtin: '80614141123458', serial: '999999999999999');
+      expect(
+          () => tooBig.toEpcTagUri(
+              companyPrefixLength: 7, scheme: SgtinScheme.sgtin96),
+          throwsFormatException);
+    });
+
+    test('SGTIN-198 rejects serials over 20 chars or with bad characters', () {
+      final long = Sgtin(
+          gtin: '80614141123458', serial: 'ABCDEFGHIJKLMNOPQRSTU'); // 21
+      expect(
+          () => long.toEpcTagUri(
+              companyPrefixLength: 7, scheme: SgtinScheme.sgtin198),
+          throwsFormatException);
+      final bad = Sgtin(gtin: '80614141123458', serial: 'A B'); // space
+      expect(
+          () => bad.toEpcTagUri(
+              companyPrefixLength: 7, scheme: SgtinScheme.sgtin198),
+          throwsFormatException);
+    });
+  });
+
+  group('Gtin.generate', () {
+    test('produces a valid GTIN of each length', () {
+      final rng = Random(42);
+      for (final len in Gtin.lengths) {
+        final g = Gtin.generate(len, rng: rng);
+        expect(g.length, len, reason: 'length $len');
+        expect(Gtin.isValid(g), isTrue, reason: 'check digit for $g');
+        expect(g[0], isNot('0'), reason: 'leading digit non-zero for $len');
+      }
+    });
+
+    test('rejects an unsupported length', () {
+      expect(() => Gtin.generate(10), throwsArgumentError);
     });
   });
 

@@ -180,7 +180,7 @@ Future<void> showAboutSheet(BuildContext context) async {
                           'to keeping these tools alive and consistent.'),
                       h('Why this is open source'),
                       p('QSeq is released as open source to accelerate the transition '
-                          'to Sustainable Identity on Every Thing (SIoT): a future in '
+                          'to Sustainable Identity on Every Thing: a future in '
                           'which every physical object carries an open, web-resolvable, '
                           'standards-based identity — GS1 Digital Links, SGTINs and '
                           'compatible carriers — that anyone can read, verify and build '

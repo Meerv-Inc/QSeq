@@ -94,8 +94,9 @@ class Sizer {
 
   static SizeResult _linear(EncodeConfig cfg) {
     final warnings = <String>[];
-    final fixedContent =
-        cfg.symbology == Symbology.ean13 || cfg.symbology == Symbology.upcA;
+    final fixedContent = cfg.symbology == Symbology.ean13 ||
+        cfg.symbology == Symbology.ean8 ||
+        cfg.symbology == Symbology.upcA;
     final modWidth = LinearMetrics.moduleWidth(cfg.symbology, cfg.data);
     final dots = Dpi.moduleDots(cfg.xDimensionMm, cfg.dpi);
     // Quiet zones can be asymmetric (EAN-13: 11 left, 7 right), so sum the two

@@ -78,7 +78,8 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
   final _count = TextEditingController(text: '24');
   int get _countValue => (int.tryParse(_count.text) ?? 24).clamp(1, 1000);
 
-  bool get _sheetMode => _serialOn && _data.kind == DataSourceKind.sgtin;
+  bool get _sheetMode =>
+      _serialOn && _data.serialize && _data.kind == DataSourceKind.sgtin;
 
   /// The base serial advanced by [i] — increments the trailing digits,
   /// preserving any leading prefix and the zero-padding width.
@@ -90,34 +91,11 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
     return '${m.group(1)}${n.toString().padLeft(m.group(2)!.length, '0')}';
   }
 
-  /// The barcode data appropriate for [sym]. Only 2D (QR / Data Matrix) can
-  /// carry the full SGTIN Digital Link; GS1-128 carries the element string;
-  /// retail/linear codes hold only a fixed-length numeric GTIN, so the serial
-  /// is dropped and the GTIN is trimmed + re-check-digited to stay valid
-  /// instead of overflowing the symbol. Returns null when the data can't encode.
-  String? _payloadFor(Symbology sym, {String? serial}) {
-    if (_data.kind != DataSourceKind.sgtin) {
-      final r = _data.resolve();
-      if (r.data == null) return null;
-      return serial == null ? r.data : _data.encodeWith(serial: serial);
-    }
-    try {
-      if (sym.is2D) return _data.encodeWith(serial: serial);
-      if (sym == Symbology.gs1_128) {
-        return _data.encodeWith(
-            format: SgtinFormat.elementString, serial: serial);
-      }
-      final g14 = Gtin.normalize14(_data.gtin);
-      final len = switch (sym) {
-        Symbology.ean13 => 13,
-        Symbology.upcA => 12,
-        _ => 14, // code128, code39 — bare GTIN-14, serial stripped
-      };
-      return len == 14 ? g14 : Gtin.withCheckDigit(g14.substring(0, len - 1));
-    } catch (_) {
-      return null;
-    }
-  }
+  /// The barcode data appropriate for [sym] — delegates to the shared core so
+  /// mobile, desktop and web share one definition of how each symbology carries
+  /// an SGTIN (2D/GS1-128 = full form; EAN-13/EAN-8/UPC-A = native GTIN-N).
+  String? _payloadFor(Symbology sym, {String? serial}) =>
+      _data.payloadFor(sym, serial: serial);
 
   late final _gtin = TextEditingController(text: _data.gtin);
   late final _serial = TextEditingController(text: _data.serial);
@@ -543,7 +521,7 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
             // Data source
             SegmentedButton<DataSourceKind>(
               segments: const [
-                ButtonSegment(value: DataSourceKind.sgtin, label: Text('SGTIN')),
+                ButtonSegment(value: DataSourceKind.sgtin, label: Text('GS1')),
                 ButtonSegment(
                     value: DataSourceKind.rawText, label: Text('Free text')),
               ],
@@ -555,16 +533,32 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
             if (isSgtin) ...[
               _gtinLengthSelector(),
               _gtinField(),
-              _field(_serial, 'Serial',
-                  (v) => _update((d) => d.copyWith(serial: v))),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Serialized sheet'),
-                subtitle:
-                    const Text('Tile many codes, incrementing the serial'),
-                value: _serialOn,
-                onChanged: (v) => setState(() => _serialOn = v),
+                title: const Text('Serialization'),
+                subtitle: const Text('Add a serial number — makes it an SGTIN'),
+                value: _data.serialize,
+                onChanged: (v) => setState(() {
+                  _data = _data.copyWith(
+                      serialize: v,
+                      sgtinFormat: !v && _data.sgtinFormat.epcScheme != null
+                          ? SgtinFormat.digitalLink
+                          : _data.sgtinFormat);
+                  if (!v) _serialOn = false;
+                }),
               ),
+              if (_data.serialize)
+                _field(_serial, 'Serial',
+                    (v) => _update((d) => d.copyWith(serial: v))),
+              if (_data.serialize)
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Serialized sheet'),
+                  subtitle:
+                      const Text('Tile many codes, incrementing the serial'),
+                  value: _serialOn,
+                  onChanged: (v) => setState(() => _serialOn = v),
+                ),
               if (_serialOn)
                 Padding(
                   padding: const EdgeInsets.only(top: 4, bottom: 12),
@@ -597,10 +591,12 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
               DropdownButtonFormField<SgtinFormat>(
                 initialValue: _data.sgtinFormat,
                 decoration: const InputDecoration(
-                    labelText: 'SGTIN format', border: OutlineInputBorder()),
+                    labelText: 'Format', border: OutlineInputBorder()),
                 items: [
+                  // EPC schemes need a serial — only offered when serialized.
                   for (final f in SgtinFormat.values)
-                    DropdownMenuItem(value: f, child: Text(f.label)),
+                    if (_data.serialize || f.epcScheme == null)
+                      DropdownMenuItem(value: f, child: Text(f.label)),
                 ],
                 onChanged: (v) => _update(
                     (d) => d.copyWith(sgtinFormat: v ?? d.sgtinFormat)),
@@ -610,8 +606,9 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
                 _field(_domain, 'Digital Link domain',
                     (v) => _update((d) => d.copyWith(digitalLinkDomain: v))),
               ],
-              if (_data.sgtinFormat == SgtinFormat.sgtin96 ||
-                  _data.sgtinFormat == SgtinFormat.sgtin198)
+              if (_data.serialize &&
+                  (_data.sgtinFormat == SgtinFormat.sgtin96 ||
+                      _data.sgtinFormat == SgtinFormat.sgtin198))
                 Padding(
                   padding: const EdgeInsets.only(top: 4, bottom: 8),
                   child: Row(

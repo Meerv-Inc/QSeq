@@ -156,7 +156,10 @@ class GeneratorState extends State<Generator> {
 
     return section(id: 'generator', classes: 'generator', [
       div(classes: 'panel inputs', [
-        h2([text('Codes & Labels App')]),
+        h2(classes: 'app-title', [
+          img(src: '/images/qseq.svg', alt: 'QSeq', classes: 'app-title-logo'),
+          text('Codes & Labels App'),
+        ]),
         ..._inputSections(i),
         _downloadButtons(art, layout),
         if (showErr.isNotEmpty) p(classes: 'err', [text(showErr)]),
@@ -178,47 +181,84 @@ class GeneratorState extends State<Generator> {
     final k = data.kind;
     final resolved = _resolvedPreview();
     return [
-      _select('Workspace', mode.name,
-          [for (final m in WebMode.values) (m.name, m.title)], (v) => _set(() {
-                mode = WebMode.values.byName(v);
-                sheetPage = 0;
-                selectedEl = null;
-                if (labelOn) _syncLabelElements();
-              })),
-      _check('Label designer — lay the code(s) out on a sized label', labelOn,
+      _check('Label designer', labelOn,
           (v) => _set(() {
                 labelOn = v;
                 selectedEl = null;
                 if (v) _syncLabelElements();
               })),
+      if (k == DataSourceKind.sgtin)
+        _check('Serialization', data.serialize,
+            (v) => _set(() {
+                  // Master switch: a serial turns the GTIN into an SGTIN and
+                  // unlocks the EPC formats and the serialized layouts.
+                  data = data.copyWith(
+                      serialize: v,
+                      sgtinFormat: !v && data.sgtinFormat.epcScheme != null
+                          ? SgtinFormat.digitalLink
+                          : data.sgtinFormat);
+                  if (!v && mode.isSerialized) {
+                    mode = switch (mode) {
+                      WebMode.twoDSerial => WebMode.twoD,
+                      WebMode.oneDSerial => WebMode.oneD,
+                      WebMode.comboSerial => WebMode.combo,
+                      _ => mode,
+                    };
+                  }
+                })),
+      _select(
+          'Workspace',
+          mode.name,
+          [
+            // Serialized layouts are tributary to the Serialization checkbox.
+            for (final m in WebMode.values)
+              if (k != DataSourceKind.sgtin || data.serialize || !m.isSerialized)
+                (m.name, m.title)
+          ], (v) => _set(() {
+                mode = WebMode.values.byName(v);
+                sheetPage = 0;
+                selectedEl = null;
+                if (labelOn) _syncLabelElements();
+              })),
       _select(
           'Data source',
           k.name,
           const [
-            ('sgtin', 'SGTIN'),
+            ('sgtin', 'GS1'),
             ('rawText', 'Free text'),
           ],
           (v) => _d((d) => d.copyWith(kind: DataSourceKind.values.byName(v)))),
       if (k == DataSourceKind.sgtin) ...[
-        _text('GTIN (8/12/13/14)', data.gtin,
-            (v) => _d((d) => d.copyWith(gtin: v))),
-        if (!mode.isSerialized)
+        _select(
+            'GTIN length',
+            data.gtinLength.toString(),
+            [
+              for (final len in Gtin.lengths)
+                (len.toString(), 'GTIN-$len · e.g. ${Gtin.example(len)}'),
+            ],
+            (v) => _d(
+                (d) => d.copyWith(gtinLength: int.tryParse(v) ?? d.gtinLength))),
+        _gtinField(),
+        if (data.serialize && !mode.isSerialized)
           _text('Serial', data.serial, (v) => _d((d) => d.copyWith(serial: v))),
         if (!mode.isCombo && !labelOn)
           _select(
-              'SGTIN format',
+              'Format',
               data.sgtinFormat.name,
-              const [
+              [
                 ('digitalLink', 'GS1 Digital Link'),
-                ('elementString', 'GS1 element string'),
-                ('epcTagUri', 'EPC Tag URI'),
+                ('elementString', 'GS1-128'),
+                // EPC schemes need a serial — only when serialized.
+                if (data.serialize) ('sgtin96', 'SGTIN-96'),
+                if (data.serialize) ('sgtin198', 'SGTIN-198'),
               ],
               (v) => _d((d) =>
                   d.copyWith(sgtinFormat: SgtinFormat.values.byName(v)))),
         if (!mode.isCombo &&
             !labelOn &&
-            data.sgtinFormat == SgtinFormat.epcTagUri)
-          _num('Company prefix length', data.companyPrefixLength.toDouble(),
+            data.serialize &&
+            data.sgtinFormat.epcScheme != null)
+          _num('GS1 Company Prefix length', data.companyPrefixLength.toDouble(),
               (v) => _d((d) =>
                   d.copyWith(companyPrefixLength: v.round().clamp(6, 12))),
               min: 6, max: 12),
@@ -1117,6 +1157,43 @@ class GeneratorState extends State<Generator> {
   Component _text(String lbl0, String value, void Function(String) on) =>
       label(key: ValueKey('ctl-$lbl0'),
           [text(lbl0), input(value: value, onInput: on)]);
+
+  /// The GTIN field plus a live check-digit helper and a "generate a valid
+  /// GTIN" action. The trailing digit of a GTIN is a GS1 mod-10 check digit, so
+  /// editing the body invalidates it — here we surface the expected digit with a
+  /// one-click fix, and a button to drop in a fresh valid GTIN of the chosen
+  /// length.
+  Component _gtinField() {
+    final raw = data.gtin.trim();
+    final canCheck = Gtin.isAllDigits(raw) && Gtin.lengths.contains(raw.length);
+    int? expected;
+    var ok = false;
+    if (canCheck) {
+      expected = Gtin.checkDigit(raw.substring(0, raw.length - 1));
+      ok = expected == raw.codeUnitAt(raw.length - 1) - 0x30;
+    }
+    return label(key: const ValueKey('ctl-gtin'), [
+      text('GTIN-${data.gtinLength}'),
+      input(
+        value: data.gtin,
+        attributes: {'placeholder': 'e.g. ${Gtin.example(data.gtinLength)}'},
+        onInput: (String v) => _d((d) => d.copyWith(gtin: v)),
+      ),
+      div(classes: 'gtin-actions', [
+        button([text('Generate GTIN-${data.gtinLength}')],
+            classes: 'btn',
+            onClick: () =>
+                _d((d) => d.copyWith(gtin: Gtin.generate(d.gtinLength)))),
+        if (canCheck && !ok)
+          button([text('Fix check digit → $expected')],
+              classes: 'btn',
+              onClick: () => _d((d) => d.copyWith(
+                  gtin: '${raw.substring(0, raw.length - 1)}$expected'))),
+        if (ok)
+          span(classes: 'gtin-ok', [text('✓ check digit valid')]),
+      ]),
+    ]);
+  }
 
   Component _num(String lbl0, double value, void Function(double) on,
       {double min = 0, double max = 1000000000}) {

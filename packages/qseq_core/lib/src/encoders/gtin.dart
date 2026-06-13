@@ -4,6 +4,8 @@
 // only; reuse requires attribution to Meerv Inc. See LICENSE for terms.
 // https://polyformproject.org/licenses/noncommercial/1.0.0/
 
+import 'dart:math';
+
 /// GTIN (Global Trade Item Number) helpers.
 ///
 /// Supports GTIN-8/12/13/14. Everything is normalised to a 14-digit GTIN-14
@@ -11,6 +13,11 @@
 /// GS1 Application Identifier (01), GS1 Digital Link and EPC conversions.
 class Gtin {
   Gtin._();
+
+  /// The GTIN lengths (including the trailing check digit) GS1 defines.
+  static const lengths = [8, 12, 13, 14];
+
+  static final Random _rng = Random();
 
   /// Returns true if [value] is all ASCII digits.
   static bool isAllDigits(String value) =>
@@ -65,4 +72,41 @@ class Gtin {
   /// [dataDigits] (the GTIN without its check digit).
   static String withCheckDigit(String dataDigits) =>
       '$dataDigits${checkDigit(dataDigits)}';
+
+  /// A fixed, check-digit-valid example GTIN of [length] (8/12/13/14), handy
+  /// for UI hints. Unlike [generate] it is deterministic, so it doesn't flicker
+  /// when used as placeholder text rebuilt on every frame.
+  static String example(int length) {
+    const bodies = {
+      8: '9638507',
+      12: '03600029145',
+      13: '400638133393',
+      14: '1234567890123',
+    };
+    final body = bodies[length];
+    if (body == null) {
+      throw ArgumentError.value(
+          length, 'length', 'GTIN length must be 8, 12, 13 or 14');
+    }
+    return withCheckDigit(body);
+  }
+
+  /// Generates a random, check-digit-valid GTIN of [length] (8/12/13/14).
+  ///
+  /// The leading data digit is kept non-zero so the value renders at the
+  /// requested length, the remaining body digits are random, and the final
+  /// digit is the computed GS1 check digit. Pass [rng] for deterministic
+  /// output in tests.
+  static String generate(int length, {Random? rng}) {
+    if (!lengths.contains(length)) {
+      throw ArgumentError.value(
+          length, 'length', 'GTIN length must be 8, 12, 13 or 14');
+    }
+    final r = rng ?? _rng;
+    final body = StringBuffer();
+    for (var i = 0; i < length - 1; i++) {
+      body.write(i == 0 ? 1 + r.nextInt(9) : r.nextInt(10));
+    }
+    return withCheckDigit(body.toString());
+  }
 }

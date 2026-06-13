@@ -6,6 +6,19 @@
 
 import 'gtin.dart';
 
+/// The two EPC binary encoding schemes defined for an SGTIN. They differ in how
+/// the serial is carried: [sgtin96] packs a *numeric* serial into at most 38
+/// bits, while [sgtin198] carries an *alphanumeric* serial of up to 20 chars.
+enum SgtinScheme {
+  sgtin96('sgtin-96'),
+  sgtin198('sgtin-198');
+
+  const SgtinScheme(this.tag);
+
+  /// The token used in the EPC Tag URI scheme position, e.g. `sgtin-96`.
+  final String tag;
+}
+
 /// A Serialised GTIN: a GTIN-14 plus a serial number.
 ///
 /// This is the domain object the three SGTIN output encoders consume
@@ -55,25 +68,81 @@ class Sgtin {
     return '$host/01/$gtin14/21/${Uri.encodeComponent(serial)}';
   }
 
-  /// EPC Tag URI (pure-identity URN):
-  /// `urn:epc:id:sgtin:<companyPrefix>.<indicator+itemRef>.<serial>`.
+  /// EPC Tag URI for the chosen binary [scheme], e.g.
+  /// `urn:epc:tag:sgtin-198:1.<companyPrefix>.<indicator+itemRef>.<serial>`.
   ///
   /// [companyPrefixLength] is the length (6–12) of the GS1 Company Prefix
   /// embedded in the GTIN; it cannot be inferred from the digits alone and must
-  /// be supplied by the user. The indicator digit is moved to the front of the
-  /// item-reference field, per GS1 EPC Tag Data Standard §7.
-  String toEpcTagUri({required int companyPrefixLength}) {
+  /// be supplied by the user. [filter] (0–7) is the EPC filter value (default 1
+  /// = retail point-of-sale item). The indicator digit is moved to the front of
+  /// the item-reference field, per GS1 EPC Tag Data Standard §7. The serial is
+  /// validated against the [scheme]'s constraints ([checkSerialForScheme]).
+  String toEpcTagUri({
+    required int companyPrefixLength,
+    SgtinScheme scheme = SgtinScheme.sgtin198,
+    int filter = 1,
+  }) {
     if (companyPrefixLength < 6 || companyPrefixLength > 12) {
       throw ArgumentError.value(companyPrefixLength, 'companyPrefixLength',
           'GS1 Company Prefix length must be between 6 and 12');
     }
+    if (filter < 0 || filter > 7) {
+      throw ArgumentError.value(filter, 'filter', 'EPC filter must be 0–7');
+    }
+    checkSerialForScheme(serial, scheme);
     final indicator = gtin14[0];
     // GTIN-14 layout: N1=indicator, N2..N13 = companyPrefix+itemRef, N14=check.
     final companyPrefix = gtin14.substring(1, 1 + companyPrefixLength);
     final itemRef = gtin14.substring(1 + companyPrefixLength, 13);
     final indicatorAndItemRef = '$indicator$itemRef';
-    return 'urn:epc:id:sgtin:$companyPrefix.$indicatorAndItemRef.'
+    return 'urn:epc:tag:${scheme.tag}:$filter.$companyPrefix.$indicatorAndItemRef.'
         '${_escapeEpcComponent(serial)}';
+  }
+
+  /// Largest numeric serial encodable in SGTIN-96: 2^38 − 1.
+  static final BigInt _sgtin96MaxSerial = BigInt.from(274877906943);
+
+  /// The 82-character set GS1 permits in an SGTIN-198 / AI-21 serial: digits,
+  /// upper- and lower-case letters and a fixed punctuation subset
+  /// (`! " % & ' ( ) * + , - . / : ; < = > ? _`).
+  static final Set<int> _sgtin198Alphabet = {
+    for (final c in [
+      0x21, 0x22, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2A, 0x2B, 0x2C, 0x2D, 0x2E,
+      0x2F, 0x3A, 0x3B, 0x3C, 0x3D, 0x3E, 0x3F, 0x5F,
+    ])
+      c,
+    for (var c = 0x30; c <= 0x39; c++) c, // 0–9
+    for (var c = 0x41; c <= 0x5A; c++) c, // A–Z
+    for (var c = 0x61; c <= 0x7A; c++) c, // a–z
+  };
+
+  /// Validates [serial] against the constraints of [scheme], throwing a
+  /// [FormatException] with a human-readable message if it does not fit. Used
+  /// by [toEpcTagUri] and by the UI to pre-flight a serial before encoding.
+  static void checkSerialForScheme(String serial, SgtinScheme scheme) {
+    switch (scheme) {
+      case SgtinScheme.sgtin96:
+        if (!RegExp(r'^(0|[1-9][0-9]*)$').hasMatch(serial)) {
+          throw const FormatException(
+              'SGTIN-96 serial must be digits with no leading zero');
+        }
+        if (BigInt.parse(serial) > _sgtin96MaxSerial) {
+          throw const FormatException(
+              'SGTIN-96 serial exceeds 38 bits (max 274877906943)');
+        }
+      case SgtinScheme.sgtin198:
+        if (serial.length > 20) {
+          throw const FormatException(
+              'SGTIN-198 serial must be 20 characters or fewer');
+        }
+        for (final unit in serial.codeUnits) {
+          if (!_sgtin198Alphabet.contains(unit)) {
+            throw FormatException(
+                'SGTIN-198 serial has an unsupported character',
+                String.fromCharCode(unit));
+          }
+        }
+    }
   }
 
   /// Percent-escapes the characters the EPC Tag Data Standard reserves inside a

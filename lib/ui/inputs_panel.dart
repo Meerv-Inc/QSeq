@@ -9,6 +9,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:macos_ui/macos_ui.dart';
 
+import '../encoders/gtin.dart';
 import '../models/batch.dart';
 import '../models/label_spec.dart';
 import '../models/combined_label.dart';
@@ -56,12 +57,7 @@ class InputsPanel extends ConsumerWidget {
   Widget _modeSection(WidgetRef ref, AppSettings s,
       void Function(AppSettings Function(AppSettings)) update) {
     return SectionCard(title: 'Workspace', children: [
-      _dropdown<AppMode>(
-        value: s.mode,
-        items: {for (final m in AppMode.values) m: m.label},
-        onChanged: (v) => update((x) => x.copyWith(mode: v)),
-      ),
-      const SizedBox(height: 8),
+      // The two toggles sit above the Workspace selector.
       _checkRow('Label designer', s.labelOn, (v) {
         update((x) => x.copyWith(labelOn: v));
         if (v) {
@@ -72,6 +68,38 @@ class InputsPanel extends ConsumerWidget {
         }
         ref.read(labelSelectionProvider.notifier).set(null);
       }),
+      if (s.data.kind == DataSourceKind.sgtin)
+        _checkRow('Serialization', s.data.serialize, (v) {
+          update((x) {
+            var nd = x.data.copyWith(serialize: v);
+            if (!v && nd.sgtinFormat.epcScheme != null) {
+              nd = nd.copyWith(sgtinFormat: SgtinFormat.digitalLink);
+            }
+            var mode = x.mode;
+            if (!v && mode.isSerialRun) {
+              mode = switch (mode) {
+                AppMode.twoDSerial => AppMode.twoD,
+                AppMode.oneDSerial => AppMode.oneD,
+                AppMode.comboSerial => AppMode.combo,
+                _ => mode,
+              };
+            }
+            return x.copyWith(data: nd, mode: mode);
+          });
+        }),
+      const SizedBox(height: 8),
+      _dropdown<AppMode>(
+        value: s.mode,
+        items: {
+          // Serialized runs are tributary to the Serialization checkbox.
+          for (final m in AppMode.values)
+            if (s.data.kind != DataSourceKind.sgtin ||
+                s.data.serialize ||
+                !m.isSerialRun)
+              m: m.label
+        },
+        onChanged: (v) => update((x) => x.copyWith(mode: v)),
+      ),
     ]);
   }
 
@@ -85,7 +113,7 @@ class InputsPanel extends ConsumerWidget {
         child: _dropdown<DataSourceKind>(
           value: d.kind,
           items: const {
-            DataSourceKind.sgtin: 'SGTIN',
+            DataSourceKind.sgtin: 'GS1',
             DataSourceKind.rawText: 'Free text',
           },
           onChanged: (v) =>
@@ -96,11 +124,25 @@ class InputsPanel extends ConsumerWidget {
 
     if (d.kind == DataSourceKind.sgtin) {
       children.add(LabeledField(
-        label: 'GTIN (8/12/13/14)',
+        label: 'GTIN length',
+        child: _dropdown<int>(
+          value: d.gtinLength,
+          items: {
+            for (final len in Gtin.lengths)
+              len: 'GTIN-$len · e.g. ${Gtin.example(len)}',
+          },
+          onChanged: (v) =>
+              update((x) => x.copyWith(data: d.copyWith(gtinLength: v))),
+        ),
+      ));
+      children.add(LabeledField(
+        label: 'GTIN',
         child: _text(d.gtin,
             (v) => update((x) => x.copyWith(data: d.copyWith(gtin: v)))),
       ));
-      if (!s.mode.isSerialized) {
+      children.add(_gtinActions(context, d, update));
+      // Serialization toggle lives in the Workspace card (above the selector).
+      if (d.serialize && !s.mode.isSerialized) {
         children.add(LabeledField(
           label: 'Serial',
           child: _text(d.serial,
@@ -109,15 +151,20 @@ class InputsPanel extends ConsumerWidget {
       }
       if (!isCombo && !s.labelOn) {
         children.add(LabeledField(
-          label: 'SGTIN format',
+          label: 'Format',
           child: _dropdown<SgtinFormat>(
             value: d.sgtinFormat,
-            items: {for (final f in SgtinFormat.values) f: f.label},
+            items: {
+              for (final f in SgtinFormat.values)
+                if (d.serialize || f.epcScheme == null) f: f.label
+            },
             onChanged: (v) =>
                 update((x) => x.copyWith(data: d.copyWith(sgtinFormat: v))),
           ),
         ));
-        if (d.sgtinFormat == SgtinFormat.epcTagUri) {
+        if (d.serialize &&
+            (d.sgtinFormat == SgtinFormat.sgtin96 ||
+                d.sgtinFormat == SgtinFormat.sgtin198)) {
           children.add(LabeledField(
             label: 'Company prefix length',
             child: NumberField(
@@ -623,6 +670,52 @@ class InputsPanel extends ConsumerWidget {
 
   Widget _text(String value, ValueChanged<String> onChanged) =>
       PlainTextField(value: value, onChanged: onChanged);
+
+  /// "Generate a valid GTIN" button plus a live check-digit status: a one-click
+  /// fix when the trailing digit is wrong, or a confirmation when it is valid.
+  Widget _gtinActions(BuildContext context, DataSourceInput d,
+      void Function(AppSettings Function(AppSettings)) update) {
+    final raw = d.gtin.trim();
+    final canCheck = Gtin.isAllDigits(raw) && Gtin.lengths.contains(raw.length);
+    int? expected;
+    var ok = false;
+    if (canCheck) {
+      expected = Gtin.checkDigit(raw.substring(0, raw.length - 1));
+      ok = expected == raw.codeUnitAt(raw.length - 1) - 0x30;
+    }
+    final caption = MacosTheme.of(context).typography.caption1;
+    return Padding(
+      padding: const EdgeInsets.only(top: 6, bottom: 4),
+      child: Row(children: [
+        PushButton(
+          controlSize: ControlSize.regular,
+          secondary: true,
+          onPressed: () => update((x) =>
+              x.copyWith(data: d.copyWith(gtin: Gtin.generate(d.gtinLength)))),
+          child: Text('Generate GTIN-${d.gtinLength}'),
+        ),
+        const SizedBox(width: 8),
+        if (canCheck && !ok) ...[
+          PushButton(
+            controlSize: ControlSize.regular,
+            secondary: true,
+            onPressed: () => update((x) => x.copyWith(
+                data: d.copyWith(
+                    gtin: '${raw.substring(0, raw.length - 1)}$expected'))),
+            child: const Text('Fix check digit'),
+          ),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text('check digit should be $expected',
+                style: caption.copyWith(color: MacosColors.systemRedColor)),
+          ),
+        ] else if (ok)
+          Text('✓ check digit valid',
+              style:
+                  caption.copyWith(color: MacosColors.systemGreenColor)),
+      ]),
+    );
+  }
 
   Widget _dropdown<T>({
     required T value,

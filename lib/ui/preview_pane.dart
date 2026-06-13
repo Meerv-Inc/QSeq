@@ -5,6 +5,8 @@
 // https://polyformproject.org/licenses/noncommercial/1.0.0/
 
 import 'dart:io';
+import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:barcode_widget/barcode_widget.dart' as bw;
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
@@ -16,9 +18,12 @@ import '../models/batch.dart';
 import '../models/caption.dart';
 import '../models/combined_label.dart';
 import '../models/encode_config.dart';
+import '../models/label_spec.dart';
 import '../models/size_result.dart';
 import '../render/barcode_factory.dart';
+import '../render/label_export.dart';
 import '../state/app_controller.dart';
+import 'export_actions.dart';
 import 'label_designer.dart';
 import 'ruler_strip.dart';
 
@@ -39,16 +44,18 @@ class PreviewPane extends ConsumerWidget {
           color: const Color(0xFFF2F2F4),
           alignment: Alignment.center,
           padding: const EdgeInsets.all(24),
-          // The label designer takes over single workspaces when the overlay
-          // is on; label SHEETS keep the standard sheet preview on screen
-          // (each cell exports as the designed label in the PDF).
+          // The label designer takes over single workspaces when the overlay is
+          // on; label SHEETS now render WYSIWYG — a tiled sheet of the designed
+          // label, one per serial, matching the exported PDF.
           child: s.labelOn && !s.mode.isSerialized
               ? const LabelDesigner()
-              : s.mode.isSerialized
-                  ? _batch(context, ref, s)
-                  : s.mode.isCombo
-                      ? _combined(context, ref, s)
-                      : _single(context, ref, s),
+              : s.labelOn && s.mode.isSerialized
+                  ? const _LabelSheetView()
+                  : s.mode.isSerialized
+                      ? _batch(context, ref, s)
+                      : s.mode.isCombo
+                          ? _combined(context, ref, s)
+                          : _single(context, ref, s),
         ),
       ),
     );
@@ -668,6 +675,8 @@ class _PageTabsState extends State<_PageTabs> {
   @override
   Widget build(BuildContext context) {
     final type = MacosTheme.of(context).typography;
+    final atStart = widget.pageIndex <= 0;
+    final atEnd = widget.pageIndex >= widget.pageCount - 1;
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 940),
       child: Padding(
@@ -680,23 +689,73 @@ class _PageTabsState extends State<_PageTabs> {
                   style: type.caption2
                       .copyWith(color: MacosColors.systemGrayColor)),
             ),
+            _arrow(
+                left: true,
+                enabled: !atStart,
+                onTap: () => widget.onSelect(widget.pageIndex - 1)),
+            const SizedBox(width: 6),
+            // The tab strip scrolls horizontally (with a visible bar) between
+            // the prev/next arrows when there are more pages than fit.
             Expanded(
-              child: SingleChildScrollView(
+              child: RawScrollbar(
                 controller: _scroll,
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    for (var p = 0; p < widget.pageCount; p++)
-                      Padding(
-                        key: p == widget.pageIndex ? _activeKey : null,
-                        padding: const EdgeInsets.only(right: 6),
-                        child: _tab(p),
-                      ),
-                  ],
+                thumbVisibility: true,
+                thickness: 6,
+                radius: const Radius.circular(3),
+                thumbColor: const Color(0x66888888),
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: SingleChildScrollView(
+                    controller: _scroll,
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        for (var p = 0; p < widget.pageCount; p++)
+                          Padding(
+                            key: p == widget.pageIndex ? _activeKey : null,
+                            padding: const EdgeInsets.only(right: 6),
+                            child: _tab(p),
+                          ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
+            const SizedBox(width: 6),
+            _arrow(
+                left: false,
+                enabled: !atEnd,
+                onTap: () => widget.onSelect(widget.pageIndex + 1)),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _arrow({
+    required bool left,
+    required bool enabled,
+    required VoidCallback onTap,
+  }) {
+    return MouseRegion(
+      cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
+      child: GestureDetector(
+        onTap: enabled ? onTap : null,
+        child: Container(
+          width: 28,
+          height: 28,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: const Color(0xFFEDEDED),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: const Color(0xFFD6D6D6)),
+          ),
+          child: Icon(
+            left ? CupertinoIcons.chevron_left : CupertinoIcons.chevron_right,
+            size: 14,
+            color: enabled ? const Color(0xFF333333) : const Color(0xFFBBBBBB),
+          ),
         ),
       ),
     );
@@ -734,4 +793,256 @@ class _PageTabsState extends State<_PageTabs> {
       ),
     );
   }
+}
+
+/// WYSIWYG preview of a SHEET of designed labels — one rendered label per serial
+/// (the exact same renderer the PDF uses), tiled and paginated like the code
+/// sheet. Renders lazily and only re-renders when an input that affects the
+/// labels changes, so it stays responsive.
+class _LabelSheetView extends ConsumerStatefulWidget {
+  const _LabelSheetView();
+
+  @override
+  ConsumerState<_LabelSheetView> createState() => _LabelSheetViewState();
+}
+
+class _LabelSheetViewState extends ConsumerState<_LabelSheetView> {
+  static const int _cap = 90; // max labels rendered on screen per page
+  static const double _previewDpi = 140; // raster res for the on-screen sheet
+  String _sig = '';
+  String _pendingSig = '';
+  List<ui.Image> _imgs = const [];
+
+  @override
+  void dispose() {
+    for (final im in _imgs) {
+      im.dispose();
+    }
+    super.dispose();
+  }
+
+  // The label-sheet PDF tiles with a 10 mm page margin and a 3 mm cell gap;
+  // mirror those exactly so the on-screen page matches the export.
+  static const double _margin = 10;
+  static const double _gap = 3;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = ref.watch(appControllerProvider);
+    final batch = ref.watch(batchProvider);
+    final spec = ref.watch(labelSpecProvider);
+    if (batch == null || batch.items.isEmpty) {
+      return _centered('Set a valid data source and count');
+    }
+
+    // Arrange the label to get its true mm footprint, then compute the same
+    // grid the PDF uses: columns by label width, rows by page height.
+    final a = LabelExport.arrange(s, spec, serial: batch.items.first.serial);
+    final pageWmm = batch.effectiveWidthMm;
+    final cols = math.max(
+        1, ((pageWmm - 2 * _margin + _gap) / (a.wMm + _gap)).floor());
+    final continuous = batch.page.isContinuous;
+    final total = batch.items.length;
+    final rowsPerPage = continuous
+        ? ((total + cols - 1) ~/ cols)
+        : math.max(
+            1,
+            ((batch.effectiveHeightMm - 2 * _margin + _gap) / (a.hMm + _gap))
+                .floor());
+    final perPage = math.max(1, cols * rowsPerPage);
+    final pageCount = math.max(1, (total + perPage - 1) ~/ perPage);
+    final pageIndex = ref.watch(batchPageProvider).clamp(0, pageCount - 1);
+    final pageItems = batch.items.skip(pageIndex * perPage).take(perPage);
+    final shown = pageItems.take(_cap).toList();
+    final hidden = pageItems.length - shown.length;
+    final serials = [for (final it in shown) it.serial];
+
+    // Page height to draw: fixed for a real format, content-fit for a web.
+    final phMm = continuous
+        ? 2 * _margin +
+            ((shown.length + cols - 1) ~/ cols) * (a.hMm + _gap)
+        : batch.effectiveHeightMm;
+
+    // Fingerprint everything that changes the rendered labels (the spec is
+    // clone-replaced on every edit, so its identity changes when it mutates).
+    final sig = [
+      identityHashCode(spec),
+      pageIndex,
+      serials.join(','),
+      s.data.gtin,
+      s.data.serialize,
+      s.data.sgtinFormat.name,
+      s.data.digitalLinkDomain,
+      s.twoDSymbology.name,
+      s.oneDSymbology.name,
+      s.ecLevel.name,
+      s.safeXDimensionMm,
+      s.safeBarHeightMm,
+      s.safeLogoSideMm,
+      s.logoImagePath ?? '',
+      s.safeLogoEcBudget,
+    ].join('|');
+    if (sig != _sig) _renderLatest(sig, s, spec, serials);
+
+    final fmtLabel = '${batch.page.label} · '
+        '$pageCount page${pageCount == 1 ? '' : 's'} · '
+        '$cols×$rowsPerPage labels/page';
+
+    return Column(children: [
+      Expanded(
+        child: _imgs.isEmpty
+            ? const Center(child: ProgressCircle())
+            : LayoutBuilder(builder: (context, c) {
+                const band = 30.0;
+                final rulers = s.rulersOnScreen;
+                final reserveW = rulers ? band + 6 : 0.0;
+                final reserveH = rulers ? band + 4 : 0.0;
+                final scale = math.min((c.maxWidth - 8 - reserveW) / pageWmm,
+                    (c.maxHeight - 8 - reserveH) / phMm);
+                final pageWpx = pageWmm * scale, pageHpx = phMm * scale;
+                final pageBox = Container(
+                  width: pageWpx,
+                  height: pageHpx,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFFFFF),
+                    border: Border.all(color: const Color(0xFFCCCCCC)),
+                    boxShadow: const [
+                      BoxShadow(
+                          color: Color(0x22000000),
+                          blurRadius: 6,
+                          offset: Offset(0, 2)),
+                    ],
+                  ),
+                  child: Stack(
+                    children: [
+                      for (var i = 0; i < _imgs.length; i++)
+                        Positioned(
+                          left: (_margin +
+                                  _gap / 2 +
+                                  (i % cols) * (a.wMm + _gap)) *
+                              scale,
+                          top: (_margin +
+                                  _gap / 2 +
+                                  (i ~/ cols) * (a.hMm + _gap)) *
+                              scale,
+                          width: a.wMm * scale,
+                          height: a.hMm * scale,
+                          child:
+                              RawImage(image: _imgs[i], fit: BoxFit.fill),
+                        ),
+                    ],
+                  ),
+                );
+                // True-scale rulers around the page (mm/inch/vernier), at the
+                // same px-per-mm as the rendered page.
+                final content = rulers
+                    ? Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: RulerStrip(
+                                pxPerMm: scale,
+                                lengthPx: pageWpx,
+                                band: band),
+                          ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              pageBox,
+                              const SizedBox(width: 6),
+                              RulerStrip(
+                                  pxPerMm: scale,
+                                  lengthPx: pageHpx,
+                                  horizontal: false,
+                                  band: band),
+                            ],
+                          ),
+                        ],
+                      )
+                    : pageBox;
+                return SingleChildScrollView(
+                  child: Center(
+                    child: Padding(
+                        padding: const EdgeInsets.all(4), child: content),
+                  ),
+                );
+              }),
+      ),
+      if (hidden > 0)
+        Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Text('+ $hidden more on this page — all export',
+              style: const TextStyle(
+                  fontSize: 11, color: MacosColors.systemGrayColor)),
+        ),
+      if (continuous)
+        Padding(
+          padding: const EdgeInsets.only(top: 12),
+          child: Text(fmtLabel,
+              style: const TextStyle(
+                  fontSize: 11, color: MacosColors.systemGrayColor)),
+        )
+      else
+        _PageTabs(
+          info: fmtLabel,
+          pageIndex: pageIndex,
+          pageCount: pageCount,
+          onSelect: (p) => ref.read(batchPageProvider.notifier).set(p),
+        ),
+    ]);
+  }
+
+  Future<void> _renderLatest(
+      String sig, AppSettings s, LabelSpec spec, List<String> serials) async {
+    if (sig == _pendingSig) return; // already rendering this exact state
+    _pendingSig = sig;
+    final ps = s.copyWith(dpi: _previewDpi);
+    final out = <ui.Image>[];
+    ui.Image? logo;
+    try {
+      // Decode the picked logo once; renderImage paints it into each label's
+      // 2D centre dead-space (so the on-screen sheet matches the export).
+      logo = await ExportActions.loadLogo(s.logoImagePath);
+      for (final serial in serials) {
+        out.add(await LabelExport.renderImage(ps, spec,
+            serial: serial, logo: logo));
+      }
+    } catch (_) {
+      logo?.dispose();
+      for (final im in out) {
+        im.dispose();
+      }
+      return; // a transient invalid state (e.g. mid-edit); keep the last sheet
+    }
+    logo?.dispose();
+    if (sig != _pendingSig) {
+      // Superseded by a newer request — discard.
+      for (final im in out) {
+        im.dispose();
+      }
+      return;
+    }
+    if (!mounted) {
+      for (final im in out) {
+        im.dispose();
+      }
+      return;
+    }
+    final old = _imgs;
+    setState(() {
+      _sig = sig;
+      _imgs = out;
+    });
+    for (final im in old) {
+      im.dispose();
+    }
+  }
+
+  Widget _centered(String msg) => Center(
+        child: Text(msg,
+            style: const TextStyle(color: MacosColors.systemGrayColor)),
+      );
 }

@@ -10,7 +10,7 @@ import 'components/license_gate.dart';
 
 /// Single source of truth for the displayed site version — keep in sync with
 /// site/pubspec.yaml and the CHANGELOG.
-const qseqVersion = '1.5.2';
+const qseqVersion = '1.5.3';
 
 /// The page shell. Static marketing chrome is injected as raw HTML (identical to
 /// the previous static site); the interactive generator is a hydrated @client
@@ -37,12 +37,11 @@ class App extends StatelessComponent {
 const _header = r'''
 <header class="nav">
   <div class="brand">
-    <span class="logo" aria-hidden="true"></span>
-    <span>QSeq</span>
+    <a href="#" aria-label="QSeq home"><img class="brand-logo" src="/images/qseq.svg" alt="QSeq" width="350" height="130" /></a>
   </div>
   <nav>
     <button id="themeBtn" class="themebtn" type="button" aria-label="Switch between dark and light mode" title="Dark / light mode">☀</button>
-    <a href="#generator" id="navGenerator">Codes &amp; Labels App</a>
+    <a href="#openQseq" id="navGenerator">QSeq.app</a>
     <a href="#mission">Mission</a>
     <a href="#about">About</a>
     <a href="#support">Support</a>
@@ -68,7 +67,7 @@ const _hero = r'''
 const _mission = r'''
 <section id="mission" class="mission">
   <h2>Why this is source-available</h2>
-  <p>QSeq is released as source-available (PolyForm Noncommercial) to accelerate the transition to <b>Sustainable Identity on Every Thing</b> (SIoT): a future where every physical object carries an open, web-resolvable, standards-based identity — GS1 Digital Links, SGTINs and compatible carriers — that anyone can read, verify and build upon without proprietary lock-in.</p>
+  <p>QSeq is released as source-available (PolyForm Noncommercial) to accelerate the transition to <b>Sustainable Identity on Every Thing</b>: a future where every physical object carries an open, web-resolvable, standards-based identity — GS1 Digital Links, SGTINs and compatible carriers — that anyone can read, verify and build upon without proprietary lock-in.</p>
   <p>Durable, interoperable identity is the foundation of the circular economy. Reuse, repair, recall, provenance and end-of-life tracking all depend on a code that still resolves years after it was printed. Keeping the tools that <i>mint</i> those identities open means the infrastructure of identity stays a public good — not a toll booth.</p>
   <div class="pillars">
     <div><h3>Standards-first</h3><p>GS1 Digital Link, SGTIN, EPC Tag URI, GS1-128, Data Matrix — no bespoke formats.</p></div>

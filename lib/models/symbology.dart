@@ -14,6 +14,8 @@ enum Symbology {
   code39('Code 39', is2D: false, quietZoneModules: 10),
   // EAN-13's quiet zones are asymmetric per GS1: 11 modules left, 7 right.
   ean13('EAN-13', is2D: false, quietZoneModules: 11, quietZoneRightOverride: 7),
+  // EAN-8 carries an 8-digit GTIN-8; symmetric 7-module quiet zones per GS1.
+  ean8('EAN-8', is2D: false, quietZoneModules: 7),
   upcA('UPC-A', is2D: false, quietZoneModules: 9);
 
   const Symbology(

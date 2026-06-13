@@ -6,6 +6,28 @@ releases.
 
 © 2026 Meerv Inc. — PolyForm Noncommercial License 1.0.0.
 
+## [1.5.3] — 2026-06-13
+
+### Added
+- **EAN-8 symbology** — a GTIN-8 now prints as a native 8-digit EAN-8 symbol.
+- **GTIN length selector (8/12/13/14)** with a per-length example, a one-click
+  **Generate a valid GTIN** action, and a live **check-digit fix**.
+- **Serialization is now a checkbox**: the **GS1** data source is a plain
+  class-level **GTIN** by default; ticking **Serialization** turns it into an
+  **SGTIN** (serial) and unlocks the EPC SGTIN-96/198 formats and the serialized
+  layouts. EPC encodings split into **SGTIN-96** (numeric serial) and
+  **SGTIN-198** (alphanumeric), rendered as scheme-bearing EPC Tag URIs.
+- **WYSIWYG label sheets (desktop):** the on-screen preview tiles the designed
+  label, one per serial, on the real page at the correct labels-per-page — with
+  the picked logo, true-scale rulers, and a paginated tab browser (left/right
+  arrows + scrollbar) matching the PDF export.
+
+### Changed
+- Retail 1D codes (EAN-13 / EAN-8 / UPC-A) carry the **native GTIN-N** (trailing
+  digits) instead of a left-zero-padded / mistruncated value.
+- New **QSeq app icon** across macOS, Windows, iOS and Android; the website now
+  uses the QSeq wordmark logo.
+
 ## [1.5.2] — 2026-06-12
 
 ### Added
