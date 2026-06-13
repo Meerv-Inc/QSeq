@@ -101,6 +101,7 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
     _domain.dispose();
     _text.dispose();
     _count.dispose();
+    _title.dispose();
     super.dispose();
   }
 
@@ -186,12 +187,131 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
     return doc.save();
   }
 
-  String get _pdfName => _sheetMode ? 'qseq-sheet.pdf' : 'qseq-code.pdf';
+  // Label designer (SGTIN): a sized label pairing the 2D Digital Link, the
+  // GS1-128 element string, and a free-text title.
+  bool _labelOn = false;
+  final _title = TextEditingController(text: 'QSeq');
+  bool get _labelMode => _labelOn && _data.kind == DataSourceKind.sgtin;
+
+  Future<Uint8List> _buildLabelPdf() async {
+    final doc = pw.Document(title: 'QSeq label');
+    final dl = _data.encodeWith(format: SgtinFormat.digitalLink);
+    final es = _data.encodeWith(format: SgtinFormat.elementString);
+    final wMm = _sizeMm * 2.2;
+    final hMm = _sizeMm;
+    const pad = 3.0;
+    doc.addPage(pw.Page(
+      pageFormat: PdfPageFormat(
+          (wMm + pad * 2) * PdfPageFormat.mm, (hMm + pad * 2) * PdfPageFormat.mm),
+      margin: pw.EdgeInsets.all(pad * PdfPageFormat.mm),
+      build: (context) => pw.Container(
+        decoration: pw.BoxDecoration(border: pw.Border.all(width: 0.5)),
+        padding: const pw.EdgeInsets.all(4),
+        child: pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.stretch, children: [
+          pw.AspectRatio(
+            aspectRatio: 1,
+            child: pw.BarcodeWidget(
+                barcode: BarcodeFactory.build(Symbology.qrCode, ecLevel: _ec),
+                data: dl,
+                drawText: false),
+          ),
+          pw.SizedBox(width: 4),
+          pw.Expanded(
+            child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text(_title.text,
+                      style: pw.TextStyle(
+                          fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                  pw.Expanded(
+                    child: pw.BarcodeWidget(
+                        barcode: BarcodeFactory.build(Symbology.gs1_128),
+                        data: es,
+                        drawText: true),
+                  ),
+                ]),
+          ),
+        ]),
+      ),
+    ));
+    return doc.save();
+  }
+
+  String get _pdfName =>
+      _labelMode ? 'qseq-label.pdf' : (_sheetMode ? 'qseq-sheet.pdf' : 'qseq-code.pdf');
+
+  Widget _labelPreviewCard() {
+    final String dl, es;
+    try {
+      dl = _data.encodeWith(format: SgtinFormat.digitalLink);
+      es = _data.encodeWith(format: SgtinFormat.elementString);
+    } catch (e) {
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text('$e',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Theme.of(context).colorScheme.error)),
+        ),
+      );
+    }
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Container(
+        color: Colors.white,
+        padding: const EdgeInsets.all(12),
+        child: AspectRatio(
+          aspectRatio: 2.4,
+          child: Container(
+            decoration:
+                BoxDecoration(border: Border.all(color: Colors.black, width: 0.5)),
+            padding: const EdgeInsets.all(8),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              AspectRatio(
+                aspectRatio: 1,
+                child: BarcodeWidget(
+                    barcode:
+                        BarcodeFactory.build(Symbology.qrCode, ecLevel: _ec),
+                    data: dl,
+                    color: Colors.black,
+                    backgroundColor: Colors.white,
+                    drawText: false),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(_title.text,
+                          style: const TextStyle(
+                              color: Colors.black, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 6),
+                      Expanded(
+                        child: BarcodeWidget(
+                            barcode: BarcodeFactory.build(Symbology.gs1_128),
+                            data: es,
+                            color: Colors.black,
+                            backgroundColor: Colors.white,
+                            drawText: true),
+                      ),
+                    ]),
+              ),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
 
   Future<void> _withPdf(String? payload, Future<void> Function(Uint8List) use) async {
     if (payload == null) return;
     try {
-      await use(_sheetMode ? await _buildSheetPdf() : await _buildPdf(payload));
+      await use(_labelMode
+          ? await _buildLabelPdf()
+          : _sheetMode
+              ? await _buildSheetPdf()
+              : await _buildPdf(payload));
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
@@ -262,14 +382,17 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
           children: [
-            _Preview(
-                symbology: _sym,
-                ec: _ec,
-                payload: payload,
-                error: error,
-                logoOn: _logoOn && _sym.is2D,
-                logoFrac: _logoFrac,
-                logoBytes: _logoBytes),
+            if (_labelMode)
+              _labelPreviewCard()
+            else
+              _Preview(
+                  symbology: _sym,
+                  ec: _ec,
+                  payload: payload,
+                  error: error,
+                  logoOn: _logoOn && _sym.is2D,
+                  logoFrac: _logoFrac,
+                  logoBytes: _logoBytes),
             const SizedBox(height: 8),
             if (payload != null)
               Center(
@@ -420,6 +543,23 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
                     decoration: const InputDecoration(
                         labelText: 'Count (codes)',
                         border: OutlineInputBorder()),
+                  ),
+                ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Label designer'),
+                subtitle: const Text('Sized label: QR + GS1-128 + title'),
+                value: _labelOn,
+                onChanged: (v) => setState(() => _labelOn = v),
+              ),
+              if (_labelOn)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4, bottom: 12),
+                  child: TextField(
+                    controller: _title,
+                    onChanged: (_) => setState(() {}),
+                    decoration: const InputDecoration(
+                        labelText: 'Title', border: OutlineInputBorder()),
                   ),
                 ),
               DropdownButtonFormField<SgtinFormat>(
