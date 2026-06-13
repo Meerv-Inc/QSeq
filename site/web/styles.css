@@ -42,6 +42,8 @@ h1,h2,h3{line-height:1.1;letter-spacing:-0.02em}
 .btn.primary:hover{filter:brightness(1.05)}
 
 .generator{display:grid;grid-template-columns:340px minmax(280px,1fr) 460px;gap:22px;width:100%;margin:0;padding:30px 28px 70px}
+/* The generator stays hidden until the visitor accepts the licence via "Open QSeq". */
+body:not(.qseq-unlocked) .generator{display:none}
 .log h2{margin:0 0 10px;font-size:1.15rem}
 .loglist{font-family:var(--mono);font-size:.74rem;line-height:1.5;max-height:640px;overflow-y:auto;overflow-x:hidden;
   border:1px solid var(--line);border-radius:8px;padding:10px;background:var(--panel2);

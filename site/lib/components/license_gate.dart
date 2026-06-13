@@ -2,16 +2,17 @@
 // Copyright (c) 2026 Meerv Inc.  Required Notice: https://qseq.app
 // Licensed under the PolyForm Noncommercial License 1.0.0.
 
-// The license consent gate: on first visit — and again every 30 days — the
-// user must read and agree to the PolyForm Noncommercial 1.0.0 terms granted
-// by Meerv Inc. before using the generator. Renders nothing on the server and
-// nothing once consent is current (stored in localStorage).
+// The license consent gate. The generator stays hidden (CSS:
+// `body:not(.qseq-unlocked) .generator`) until the visitor clicks "Open QSeq".
+// On that click — if consent is missing or older than 30 days — the PolyForm
+// Noncommercial 1.0.0 terms are shown and must be accepted before the app is
+// revealed. Acceptance is stored in localStorage. Renders nothing on the server.
 import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
-import 'package:universal_web/web.dart' as uw;
+
+import '../qseq/gate_dom.dart';
 
 const _licenseUrl = 'https://polyformproject.org/licenses/noncommercial/1.0.0';
-const _storageKey = 'qseq-license-accepted';
 
 @client
 class LicenseGate extends StatefulComponent {
@@ -27,23 +28,22 @@ class LicenseGateState extends State<LicenseGate> {
   @override
   void initState() {
     super.initState();
-    if (!kIsWeb) return; // server prerender: render nothing
-    try {
-      final at = DateTime.tryParse(
-          uw.window.localStorage.getItem(_storageKey) ?? '');
-      // Re-confirm every 30 days.
-      show = at == null || DateTime.now().difference(at).inDays >= 30;
-    } catch (_) {
-      show = true;
+    if (!kIsWeb) return; // server prerender: render nothing, wire nothing
+    wireOpenButtons(_requestOpen);
+  }
+
+  void _requestOpen() {
+    if (gateAccepted()) {
+      revealGenerator();
+    } else {
+      setState(() => show = true);
     }
   }
 
   void _agree() {
-    try {
-      uw.window.localStorage
-          .setItem(_storageKey, DateTime.now().toIso8601String());
-    } catch (_) {}
+    gateStoreAccepted();
     setState(() => show = false);
+    revealGenerator();
   }
 
   @override

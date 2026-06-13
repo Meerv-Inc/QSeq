@@ -42,7 +42,7 @@ const _header = r'''
   </div>
   <nav>
     <button id="themeBtn" class="themebtn" type="button" aria-label="Switch between dark and light mode" title="Dark / light mode">☀</button>
-    <a href="#generator">Generator</a>
+    <a href="#generator" id="navGenerator">Codes &amp; Labels App</a>
     <a href="#mission">Mission</a>
     <a href="#about">About</a>
     <a href="#support">Support</a>
@@ -57,7 +57,7 @@ const _hero = r'''
   <h1><span class="meerv">Sustainable Identity Generator</span><br/>for <span>Every Thing</span></h1>
   <p class="lede">QSeq mints Barcodes, QR&nbsp;Codes and Data&nbsp;Matrix carriers for <b>SGTINs</b>, <b>GS1&nbsp;Digital&nbsp;Links</b> and <b>EPC&nbsp;URIs</b> — with a print-true physical-size calculator so what you design is exactly what prints.</p>
   <div class="cta">
-    <a class="btn primary" href="#generator">Open the generator</a>
+    <a class="btn primary" id="openQseq" href="#generator">Open QSeq</a>
     <a class="btn" href="/QSeq.dmg" download>Download for macOS</a>
     <a class="btn" href="/qseq-windows-setup.exe" download>Download for Windows</a>
   </div>

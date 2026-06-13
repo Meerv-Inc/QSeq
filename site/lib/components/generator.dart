@@ -156,7 +156,7 @@ class GeneratorState extends State<Generator> {
 
     return section(id: 'generator', classes: 'generator', [
       div(classes: 'panel inputs', [
-        h2([text('Generator')]),
+        h2([text('Codes & Labels App')]),
         ..._inputSections(i),
         _downloadButtons(art, layout),
         if (showErr.isNotEmpty) p(classes: 'err', [text(showErr)]),
@@ -709,13 +709,32 @@ class GeneratorState extends State<Generator> {
       final name = mode.isPaged
           ? 'qseq-sheet.pdf'
           : (labelOn ? 'qseq-label.pdf' : 'qseq-code.pdf');
-      final saved = await savePdfPages(name, pages);
+      final saved = await savePdfPages(name, pages, (done, total) {
+        // Keep the tab responsive and show real progress while jsPDF ingests
+        // each page of a large serialized sheet.
+        if (total > 1) {
+          setState(() {
+            busyLabel = 'Assembling PDF — page $done of $total…';
+            busyFrac = done / total;
+          });
+        }
+      });
       if (!saved) {
         setState(() => err = 'PDF library still loading — try again.');
       }
     } catch (e) {
-      setState(() =>
-          err = e is FormatException ? e.message : e.toString());
+      final s = e.toString();
+      final tooBig = e is RangeError ||
+          s.toLowerCase().contains('string length') ||
+          s.toLowerCase().contains('array length') ||
+          s.toLowerCase().contains('allocation');
+      setState(() => err = e is FormatException
+          ? e.message
+          : tooBig
+              ? 'This sheet is too large to build as a single PDF in the '
+                  'browser. Use fewer codes per sheet or a lower DPI, then '
+                  'export again.'
+              : s);
     } finally {
       _busyDone();
     }

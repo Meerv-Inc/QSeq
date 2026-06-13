@@ -31,5 +31,6 @@ class PdfPageImage {
 }
 
 /// Builds and downloads a PDF via jsPDF. False when jsPDF is unavailable.
-Future<bool> savePdfPages(String filename, List<PdfPageImage> pages) async =>
+Future<bool> savePdfPages(String filename, List<PdfPageImage> pages,
+        [void Function(int done, int total)? onProgress]) async =>
     false;

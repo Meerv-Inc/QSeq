@@ -121,7 +121,8 @@ class PdfPageImage {
   const PdfPageImage(this.wMm, this.hMm, this.pngDataUrl);
 }
 
-Future<bool> savePdfPages(String filename, List<PdfPageImage> pages) async {
+Future<bool> savePdfPages(String filename, List<PdfPageImage> pages,
+    [void Function(int done, int total)? onProgress]) async {
   if (pages.isEmpty) return false;
   final jspdf = web.window.getProperty('jspdf'.toJS);
   if (jspdf == null || jspdf.isUndefinedOrNull) return false;
@@ -150,6 +151,11 @@ Future<bool> savePdfPages(String filename, List<PdfPageImage> pages) async {
       page.wMm.toJS,
       page.hMm.toJS,
     ]);
+    onProgress?.call(p + 1, pages.length);
+    // Yield so a many-page serialized sheet stays responsive and the progress
+    // label repaints between the (synchronous) per-page image inserts, instead
+    // of freezing the tab at "Assembling PDF…".
+    await Future<void>.delayed(Duration.zero);
   }
   doc.callMethodVarArgs('save'.toJS, [filename.toJS]);
   return true;
