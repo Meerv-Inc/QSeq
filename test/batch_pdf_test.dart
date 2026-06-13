@@ -5,10 +5,10 @@
 // https://polyformproject.org/licenses/noncommercial/1.0.0/
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:qr_studio/encoders/sgtin.dart';
-import 'package:qr_studio/models/batch.dart';
-import 'package:qr_studio/models/symbology.dart';
-import 'package:qr_studio/render/batch_pdf.dart';
+import 'package:qseq/encoders/sgtin.dart';
+import 'package:qseq/models/batch.dart';
+import 'package:qseq/models/symbology.dart';
+import 'package:qseq/render/batch_pdf.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

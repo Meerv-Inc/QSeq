@@ -5,11 +5,11 @@
 // https://polyformproject.org/licenses/noncommercial/1.0.0/
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:qr_studio/models/caption.dart';
-import 'package:qr_studio/models/data_source.dart';
-import 'package:qr_studio/models/encode_config.dart';
-import 'package:qr_studio/models/symbology.dart';
-import 'package:qr_studio/render/raster_renderer.dart';
+import 'package:qseq/models/caption.dart';
+import 'package:qseq/models/data_source.dart';
+import 'package:qseq/models/encode_config.dart';
+import 'package:qseq/models/symbology.dart';
+import 'package:qseq/render/raster_renderer.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

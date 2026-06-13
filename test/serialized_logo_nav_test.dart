@@ -8,10 +8,10 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:macos_ui/macos_ui.dart';
-import 'package:qr_studio/models/symbology.dart';
-import 'package:qr_studio/state/app_controller.dart';
-import 'package:qr_studio/ui/preview_pane.dart';
-import 'package:qr_studio/ui/serialization_log.dart';
+import 'package:qseq/models/symbology.dart';
+import 'package:qseq/state/app_controller.dart';
+import 'package:qseq/ui/preview_pane.dart';
+import 'package:qseq/ui/serialization_log.dart';
 
 Widget _host(ProviderContainer c, Widget child) => UncontrolledProviderScope(
       container: c,

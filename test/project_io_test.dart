@@ -5,10 +5,10 @@
 // https://polyformproject.org/licenses/noncommercial/1.0.0/
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:qr_studio/models/data_source.dart';
-import 'package:qr_studio/models/symbology.dart';
-import 'package:qr_studio/state/app_controller.dart';
-import 'package:qr_studio/state/project_io.dart';
+import 'package:qseq/models/data_source.dart';
+import 'package:qseq/models/symbology.dart';
+import 'package:qseq/state/app_controller.dart';
+import 'package:qseq/state/project_io.dart';
 
 void main() {
   test('project JSON round-trips all parameters', () {

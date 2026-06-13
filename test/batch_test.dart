@@ -6,8 +6,8 @@
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:qr_studio/models/batch.dart';
-import 'package:qr_studio/state/app_controller.dart';
+import 'package:qseq/models/batch.dart';
+import 'package:qseq/state/app_controller.dart';
 
 void main() {
   test('serialized 2D sheet increments from the data serial itself', () {

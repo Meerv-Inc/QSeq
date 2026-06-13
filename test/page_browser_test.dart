@@ -8,10 +8,10 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:macos_ui/macos_ui.dart';
-import 'package:qr_studio/models/batch.dart';
-import 'package:qr_studio/state/app_controller.dart';
-import 'package:qr_studio/ui/preview_pane.dart';
-import 'package:qr_studio/ui/serialization_log.dart';
+import 'package:qseq/models/batch.dart';
+import 'package:qseq/state/app_controller.dart';
+import 'package:qseq/ui/preview_pane.dart';
+import 'package:qseq/ui/serialization_log.dart';
 
 // A serialized A4 sheet whose item count spans several printed pages, so the
 // page tabs and the log jump-links both have something to render.

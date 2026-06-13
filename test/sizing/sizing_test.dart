@@ -5,13 +5,13 @@
 // https://polyformproject.org/licenses/noncommercial/1.0.0/
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:qr_studio/models/encode_config.dart';
-import 'package:qr_studio/models/symbology.dart';
-import 'package:qr_studio/sizing/datamatrix_capacity.dart';
-import 'package:qr_studio/sizing/dpi.dart';
-import 'package:qr_studio/sizing/logo_ec.dart';
-import 'package:qr_studio/sizing/qr_capacity.dart';
-import 'package:qr_studio/sizing/sizer.dart';
+import 'package:qseq/models/encode_config.dart';
+import 'package:qseq/models/symbology.dart';
+import 'package:qseq/sizing/datamatrix_capacity.dart';
+import 'package:qseq/sizing/dpi.dart';
+import 'package:qseq/sizing/logo_ec.dart';
+import 'package:qseq/sizing/qr_capacity.dart';
+import 'package:qseq/sizing/sizer.dart';
 
 void main() {
   group('QrCapacity', () {

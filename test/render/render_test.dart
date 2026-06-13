@@ -6,11 +6,11 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
-import 'package:qr_studio/models/encode_config.dart';
-import 'package:qr_studio/models/symbology.dart';
-import 'package:qr_studio/render/raster_renderer.dart';
-import 'package:qr_studio/sizing/dpi.dart';
-import 'package:qr_studio/sizing/qr_capacity.dart';
+import 'package:qseq/models/encode_config.dart';
+import 'package:qseq/models/symbology.dart';
+import 'package:qseq/render/raster_renderer.dart';
+import 'package:qseq/sizing/dpi.dart';
+import 'package:qseq/sizing/qr_capacity.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

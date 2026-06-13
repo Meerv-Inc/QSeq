@@ -5,9 +5,9 @@
 // https://polyformproject.org/licenses/noncommercial/1.0.0/
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:qr_studio/encoders/gtin.dart';
-import 'package:qr_studio/encoders/gs1.dart';
-import 'package:qr_studio/encoders/sgtin.dart';
+import 'package:qseq/encoders/gtin.dart';
+import 'package:qseq/encoders/gs1.dart';
+import 'package:qseq/encoders/sgtin.dart';
 
 void main() {
   group('Gtin', () {

@@ -62,3 +62,6 @@ installer/signing-metadata.json
 # The published macOS download is part of the Jaspr build inputs (mirrors
 # site/web/qseq-windows-setup.exe), so it is tracked despite the *.dmg rule.
 !site/web/QSeq.dmg
+
+# Local Apple notarization app-specific password — never commit
+.macos-appspecifiq

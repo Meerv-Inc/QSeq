@@ -5,7 +5,7 @@
 // https://polyformproject.org/licenses/noncommercial/1.0.0/
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:qr_studio/render/qr_structure.dart';
+import 'package:qseq/render/qr_structure.dart';
 
 void main() {
   group('QrStructure', () {

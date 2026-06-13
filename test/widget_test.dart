@@ -6,8 +6,8 @@
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:qr_studio/models/symbology.dart';
-import 'package:qr_studio/state/app_controller.dart';
+import 'package:qseq/models/symbology.dart';
+import 'package:qseq/state/app_controller.dart';
 
 void main() {
   test('default 2D workspace sizes a QR Digital Link', () {

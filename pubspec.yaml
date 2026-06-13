@@ -1,5 +1,5 @@
-﻿name: qr_studio
-description: "A new Flutter project."
+﻿name: qseq
+description: "QSeq — Sustainable Identity on Every Thing."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -39,7 +39,9 @@ dependencies:
   flutter_riverpod: ^3.3.1
   pdf: ^3.12.0
   image: ^4.8.0
-  super_clipboard: ^0.9.1
+  # PNG-to-clipboard via platform channels (no native Rust/cargokit, unlike
+  # super_clipboard) so the app builds for iOS/Android too.
+  pasteboard: ^0.3.0
   file_selector: ^1.1.0
   macos_ui: ^2.2.2
 
