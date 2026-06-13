@@ -72,6 +72,23 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
     if (mounted) setState(() => _logoBytes = bytes);
   }
 
+  // Serialized sheet (SGTIN): tile `count` codes, incrementing the serial.
+  bool _serialOn = false;
+  final _count = TextEditingController(text: '24');
+  int get _countValue => (int.tryParse(_count.text) ?? 24).clamp(1, 1000);
+
+  bool get _sheetMode => _serialOn && _data.kind == DataSourceKind.sgtin;
+
+  /// The base serial advanced by [i] — increments the trailing digits,
+  /// preserving any leading prefix and the zero-padding width.
+  String _serialAt(int i) {
+    final base = _data.serial;
+    final m = RegExp(r'^(.*?)(\d+)$').firstMatch(base);
+    if (m == null) return '$base${i + 1}';
+    final n = int.parse(m.group(2)!) + i;
+    return '${m.group(1)}${n.toString().padLeft(m.group(2)!.length, '0')}';
+  }
+
   late final _gtin = TextEditingController(text: _data.gtin);
   late final _serial = TextEditingController(text: _data.serial);
   late final _domain = TextEditingController(text: _data.digitalLinkDomain);
@@ -83,6 +100,7 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
     _serial.dispose();
     _domain.dispose();
     _text.dispose();
+    _count.dispose();
     super.dispose();
   }
 
@@ -131,10 +149,49 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
     return doc.save();
   }
 
+  /// A page-tiled serialized sheet — one code per incremented serial, flowing
+  /// across as many Letter pages as needed.
+  Future<Uint8List> _buildSheetPdf() async {
+    final doc = pw.Document(title: 'QSeq sheet');
+    final s = _sizeMm * PdfPageFormat.mm;
+    final tiles = <pw.Widget>[];
+    for (var i = 0; i < _countValue; i++) {
+      final serial = _serialAt(i);
+      tiles.add(pw.Column(mainAxisSize: pw.MainAxisSize.min, children: [
+        pw.SizedBox(
+          width: s,
+          height: _sym.is2D ? s : s * 0.5,
+          child: pw.BarcodeWidget(
+            barcode: BarcodeFactory.build(_sym, ecLevel: _ec),
+            data: _data.encodeWith(serial: serial),
+            drawText: !_sym.is2D,
+          ),
+        ),
+        pw.SizedBox(height: 1 * PdfPageFormat.mm),
+        pw.Text(serial, style: const pw.TextStyle(fontSize: 6)),
+      ]));
+    }
+    doc.addPage(pw.MultiPage(
+      pageFormat: PdfPageFormat.letter,
+      margin: pw.EdgeInsets.all(10 * PdfPageFormat.mm),
+      build: (context) => [
+        pw.Wrap(
+          spacing: 5 * PdfPageFormat.mm,
+          runSpacing: 5 * PdfPageFormat.mm,
+          alignment: pw.WrapAlignment.center,
+          children: tiles,
+        ),
+      ],
+    ));
+    return doc.save();
+  }
+
+  String get _pdfName => _sheetMode ? 'qseq-sheet.pdf' : 'qseq-code.pdf';
+
   Future<void> _withPdf(String? payload, Future<void> Function(Uint8List) use) async {
     if (payload == null) return;
     try {
-      await use(await _buildPdf(payload));
+      await use(_sheetMode ? await _buildSheetPdf() : await _buildPdf(payload));
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
@@ -178,7 +235,7 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
                   _sharePng(payload);
                 case 'pdf':
                   _withPdf(payload,
-                      (b) => Printing.sharePdf(bytes: b, filename: 'qseq-code.pdf'));
+                      (b) => Printing.sharePdf(bytes: b, filename: _pdfName));
                 case 'print':
                   _withPdf(payload, (b) => Printing.layoutPdf(onLayout: (_) => b));
               }
@@ -345,6 +402,26 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
                   keyboard: TextInputType.number),
               _field(_serial, 'Serial',
                   (v) => _update((d) => d.copyWith(serial: v))),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Serialized sheet'),
+                subtitle:
+                    const Text('Tile many codes, incrementing the serial'),
+                value: _serialOn,
+                onChanged: (v) => setState(() => _serialOn = v),
+              ),
+              if (_serialOn)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4, bottom: 12),
+                  child: TextField(
+                    controller: _count,
+                    keyboardType: TextInputType.number,
+                    onChanged: (_) => setState(() {}),
+                    decoration: const InputDecoration(
+                        labelText: 'Count (codes)',
+                        border: OutlineInputBorder()),
+                  ),
+                ),
               DropdownButtonFormField<SgtinFormat>(
                 initialValue: _data.sgtinFormat,
                 decoration: const InputDecoration(
