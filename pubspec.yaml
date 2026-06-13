@@ -38,6 +38,9 @@ dependencies:
   barcode_widget: ^2.0.4
   flutter_riverpod: ^3.3.1
   pdf: ^3.12.0
+  # Cross-platform share/print of generated PDFs (iOS/Android share sheet,
+  # desktop print) — reuses the pdf + barcode packages already present.
+  printing: ^5.13.3
   image: ^4.8.0
   # PNG-to-clipboard via platform channels (no native Rust/cargokit, unlike
   # super_clipboard) so the app builds for iOS/Android too.

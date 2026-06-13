@@ -6,9 +6,15 @@
 
 // Touch-first front-end for iOS / Android. Reuses the same pure-Dart core as
 // the desktop and web (lib/models encoders + BarcodeFactory over the `barcode`
-// package), wrapped in Material 3 instead of macos_ui.
+// package), wrapped in Material 3 instead of macos_ui. Print-true PDF export
+// and share/print come from the `pdf` + `printing` packages.
+import 'dart:typed_data';
+
 import 'package:barcode_widget/barcode_widget.dart';
 import 'package:flutter/material.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
 import '../models/data_source.dart';
 import '../models/symbology.dart';
@@ -46,6 +52,9 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
   QrEcLevel _ec = QrEcLevel.medium;
   DataSourceInput _data = const DataSourceInput();
 
+  /// Printed size of the symbol, in millimetres (the long edge for 1D).
+  double _sizeMm = 40;
+
   late final _gtin = TextEditingController(text: _data.gtin);
   late final _serial = TextEditingController(text: _data.serial);
   late final _domain = TextEditingController(text: _data.digitalLinkDomain);
@@ -63,17 +72,74 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
   void _update(DataSourceInput Function(DataSourceInput) f) =>
       setState(() => _data = f(_data));
 
+  // --- PDF (print-true) -----------------------------------------------------
+
+  Future<Uint8List> _buildPdf(String payload) async {
+    final doc = pw.Document(title: 'QSeq');
+    final w = _sizeMm;
+    final h = _sym.is2D ? _sizeMm : _sizeMm * 0.5;
+    const margin = 8.0;
+    doc.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat(
+            (w + margin * 2) * PdfPageFormat.mm, (h + margin * 2 + 6) * PdfPageFormat.mm),
+        margin: pw.EdgeInsets.all(margin * PdfPageFormat.mm),
+        build: (context) => pw.Center(
+          child: pw.BarcodeWidget(
+            barcode: BarcodeFactory.build(_sym, ecLevel: _ec),
+            data: payload,
+            width: w * PdfPageFormat.mm,
+            height: h * PdfPageFormat.mm,
+            drawText: !_sym.is2D,
+          ),
+        ),
+      ),
+    );
+    return doc.save();
+  }
+
+  Future<void> _withPdf(String? payload, Future<void> Function(Uint8List) use) async {
+    if (payload == null) return;
+    try {
+      await use(await _buildPdf(payload));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Export failed: $e')));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final resolved = _data.resolve();
     final payload = resolved.data;
     final error = resolved.error;
     final isSgtin = _data.kind == DataSourceKind.sgtin;
+    final canExport = payload != null;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('QSeq'),
         centerTitle: false,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.ios_share),
+            tooltip: 'Share PDF',
+            onPressed: canExport
+                ? () => _withPdf(payload,
+                    (b) => Printing.sharePdf(bytes: b, filename: 'qseq-code.pdf'))
+                : null,
+          ),
+          IconButton(
+            icon: const Icon(Icons.print),
+            tooltip: 'Print',
+            onPressed: canExport
+                ? () => _withPdf(
+                    payload, (b) => Printing.layoutPdf(onLayout: (_) => b))
+                : null,
+          ),
+        ],
       ),
       body: SafeArea(
         child: ListView(
@@ -123,7 +189,29 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
                 onChanged: (v) => setState(() => _ec = v ?? _ec),
               ),
             ],
-            const SizedBox(height: 20),
+            const SizedBox(height: 12),
+
+            // Printed size — keeps the PDF print-true.
+            Row(
+              children: [
+                const Text('Printed size'),
+                Expanded(
+                  child: Slider(
+                    value: _sizeMm,
+                    min: 10,
+                    max: 120,
+                    divisions: 110,
+                    label: '${_sizeMm.round()} mm',
+                    onChanged: (v) => setState(() => _sizeMm = v),
+                  ),
+                ),
+                SizedBox(
+                    width: 56,
+                    child: Text('${_sizeMm.round()} mm',
+                        textAlign: TextAlign.end)),
+              ],
+            ),
+            const SizedBox(height: 12),
 
             // Data source
             SegmentedButton<DataSourceKind>(
