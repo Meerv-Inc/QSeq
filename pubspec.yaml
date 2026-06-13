@@ -41,6 +41,9 @@ dependencies:
   # Cross-platform share/print of generated PDFs (iOS/Android share sheet,
   # desktop print) — reuses the pdf + barcode packages already present.
   printing: ^5.13.3
+  # Share generated PNGs through the native share sheet.
+  share_plus: ^10.1.4
+  path_provider: ^2.1.5
   image: ^4.8.0
   # PNG-to-clipboard via platform channels (no native Rust/cargokit, unlike
   # super_clipboard) so the app builds for iOS/Android too.

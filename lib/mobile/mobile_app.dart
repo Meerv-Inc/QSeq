@@ -8,13 +8,16 @@
 // the desktop and web (lib/models encoders + BarcodeFactory over the `barcode`
 // package), wrapped in Material 3 instead of macos_ui. Print-true PDF export
 // and share/print come from the `pdf` + `printing` packages.
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:barcode_widget/barcode_widget.dart';
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../models/data_source.dart';
 import '../models/symbology.dart';
@@ -110,6 +113,18 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
     }
   }
 
+  /// Rasterise the print-true PDF to a PNG and share it through the OS sheet.
+  Future<void> _sharePng(String? payload) async {
+    await _withPdf(payload, (pdf) async {
+      final dpi = (_sizeMm > 0 ? 2400 / _sizeMm : 300).clamp(150, 1200).toDouble();
+      final raster = await Printing.raster(pdf, dpi: dpi).first;
+      final png = await raster.toPng();
+      final dir = await getTemporaryDirectory();
+      final file = await File('${dir.path}/qseq-code.png').writeAsBytes(png);
+      await Share.shareXFiles([XFile(file.path, mimeType: 'image/png')]);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final resolved = _data.resolve();
@@ -123,21 +138,36 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
         title: const Text('QSeq'),
         centerTitle: false,
         actions: [
-          IconButton(
+          PopupMenuButton<String>(
             icon: const Icon(Icons.ios_share),
-            tooltip: 'Share PDF',
-            onPressed: canExport
-                ? () => _withPdf(payload,
-                    (b) => Printing.sharePdf(bytes: b, filename: 'qseq-code.pdf'))
-                : null,
-          ),
-          IconButton(
-            icon: const Icon(Icons.print),
-            tooltip: 'Print',
-            onPressed: canExport
-                ? () => _withPdf(
-                    payload, (b) => Printing.layoutPdf(onLayout: (_) => b))
-                : null,
+            enabled: canExport,
+            tooltip: 'Export',
+            onSelected: (v) {
+              switch (v) {
+                case 'png':
+                  _sharePng(payload);
+                case 'pdf':
+                  _withPdf(payload,
+                      (b) => Printing.sharePdf(bytes: b, filename: 'qseq-code.pdf'));
+                case 'print':
+                  _withPdf(payload, (b) => Printing.layoutPdf(onLayout: (_) => b));
+              }
+            },
+            itemBuilder: (context) => const [
+              PopupMenuItem(
+                  value: 'png',
+                  child: ListTile(
+                      leading: Icon(Icons.image), title: Text('Share PNG'))),
+              PopupMenuItem(
+                  value: 'pdf',
+                  child: ListTile(
+                      leading: Icon(Icons.picture_as_pdf),
+                      title: Text('Share PDF'))),
+              PopupMenuItem(
+                  value: 'print',
+                  child: ListTile(
+                      leading: Icon(Icons.print), title: Text('Print'))),
+            ],
           ),
         ],
       ),
