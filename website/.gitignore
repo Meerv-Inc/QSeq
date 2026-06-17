@@ -1,6 +1,0 @@
-.vercel
-
-# Built installer copied here for Vercel to serve; distributed via the deploy,
-# not committed (mirrors the gitignored macOS .dmg). Uploaded by `vercel --prod`
-# because .vercelignore — not .gitignore — governs what the deploy excludes.
-qseq-windows-setup.exe

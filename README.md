@@ -119,8 +119,8 @@ lib/
   state/      app_controller (Riverpod) + derived size providers
   ui/         home_page (macos_ui shell), inputs_panel, preview_pane,
               size_readout, export_actions
-website/              the previous hand-written JS site (retired, kept for
-                      reference)
+site/                 the Jaspr web app (single-codebase generator + marketing
+                      site), built with `jaspr build`
 ```
 
 The domain core is pure Dart and fully unit-tested; the sizing engine is a pure

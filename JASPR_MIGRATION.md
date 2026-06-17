@@ -2,8 +2,9 @@
 
 Status as of 2026-06-12 (branch `jaspr-migration`): **CUT OVER** — `qseq.app`
 now serves the Jaspr build (`site/build/jaspr`, deployed via `vercel --prod`).
-The old static `website/` is retired from production but kept in the repo for
-reference. The notarized, universal macOS download lives at `site/web/QSeq.dmg`
+The old static `website/` has been removed from the repo (see git history before
+`jaspr-migration` if you need the retired JS site). The notarized, universal
+macOS download lives at `site/web/QSeq.dmg`
 (tracked alongside `site/web/qseq-windows-setup.exe`), so `/QSeq.dmg` resolves on
 qseq.app and is reproduced by `jaspr build`.
 
@@ -31,8 +32,7 @@ site/                   NEW Jaspr static app (the web frontend)
                         Sizer.compute() + barcode.toSvg()
   lib/qseq/download*.dart          client-only blob download (conditional import:
                         stub on server, package:web on JS)
-  web/styles.css        copied from website/styles.css (visual parity)
-website/                OLD static site — STILL LIVE on qseq.app until cutover
+  web/styles.css        ported from the old static site for visual parity
 ```
 
 The desktop Flutter app (`lib/`, `pubspec.yaml`) is **untouched**. De-duplicating
@@ -99,9 +99,8 @@ verify `flutter build`) is a later step — do it with the desktop build watched
    missing from the previous deployment too). Needs a dmg from a Mac build,
    then rebuild + redeploy.
 2. Minor desktop deltas: copy-PNG-to-clipboard, pHYs DPI chunk in PNG.
-3. Delete `website/` once nobody needs it for reference.
-4. **Desktop de-dup** onto `qseq_core` (watch `flutter build`).
-5. Merge `jaspr-migration` → `main`; flip the GitHub default branch back to main.
+3. **Desktop de-dup** onto `qseq_core` (watch `flutter build`).
+4. Merge `jaspr-migration` → `main`; flip the GitHub default branch back to main.
 
 ## Build / run / deploy
 
@@ -116,7 +115,10 @@ dart pub global run jaspr_cli:jaspr build      # -> site/build/jaspr (static)
 ```bash
 cd site && dart pub global run jaspr_cli:jaspr build
 # the build WIPES build/jaspr including .vercel/ — restore the project link
-# (projectName "qseq"; copy from website/.vercel/project.json) before deploying
+# with `vercel link` before deploying. The Vercel project is:
+#   projectName "qseq"
+#   projectId   prj_wyemmNc7BnA2bcPotVr9KbnXLjkk
+#   orgId       team_8rzpz3kWPzP6yhDQGAFnoiLM
 cd build/jaspr && vercel --prod --yes
 ```
 Preview deploys: `vercel deploy --yes` then re-point the alias
