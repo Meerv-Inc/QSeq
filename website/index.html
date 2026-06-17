@@ -45,6 +45,7 @@
     <a href="#mission">Mission</a>
     <a href="#about">About</a>
     <a href="#support">Support</a>
+    <a href="#qrpic">QRPic</a>
     <a class="ghost" href="https://github.com/meerv-fmenard/qseq" target="_blank" rel="noopener">Source</a>
   </nav>
 </header>
@@ -323,6 +324,22 @@
     <a class="btn primary" href="mailto:support@meerv.com?subject=QSeq%20support">Email support@meerv.com</a>
     <a class="btn" href="https://github.com/meerv-fmenard/qseq/issues" target="_blank" rel="noopener">Open a GitHub issue →</a>
   </div>
+</section>
+
+<section id="qrpic" class="about">
+  <h2>Sister app: QRPic</h2>
+  <p><b>QRPic</b> is QSeq's sister app — an Android tool that measures <i>exactly</i> how much of a QR code's Reed–Solomon error-correction budget a center logo consumes. Point the camera at a logo'd QR code and QRPic reads its version and error-correction level, maps the modules the logo covers to their codewords and Reed–Solomon blocks, and simulates scaling the logo up or down so you can see — before you print — whether the code still has the recovery headroom to survive real life.</p>
+  <p>It is the natural companion to QSeq's print-true, error-correction-aware philosophy: QSeq <i>mints</i> sustainable identities; QRPic <i>verifies</i> that a branded code hasn't spent its survival budget on a logo.</p>
+  <div class="pillars">
+    <div><h3>Error-budget aware</h3><p>Maps logo-covered modules to Reed–Solomon codewords and reports erasure-view and field-decoder recovery.</p></div>
+    <div><h3>Live from camera</h3><p>Detects QR symbols with ZXing, reading version, EC level and decoded payload on device (CameraX).</p></div>
+    <div><h3>MIT licensed</h3><p>Unlike QSeq (PolyForm Noncommercial), QRPic is released under the permissive MIT License — free to use, modify and ship commercially.</p></div>
+  </div>
+  <div class="cta">
+    <a class="btn primary" href="https://github.com/Meerv-Inc/qrpic/releases/latest" target="_blank" rel="noopener">Download the Android APK</a>
+    <a class="btn" href="https://github.com/Meerv-Inc/qrpic" target="_blank" rel="noopener">Source on GitHub →</a>
+  </div>
+  <p class="muted small">Android app (Kotlin + Jetpack Compose, min SDK 24). Prebuilt signed APKs on the GitHub releases page. QR engine: ZXing (Apache-2.0). Released under the MIT License.</p>
 </section>
 
 <footer>
