@@ -10,7 +10,7 @@ import 'components/license_gate.dart';
 
 /// Single source of truth for the displayed site version — keep in sync with
 /// site/pubspec.yaml and the CHANGELOG.
-const qseqVersion = '1.5.3';
+const qseqVersion = '1.6.0';
 
 /// The page shell. Static marketing chrome is injected as raw HTML (identical to
 /// the previous static site); the interactive generator is a hydrated @client

@@ -31,6 +31,8 @@ const List<(String, String)> _register = [
 
 /// End-user Release Notes — an excerpt of CHANGELOG.md relevant to users.
 const List<String> _releaseNotes = [
+  'Companion website rebuilt on a single Dart codebase (Jaspr) — the web generator now runs the exact same encoders and sizing engine as the desktop app, so an identity minted on macOS, Windows or the web is byte-for-byte the same.',
+  'Meet QRPic, our MIT-licensed Android sister app: scan a logo\'d QR code and see exactly how much of its error-correction budget the logo spends — downloadable from qseq.app.',
   'Run on Windows too — a native desktop build alongside the signed & notarized macOS app.',
   'Choose portrait or landscape orientation for serialized cut-sheet layouts, with a zoom-to-fit preview.',
   'Serialized sheets reworked so the on-screen preview tracks the printed pages.',

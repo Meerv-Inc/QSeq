@@ -9,7 +9,7 @@
 ; so the setup.exe and the uninstaller get Authenticode-signed too.
 
 #define AppName "QSeq"
-#define AppVersion "1.5.3"
+#define AppVersion "1.6.0"
 #define AppPublisher "Meerv Inc."
 #define AppExe "QSeq.exe"
 

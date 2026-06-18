@@ -6,6 +6,30 @@ releases.
 
 © 2026 Meerv Inc. — PolyForm Noncommercial License 1.0.0.
 
+## [1.6.0] — 2026-06-17
+
+### Added
+- **QRPic — sister app.** The website now features **QRPic**, QSeq's
+  MIT-licensed Android companion that measures exactly how much of a QR code's
+  Reed–Solomon error-correction budget a centre logo consumes — mapping
+  logo-covered modules to their codewords and Reed–Solomon blocks and simulating
+  logo scaling so you can see, before printing, whether a branded code still has
+  the recovery headroom to survive. Links to the GitHub APK releases and source.
+  Unlike QSeq (PolyForm Noncommercial), QRPic ships under the permissive **MIT
+  License**.
+
+### Changed
+- **Website rebuilt on a single Dart codebase (Jaspr).** qseq.app is now a
+  Jaspr (Dart → web) static app that runs the **exact** `qseq_core` encoders and
+  sizing engine as the desktop apps, compiled to the browser — so an identity
+  minted on macOS, Windows or the web is byte-for-byte the same. This replaces
+  the previous hand-written JavaScript site, which reimplemented the encoders
+  and capacity tables as a second source of truth.
+
+### Removed
+- **Retired the legacy `website/` static site** now that the Jaspr app has fully
+  superseded it (recoverable from git history if ever needed).
+
 ## [1.5.3] — 2026-06-13
 
 ### Added
