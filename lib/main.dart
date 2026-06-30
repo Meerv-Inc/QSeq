@@ -17,6 +17,14 @@ import 'ui/home_page.dart';
 import 'ui/license_pane.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  // Keep macOS controls (notably checked MacosCheckboxes) rendered in their
+  // active, accent-tinted state. We don't call WindowManipulator.initialize(),
+  // so macos_ui's WindowMainStateListener can't read the real window state and
+  // defaults the window to "not main" — which makes checked checkboxes paint in
+  // the dimmed/transparent disabled style instead of fully lit. Forcing the
+  // main-window flag on restores the expected solid accent fill.
+  WindowMainStateListener.instance.overrideIsMainWindow(true);
   runApp(const ProviderScope(child: QrStudioApp()));
 }
 

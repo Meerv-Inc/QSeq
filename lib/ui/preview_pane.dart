@@ -682,12 +682,23 @@ class _PageTabsState extends State<_PageTabs> {
       child: Padding(
         padding: const EdgeInsets.only(top: 16),
         child: Row(
+          // Top-align so the prev/next arrows and the page tabs share the same
+          // baseline. The tab strip is 10px taller than a tab (it reserves room
+          // for its scrollbar), so centering would drop the 28px arrows below
+          // the 28px tabs and make them look like a different height.
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: Text(widget.info,
-                  style: type.caption2
-                      .copyWith(color: MacosColors.systemGrayColor)),
+            SizedBox(
+              height: 28,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(widget.info,
+                      style: type.caption2
+                          .copyWith(color: MacosColors.systemGrayColor)),
+                ),
+              ),
             ),
             _arrow(
                 left: true,
