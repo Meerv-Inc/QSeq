@@ -110,7 +110,7 @@ class _LabelDesignerState extends ConsumerState<LabelDesigner> {
                   Positioned.fill(
                     child: Image.file(File(arranged.bgImagePath!),
                         fit: BoxFit.fill,
-                        errorBuilder: (_, __, ___) => const SizedBox()),
+                        errorBuilder: (_, _, _) => const SizedBox()),
                   ),
                 if (show2D && r2 != null)
                   _positioned(
@@ -172,7 +172,7 @@ class _LabelDesignerState extends ConsumerState<LabelDesigner> {
       height: h,
       drawText: false,
       color: const Color(0xFF000000),
-      errorBuilder: (_, __) => const SizedBox(),
+      errorBuilder: (_, _) => const SizedBox(),
     );
     if (!logo || s.logoSideMm <= 0) return code;
     // Centre dead-space (and the picked logo image) at the same fraction the
@@ -197,7 +197,7 @@ class _LabelDesignerState extends ConsumerState<LabelDesigner> {
         child: s.logoImagePath != null
             ? Image.file(File(s.logoImagePath!),
                 fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) => const SizedBox())
+                errorBuilder: (_, _, _) => const SizedBox())
             : null,
       ),
     ]);

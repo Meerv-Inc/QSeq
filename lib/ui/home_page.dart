@@ -218,7 +218,7 @@ class HomePage extends ConsumerWidget {
     );
   }
 
-  /// "QSeq · <project>.qseq — edited/saved" in the toolbar title.
+  /// "QSeq · `<project>.qseq` — edited/saved" in the toolbar title.
   Widget _titleRow(BuildContext context, WidgetRef ref) {
     final meta = ref.watch(projectMetaProvider);
     final status = meta.path == null
