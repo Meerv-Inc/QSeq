@@ -7,6 +7,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:qseq/models/batch.dart';
+import 'package:qseq/models/data_source.dart';
 import 'package:qseq/state/app_controller.dart';
 
 void main() {
@@ -16,7 +17,9 @@ void main() {
 
     // The run derives from the Serial field: trailing digits are the counter
     // (leading zeros preserved), leading text is the fixed prefix.
-    container.read(appControllerProvider.notifier).update(
+    container
+        .read(appControllerProvider.notifier)
+        .update(
           (s) => s.copyWith(
             mode: AppMode.twoDSerial,
             batchCount: 5,
@@ -44,7 +47,9 @@ void main() {
     final container = ProviderContainer();
     addTearDown(container.dispose);
 
-    container.read(appControllerProvider.notifier).update(
+    container
+        .read(appControllerProvider.notifier)
+        .update(
           (s) => s.copyWith(
             mode: AppMode.comboSerial,
             batchCount: 3,
@@ -63,18 +68,18 @@ void main() {
   test('serial log enumerates every serial', () {
     final container = ProviderContainer();
     addTearDown(container.dispose);
-    container.read(appControllerProvider.notifier).update(
-          (s) => s.copyWith(mode: AppMode.oneDSerial, batchCount: 4),
-        );
+    container
+        .read(appControllerProvider.notifier)
+        .update((s) => s.copyWith(mode: AppMode.oneDSerial, batchCount: 4));
     expect(container.read(serialLogProvider).length, 4);
   });
 
   test('sheet of copies increments too, counted by Copies', () {
     final container = ProviderContainer();
     addTearDown(container.dispose);
-    container.read(appControllerProvider.notifier).update(
-          (s) => s.copyWith(mode: AppMode.twoDSheet, batchCopies: 7),
-        );
+    container
+        .read(appControllerProvider.notifier)
+        .update((s) => s.copyWith(mode: AppMode.twoDSheet, batchCopies: 7));
     final batch = container.read(batchProvider)!;
     expect(batch.items.length, 7);
     // Default serial 6789 → 6789..6795, each distinct.
@@ -86,5 +91,74 @@ void main() {
   test('PageFormat dimensions are correct', () {
     expect(PageFormat.a4.widthMm, 210);
     expect(PageFormat.letter.heightMm, closeTo(279.4, 0.01));
+  });
+
+  test('serialized sheet reflects a free-text edit made after the batch '
+      'was first built', () {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    final notifier = container.read(appControllerProvider.notifier);
+
+    notifier.update(
+      (s) => s.copyWith(
+        mode: AppMode.twoDSerial,
+        batchCount: 3,
+        data: s.data.copyWith(kind: DataSourceKind.rawText, rawText: 'hello-'),
+      ),
+    );
+    final before = container.read(batchProvider)!;
+    expect(
+      before.items.every((it) => it.twoDData!.startsWith('hello-')),
+      isTrue,
+    );
+
+    notifier.update(
+      (s) => s.copyWith(data: s.data.copyWith(rawText: 'world-')),
+    );
+    final after = container.read(batchProvider)!;
+    expect(
+      after.items.every((it) => it.twoDData!.startsWith('world-')),
+      isTrue,
+      reason: after.items.map((it) => it.twoDData).join(', '),
+    );
+  });
+
+  test('serialized sheet reflects a Digital Link domain edit made after '
+      'the batch was first built', () {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    final notifier = container.read(appControllerProvider.notifier);
+
+    notifier.update(
+      (s) => s.copyWith(
+        mode: AppMode.twoDSerial,
+        batchCount: 3,
+        data: s.data.copyWith(
+          kind: DataSourceKind.sgtin,
+          digitalLinkDomain: 'https://id.gs1.org',
+        ),
+      ),
+    );
+    final before = container.read(batchProvider)!;
+    expect(
+      before.items.every(
+        (it) => it.twoDData!.startsWith('https://id.gs1.org/'),
+      ),
+      isTrue,
+    );
+
+    notifier.update(
+      (s) => s.copyWith(
+        data: s.data.copyWith(digitalLinkDomain: 'https://example.com'),
+      ),
+    );
+    final after = container.read(batchProvider)!;
+    expect(
+      after.items.every(
+        (it) => it.twoDData!.startsWith('https://example.com/'),
+      ),
+      isTrue,
+      reason: after.items.map((it) => it.twoDData).join(', '),
+    );
   });
 }

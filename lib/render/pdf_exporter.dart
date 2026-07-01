@@ -42,9 +42,11 @@ class PdfExporter {
     final lines =
         hasCaption ? (caption.text.length / charsPerLine).ceil().clamp(1, 99) : 0;
     final captionMm = hasCaption ? lines * lineHmm + 2 : 0.0;
-    final barcode = cfg.symbology == Symbology.qrCode
-        ? BarcodeFactory.build(cfg.symbology, ecLevel: cfg.ecLevel)
-        : BarcodeFactory.build(cfg.symbology);
+    final barcode = BarcodeFactory.build(
+      cfg.symbology,
+      ecLevel: cfg.symbology == Symbology.qrCode ? cfg.ecLevel : null,
+      pdf417EcLevel: cfg.pdf417EcLevel,
+    );
 
     final barcodeWidget = pw.BarcodeWidget(
       barcode: barcode,
@@ -53,7 +55,7 @@ class PdfExporter {
     );
 
     pw.Widget symbol = barcodeWidget;
-    if (cfg.symbology.is2D && logoPng != null && cfg.logoSideMm > 0) {
+    if (cfg.symbology.supportsLogo && logoPng != null && cfg.logoSideMm > 0) {
       final logoMm = cfg.logoSideMm;
       symbol = pw.Stack(
         alignment: pw.Alignment.center,

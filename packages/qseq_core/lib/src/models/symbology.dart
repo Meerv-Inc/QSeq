@@ -9,6 +9,9 @@
 enum Symbology {
   qrCode('QR Code', is2D: true, quietZoneModules: 4),
   dataMatrix('Data Matrix', is2D: true, quietZoneModules: 1),
+  // PDF417 is a stacked-linear 2D symbology; ISO/IEC 15438 recommends a
+  // 2-module quiet zone on every side.
+  pdf417('PDF417', is2D: true, quietZoneModules: 2),
   gs1_128('GS1-128', is2D: false, quietZoneModules: 10),
   code128('Code 128', is2D: false, quietZoneModules: 10),
   code39('Code 39', is2D: false, quietZoneModules: 10),
@@ -48,6 +51,14 @@ enum Symbology {
 
   /// Only QR exposes a user-selectable error-correction level.
   bool get supportsEcLevel => this == Symbology.qrCode;
+
+  /// PDF417's error correction is a separate 9-level (0–8) scale — not
+  /// [QrEcLevel] — so it gets its own gate/dropdown.
+  bool get supportsPdf417EcLevel => this == Symbology.pdf417;
+
+  /// PDF417's stacked-row structure has no safe centre dead-space the way a
+  /// QR/Data Matrix module grid does — a logo isn't offered for it.
+  bool get supportsLogo => is2D && this != Symbology.pdf417;
 
   /// 1D symbologies carry GS1 Application Identifier data via FNC1.
   bool get isGs1 => this == Symbology.gs1_128;

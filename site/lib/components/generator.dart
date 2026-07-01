@@ -37,6 +37,7 @@ class GeneratorState extends State<Generator> {
   Symbology twoD = Symbology.qrCode;
   Symbology oneDSym = Symbology.gs1_128;
   QrEcLevel ec = QrEcLevel.medium;
+  Pdf417EcLevel pdf417EcLevel = Pdf417EcLevel.level2;
   double dpi = 300;
   double xdim = 0.5;
   double barh = 15;
@@ -62,6 +63,7 @@ class GeneratorState extends State<Generator> {
   final lbl.LabelSpec labelSpec = lbl.LabelSpec();
   String? selectedEl;
   String err = '';
+  bool validateAll = false; // Serialization Log "Validate all" toggle
 
   GenInput get _input => GenInput(
         mode: mode,
@@ -69,6 +71,7 @@ class GeneratorState extends State<Generator> {
         twoD: twoD,
         oneDSym: oneDSym,
         ec: ec,
+        pdf417EcLevel: pdf417EcLevel,
         dpi: dpi,
         xdim: xdim,
         barh: barh,
@@ -187,7 +190,10 @@ class GeneratorState extends State<Generator> {
                 selectedEl = null;
                 if (v) _syncLabelElements();
               })),
-      if (k == DataSourceKind.sgtin)
+      // A GS1 key type that doesn't carry a serial (GLN, SSCC, GSRN, GSIN,
+      // GIAI, GINC, CPID, GMN) has no "Serialization" concept to toggle.
+      if (k == DataSourceKind.sgtin &&
+          (data.gs1KeyType == null || data.gs1KeyType!.supportsSerial))
         _check('Serialization', data.serialize,
             (v) => _set(() {
                   // Master switch: a serial turns the GTIN into an SGTIN and
@@ -210,9 +216,13 @@ class GeneratorState extends State<Generator> {
           'Workspace',
           mode.name,
           [
-            // Serialized layouts are tributary to the Serialization checkbox.
+            // Serialized layouts are tributary to the Serialization checkbox,
+            // and to the GS1 key type supporting a serial at all.
             for (final m in WebMode.values)
-              if (k != DataSourceKind.sgtin || data.serialize || !m.isSerialized)
+              if (k != DataSourceKind.sgtin ||
+                  ((data.gs1KeyType == null || data.gs1KeyType!.supportsSerial) &&
+                      data.serialize) ||
+                  !m.isSerialized)
                 (m.name, m.title)
           ], (v) => _set(() {
                 mode = WebMode.values.byName(v);
@@ -230,53 +240,99 @@ class GeneratorState extends State<Generator> {
           (v) => _d((d) => d.copyWith(kind: DataSourceKind.values.byName(v)))),
       if (k == DataSourceKind.sgtin) ...[
         _select(
-            'GTIN length',
-            data.gtinLength.toString(),
+            'GS1 identifier type',
+            data.gs1KeyType?.name ?? 'none',
             [
-              for (final len in Gtin.lengths)
-                (len.toString(), 'GTIN-$len · e.g. ${Gtin.example(len)}'),
+              ('none', 'GTIN / SGTIN'),
+              for (final t in Gs1KeyType.values) (t.name, t.shortTitle),
             ],
-            (v) => _d(
-                (d) => d.copyWith(gtinLength: int.tryParse(v) ?? d.gtinLength))),
-        _gtinField(),
-        if (data.serialize && !mode.isSerialized)
-          _text('Serial', data.serial, (v) => _d((d) => d.copyWith(serial: v))),
-        if (!mode.isCombo && !labelOn)
+            (v) => _d((d) => d.copyWith(
+                gs1KeyType: v == 'none' ? null : Gs1KeyType.values.byName(v)))),
+        p(classes: 'muted small gs1-key-desc',
+            [text(gs1KeyStructureDescription(data.gs1KeyType))]),
+        if (data.gs1KeyType == null) ...[
           _select(
-              'Format',
-              data.sgtinFormat.name,
+              'GTIN length',
+              data.gtinLength.toString(),
               [
-                ('digitalLink', 'GS1 Digital Link'),
-                ('elementString', 'GS1-128'),
-                // EPC schemes need a serial — only when serialized.
-                if (data.serialize) ('sgtin96', 'SGTIN-96'),
-                if (data.serialize) ('sgtin198', 'SGTIN-198'),
+                for (final len in Gtin.lengths)
+                  (len.toString(), 'GTIN-$len · e.g. ${Gtin.example(len)}'),
               ],
               (v) => _d((d) =>
-                  d.copyWith(sgtinFormat: SgtinFormat.values.byName(v)))),
-        if (!mode.isCombo &&
-            !labelOn &&
-            data.serialize &&
-            data.sgtinFormat.epcScheme != null)
-          _num('GS1 Company Prefix length', data.companyPrefixLength.toDouble(),
-              (v) => _d((d) =>
-                  d.copyWith(companyPrefixLength: v.round().clamp(6, 12))),
-              min: 6, max: 12),
-        if (mode.isCombo ||
-            labelOn ||
-            data.sgtinFormat == SgtinFormat.digitalLink) ...[
-          _select(
-              'Resolver',
-              _resolverPreset(data.digitalLinkDomain),
-              const [
-                ('https://id.gs1.org', 'GS1 · id.gs1.org'),
-                ('https://tapdpp.qdat.io', 'QDat.io · tapdpp.qdat.io'),
-                ('custom', 'Custom…'),
-              ], (v) {
-            if (v != 'custom') _d((d) => d.copyWith(digitalLinkDomain: v));
-          }),
-          _text('Digital Link domain', data.digitalLinkDomain,
-              (v) => _d((d) => d.copyWith(digitalLinkDomain: v))),
+                  d.copyWith(gtinLength: int.tryParse(v) ?? d.gtinLength))),
+          _gtinField(),
+          if (data.serialize && !mode.isSerialized)
+            _text('Serial', data.serial,
+                (v) => _d((d) => d.copyWith(serial: v))),
+          if (!mode.isCombo && !labelOn)
+            _select(
+                'Format',
+                data.sgtinFormat.name,
+                [
+                  ('digitalLink', 'GS1 Digital Link'),
+                  ('elementString', 'GS1-128'),
+                  // EPC schemes need a serial — only when serialized.
+                  if (data.serialize) ('sgtin96', 'SGTIN-96'),
+                  if (data.serialize) ('sgtin198', 'SGTIN-198'),
+                ],
+                (v) => _d((d) =>
+                    d.copyWith(sgtinFormat: SgtinFormat.values.byName(v)))),
+          if (!mode.isCombo &&
+              !labelOn &&
+              data.serialize &&
+              data.sgtinFormat.epcScheme != null)
+            _num(
+                'GS1 Company Prefix length',
+                data.companyPrefixLength.toDouble(),
+                (v) => _d((d) =>
+                    d.copyWith(companyPrefixLength: v.round().clamp(6, 12))),
+                min: 6, max: 12),
+          if (mode.isCombo ||
+              labelOn ||
+              data.sgtinFormat == SgtinFormat.digitalLink)
+            ..._resolverFields(),
+        ] else ...[
+          if (data.gs1KeyType == Gs1KeyType.ginc ||
+              data.gs1KeyType == Gs1KeyType.gmn)
+            _text(
+                data.gs1KeyType == Gs1KeyType.ginc
+                    ? 'Consignment ID'
+                    : 'Model number',
+                data.gs1OpaqueValue,
+                (v) => _d((d) => d.copyWith(gs1OpaqueValue: v)))
+          else ...[
+            _text('Company prefix', data.gs1CompanyPrefix,
+                (v) => _d((d) => d.copyWith(gs1CompanyPrefix: v))),
+            _text(_gs1ReferenceLabel(data.gs1KeyType!), data.gs1Reference,
+                (v) => _d((d) => d.copyWith(gs1Reference: v))),
+            if (data.gs1KeyType == Gs1KeyType.sscc)
+              _num(
+                  'Extension digit (0–9)', data.gs1ExtensionDigit.toDouble(),
+                  (v) => _d((d) =>
+                      d.copyWith(gs1ExtensionDigit: v.round().clamp(0, 9))),
+                  min: 0, max: 9),
+          ],
+          if (data.gs1KeyType!.supportsSerial &&
+              data.serialize &&
+              !mode.isSerialized)
+            _text('Serial', data.gs1KeySerial,
+                (v) => _d((d) => d.copyWith(gs1KeySerial: v))),
+          if (!mode.isCombo && !labelOn)
+            _select(
+                'Format',
+                data.sgtinFormat.epcScheme != null
+                    ? 'digitalLink'
+                    : data.sgtinFormat.name,
+                const [
+                  ('digitalLink', 'GS1 Digital Link'),
+                  ('elementString', 'GS1-128'),
+                ],
+                (v) => _d((d) =>
+                    d.copyWith(sgtinFormat: SgtinFormat.values.byName(v)))),
+          if (mode.isCombo ||
+              labelOn ||
+              data.sgtinFormat == SgtinFormat.digitalLink)
+            ..._resolverFields(),
         ],
       ],
       if (k == DataSourceKind.rawText)
@@ -288,7 +344,11 @@ class GeneratorState extends State<Generator> {
         _select(
             '2D symbology',
             twoD.name,
-            const [('qrCode', 'QR Code'), ('dataMatrix', 'Data Matrix')],
+            const [
+              ('qrCode', 'QR Code'),
+              ('dataMatrix', 'Data Matrix'),
+              ('pdf417', 'PDF417'),
+            ],
             (v) => _set(() => twoD = Symbology.values.byName(v))),
         if (twoD.supportsEcLevel)
           _select(
@@ -302,6 +362,13 @@ class GeneratorState extends State<Generator> {
                   )
               ],
               (v) => _set(() => ec = QrEcLevel.values.byName(v))),
+        if (twoD.supportsPdf417EcLevel)
+          _select(
+              'Error correction',
+              pdf417EcLevel.name,
+              [for (final e in Pdf417EcLevel.values) (e.name, e.label)],
+              (v) =>
+                  _set(() => pdf417EcLevel = Pdf417EcLevel.values.byName(v))),
       ],
       if (mode.use1D)
         _select(
@@ -315,14 +382,20 @@ class GeneratorState extends State<Generator> {
       // combo layout (the label overlay positions elements itself)
       if (mode.isCombo && !labelOn) ...[
         if (mode == WebMode.combo)
-          _select(
-              'Arrangement',
-              arrangement.name,
-              [
-                for (final a in LabelArrangement.values) (a.name, a.label)
-              ],
-              (v) =>
-                  _set(() => arrangement = LabelArrangement.values.byName(v))),
+          if (twoD == Symbology.pdf417)
+            p(classes: 'hint', [
+              text('Arrangement: Stacked (forced — PDF417 is too wide to '
+                  'place side by side with a 1D code).')
+            ])
+          else
+            _select(
+                'Arrangement',
+                arrangement.name,
+                [
+                  for (final a in LabelArrangement.values) (a.name, a.label)
+                ],
+                (v) => _set(
+                    () => arrangement = LabelArrangement.values.byName(v))),
         _num('Gap between 1D & 2D (mm)', comboGap,
             (v) => _set(() => comboGap = v.clamp(0, 100)), max: 100),
         _check('Digital Link URL spans 1D + 2D (one shared line)',
@@ -356,7 +429,7 @@ class GeneratorState extends State<Generator> {
             (v) => _set(() => rulersInPdf = v)),
       ]),
       // logo
-      if (mode.use2D) ..._logoSection(i),
+      if (mode.use2D && twoD.supportsLogo) ..._logoSection(i),
     ];
   }
 
@@ -840,6 +913,7 @@ class GeneratorState extends State<Generator> {
       twoD = p.twoD;
       oneDSym = p.oneD;
       ec = p.ec;
+      pdf417EcLevel = p.pdf417EcLevel;
       dpi = p.dpi;
       xdim = p.xdim;
       barh = p.barh;
@@ -1106,23 +1180,78 @@ class GeneratorState extends State<Generator> {
     const renderCap = 300;
     final shown = entries.take(renderCap).toList();
     final w = '${entries.length}'.length;
+    final results =
+        validateAll ? entries.map(DigitalLink.parse).toList() : null;
+    final validCount = results?.where((r) => r.isValid).length ?? 0;
+    final invalidCount = results == null ? 0 : results.length - validCount;
     return [
       p(classes: 'muted small', [
         text('${entries.length} code${entries.length > 1 ? 's' : ''} · '
             'full encoded link'
             '${entries.length > renderCap ? ' · showing first $renderCap' : ''}')
       ]),
+      div(classes: 'validate-toggle', [
+        button([text(validateAll ? 'Hide validation' : 'Validate all')],
+            classes: 'btn',
+            onClick: () => _set(() => validateAll = !validateAll)),
+      ]),
+      if (results != null)
+        p(classes: 'logonote ${invalidCount > 0 ? 'bad' : 'ok'}', [
+          text('$validCount of ${results.length} valid'
+              '${invalidCount > 0 ? ' · $invalidCount invalid' : ''}')
+        ]),
       div(classes: 'loglist scrolly', [
         for (var n = 0; n < shown.length; n++)
-          div(classes: 'row', [
-            span(classes: 'n', [text('${n + 1}'.padLeft(w))]),
-            if (shown[n].startsWith('http'))
-              a(href: shown[n], target: Target.blank, [text(shown[n])])
-            else
-              span([text(shown[n])]),
-          ]),
+          if (results == null)
+            div(classes: 'row', [
+              span(classes: 'n', [text('${n + 1}'.padLeft(w))]),
+              if (shown[n].startsWith('http'))
+                a(href: shown[n], target: Target.blank, [text(shown[n])])
+              else
+                span([text(shown[n])]),
+            ])
+          else
+            _logEntry(n, w, shown[n], results[n]),
       ]),
     ];
+  }
+
+  /// One `<details>` row for a validated log entry: the summary line (with a
+  /// pass/fail mark, native expand arrow) and, once expanded, the full
+  /// [DigitalLinkResult.trace] explaining *why* it parsed and passed or
+  /// failed — a "log window" per link, same idea as the desktop app's.
+  Component _logEntry(int n, int w, String entry, DigitalLinkResult r) {
+    return Component.element(
+      tag: 'details',
+      classes: 'val-entry',
+      children: [
+        Component.element(
+          tag: 'summary',
+          children: [
+            span(classes: 'n', [text('${n + 1}'.padLeft(w))]),
+            span(classes: 'valmark ${r.isValid ? 'ok' : 'bad'}',
+                [text(r.isValid ? '✓' : '✗')]),
+            if (entry.startsWith('http'))
+              a(href: entry, target: Target.blank, [text(entry)])
+            else
+              span([text(entry)]),
+          ],
+        ),
+        div(classes: 'val-log', [
+          for (final line in r.trace)
+            div(
+              classes: 'val-log-line ${line.startsWith('✗')
+                  ? 'bad'
+                  : line.startsWith('⚠')
+                      ? 'warn'
+                      : line.startsWith('✓')
+                          ? 'ok'
+                          : ''}',
+              [text(line)],
+            ),
+        ]),
+      ],
+    );
   }
 
   // ================= small control helpers =================
@@ -1229,6 +1358,38 @@ class GeneratorState extends State<Generator> {
             onChange: on),
         text(' $lbl0'),
       ]);
+
+  /// The label for [DataSourceInput.gs1Reference] — the field next to the
+  /// company prefix — which means something different per [Gs1KeyType].
+  String _gs1ReferenceLabel(Gs1KeyType type) => switch (type) {
+        Gs1KeyType.grai => 'Asset type',
+        Gs1KeyType.gdti => 'Doc type',
+        Gs1KeyType.gcn => 'Coupon ref',
+        Gs1KeyType.gln => 'Location ref',
+        Gs1KeyType.sscc => 'Serial ref',
+        Gs1KeyType.gsrnProvider || Gs1KeyType.gsrnRecipient => 'Service ref',
+        Gs1KeyType.gsin => 'Shipper ref',
+        Gs1KeyType.giai => 'Asset ref',
+        Gs1KeyType.cpid => 'Component ref',
+        Gs1KeyType.ginc || Gs1KeyType.gmn => '',
+      };
+
+  /// The "Resolver" preset select + "Digital Link domain" text field, shared
+  /// by the GTIN/SGTIN and the other GS1 key type branches.
+  List<Component> _resolverFields() => [
+        _select(
+            'Resolver',
+            _resolverPreset(data.digitalLinkDomain),
+            const [
+              ('https://id.gs1.org', 'GS1 · id.gs1.org'),
+              ('https://tapdpp.qdat.io', 'QDat.io · tapdpp.qdat.io'),
+              ('custom', 'Custom…'),
+            ], (v) {
+          if (v != 'custom') _d((d) => d.copyWith(digitalLinkDomain: v));
+        }),
+        _text('Digital Link domain', data.digitalLinkDomain,
+            (v) => _d((d) => d.copyWith(digitalLinkDomain: v))),
+      ];
 
   String _fmt(double v) =>
       v == v.roundToDouble() ? v.toInt().toString() : v.toString();

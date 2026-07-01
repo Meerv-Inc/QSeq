@@ -100,7 +100,10 @@ class RasterRenderer {
         errorCorrectLevel: BarcodeFactory.qrLevel(cfg.ecLevel),
       );
     } else {
-      barcode = BarcodeFactory.build(cfg.symbology);
+      barcode = BarcodeFactory.build(
+        cfg.symbology,
+        pdf417EcLevel: cfg.pdf417EcLevel,
+      );
       typeNumber = null;
     }
 
@@ -129,7 +132,7 @@ class RasterRenderer {
     }
     canvas.restore();
 
-    if (cfg.logoSideMm > 0) {
+    if (cfg.symbology.supportsLogo && cfg.logoSideMm > 0) {
       final logoPx = Dpi.mmToInch(cfg.logoSideMm) * cfg.dpi;
       final center = fullPx / 2;
       final dst = Rect.fromCenter(

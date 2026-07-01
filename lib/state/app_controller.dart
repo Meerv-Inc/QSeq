@@ -15,6 +15,7 @@ import '../models/encode_config.dart';
 import '../models/label_spec.dart';
 import '../models/size_result.dart';
 import '../models/symbology.dart';
+import '../sizing/pdf417_capacity.dart';
 import '../sizing/sizer.dart';
 
 /// The workspace: which symbol families are produced (1D, 2D, or both) and
@@ -77,6 +78,7 @@ class AppSettings {
   final Symbology twoDSymbology; // qrCode / dataMatrix
   final DataSourceInput data;
   final QrEcLevel ecLevel;
+  final Pdf417EcLevel pdf417EcLevel;
   final double dpi;
   final double xDimensionMm;
   final double barHeightMm;
@@ -124,6 +126,7 @@ class AppSettings {
     this.twoDSymbology = Symbology.qrCode,
     this.data = const DataSourceInput(),
     this.ecLevel = QrEcLevel.medium,
+    this.pdf417EcLevel = Pdf417EcLevel.level2,
     this.dpi = 300,
     this.xDimensionMm = 0.5,
     this.barHeightMm = 15,
@@ -151,6 +154,7 @@ class AppSettings {
     Symbology? twoDSymbology,
     DataSourceInput? data,
     QrEcLevel? ecLevel,
+    Pdf417EcLevel? pdf417EcLevel,
     double? dpi,
     double? xDimensionMm,
     double? barHeightMm,
@@ -177,6 +181,7 @@ class AppSettings {
       twoDSymbology: twoDSymbology ?? this.twoDSymbology,
       data: data ?? this.data,
       ecLevel: ecLevel ?? this.ecLevel,
+      pdf417EcLevel: pdf417EcLevel ?? this.pdf417EcLevel,
       dpi: dpi ?? this.dpi,
       xDimensionMm: xDimensionMm ?? this.xDimensionMm,
       barHeightMm: barHeightMm ?? this.barHeightMm,
@@ -231,6 +236,7 @@ class AppSettings {
         // the native GTIN-N rather than the SGTIN Digital Link / element string.
         data: data.payloadFor(activeSymbology) ?? resolved.data ?? '',
         ecLevel: ecLevel,
+        pdf417EcLevel: pdf417EcLevel,
         dpi: safeDpi,
         xDimensionMm: safeXDimensionMm,
         barHeightMm: safeBarHeightMm,
@@ -376,6 +382,7 @@ final combinedLabelProvider = Provider<CombinedLabel?>((ref) {
       xDimensionMm: s.safeXDimensionMm,
       barHeightMm: s.safeBarHeightMm,
       ecLevel: s.ecLevel,
+      pdf417EcLevel: s.pdf417EcLevel,
       arrangement: s.arrangement,
       gapMm: s.safeLabelGapMm,
       paddingMm: s.safeLabelPaddingMm,
@@ -418,6 +425,7 @@ Batch? buildBatchFor(AppSettings s) {
           : s.data.payloadFor(s.twoDSymbology, serial: serial) ??
               s.data.encodeWith(serial: serial),
       ecLevel: s.ecLevel,
+      pdf417EcLevel: s.pdf417EcLevel,
       dpi: s.safeDpi,
       xDimensionMm: s.safeXDimensionMm,
       barHeightMm: s.safeBarHeightMm,

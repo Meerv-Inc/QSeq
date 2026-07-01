@@ -11,6 +11,8 @@ library qseq_core;
 export 'src/encoders/gtin.dart';
 export 'src/encoders/sgtin.dart';
 export 'src/encoders/gs1.dart';
+export 'src/encoders/digital_link.dart';
+export 'src/encoders/gs1_keys.dart';
 
 // Sizing engine
 export 'src/sizing/dpi.dart';
@@ -18,6 +20,7 @@ export 'src/sizing/qr_capacity.dart';
 export 'src/sizing/datamatrix_capacity.dart';
 export 'src/sizing/linear_metrics.dart';
 export 'src/sizing/logo_ec.dart';
+export 'src/sizing/pdf417_capacity.dart';
 export 'src/sizing/sizer.dart';
 
 // Models

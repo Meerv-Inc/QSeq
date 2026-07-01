@@ -18,7 +18,11 @@ void check(String name, Artwork a) {
 void main() {
   const data = DataSourceInput();
   for (final mode in WebMode.values) {
-    for (final twoD in [Symbology.qrCode, Symbology.dataMatrix]) {
+    for (final twoD in [
+      Symbology.qrCode,
+      Symbology.dataMatrix,
+      Symbology.pdf417
+    ]) {
       final i = GenInput(
           mode: mode, data: data, twoD: twoD, logoOn: true, logoDataUrl: null);
       // Serialized runs count distinct serials; copy sheets repeat the payload.
@@ -63,6 +67,8 @@ void main() {
     final d = switch (s) {
       Symbology.ean13 => const DataSourceInput(
           kind: DataSourceKind.rawText, rawText: '590123412345'),
+      Symbology.ean8 => const DataSourceInput(
+          kind: DataSourceKind.rawText, rawText: '5901234'),
       Symbology.upcA => const DataSourceInput(
           kind: DataSourceKind.rawText, rawText: '59012341234'),
       Symbology.code39 => const DataSourceInput(
@@ -76,7 +82,7 @@ void main() {
       'epc',
       buildSingle(const GenInput(
           mode: WebMode.twoD,
-          data: DataSourceInput(sgtinFormat: SgtinFormat.epcTagUri))));
+          data: DataSourceInput(sgtinFormat: SgtinFormat.sgtin96))));
   // continuous web + landscape + columns override
   {
     const i = GenInput(mode: WebMode.comboSerial, data: data);
@@ -181,6 +187,29 @@ void main() {
       throw StateError('project round-trip failed');
     }
     print('ok  project round-trip');
+  }
+  // project round-trip: PDF417 symbology + its own EC-level scale persists.
+  {
+    const i = GenInput(
+        mode: WebMode.twoD,
+        data: data,
+        twoD: Symbology.pdf417,
+        pdf417EcLevel: Pdf417EcLevel.level6);
+    final json = projectJson(
+        i: i,
+        ss: const SerialSpec(),
+        sheet: const SheetSpec(),
+        label: LabelSpec(),
+        logoSideMm: 0,
+        labelOn: false,
+        copies: 1);
+    final p = parseProject(json);
+    if (p == null ||
+        p.twoD != Symbology.pdf417 ||
+        p.pdf417EcLevel != Pdf417EcLevel.level6) {
+      throw StateError('pdf417 project round-trip failed');
+    }
+    print('ok  pdf417 project round-trip');
   }
   // legacy projects: label workspaces load as combo + overlay
   {

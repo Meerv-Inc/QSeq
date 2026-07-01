@@ -92,6 +92,7 @@ class LabelExport {
         symbology: twoD ? s.twoDSymbology : s.oneDSymbology,
         data: data,
         ecLevel: s.ecLevel,
+        pdf417EcLevel: s.pdf417EcLevel,
         dpi: s.safeDpi,
         xDimensionMm: s.safeXDimensionMm,
         barHeightMm: s.safeBarHeightMm,
@@ -242,9 +243,11 @@ class LabelExport {
         : null;
 
     final twoDBarcode = s.mode.use2D && a.twoDOn
-        ? (s.twoDSymbology.supportsEcLevel
-            ? BarcodeFactory.build(s.twoDSymbology, ecLevel: s.ecLevel)
-            : BarcodeFactory.build(s.twoDSymbology))
+        ? BarcodeFactory.build(
+            s.twoDSymbology,
+            ecLevel: s.ecLevel,
+            pdf417EcLevel: s.pdf417EcLevel,
+          )
         : null;
     final oneDBarcode = s.mode.use1D && a.oneDOn
         ? BarcodeFactory.build(s.oneDSymbology)

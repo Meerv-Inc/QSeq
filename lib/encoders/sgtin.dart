@@ -4,6 +4,7 @@
 // only; reuse requires attribution to Meerv Inc. See LICENSE for terms.
 // https://polyformproject.org/licenses/noncommercial/1.0.0/
 
+import 'gs1.dart';
 import 'gtin.dart';
 
 /// The two EPC binary encoding schemes defined for an SGTIN. They differ in how
@@ -83,8 +84,11 @@ class Sgtin {
     int filter = 1,
   }) {
     if (companyPrefixLength < 6 || companyPrefixLength > 12) {
-      throw ArgumentError.value(companyPrefixLength, 'companyPrefixLength',
-          'GS1 Company Prefix length must be between 6 and 12');
+      throw ArgumentError.value(
+        companyPrefixLength,
+        'companyPrefixLength',
+        'GS1 Company Prefix length must be between 6 and 12',
+      );
     }
     if (filter < 0 || filter > 7) {
       throw ArgumentError.value(filter, 'filter', 'EPC filter must be 0–7');
@@ -102,20 +106,6 @@ class Sgtin {
   /// Largest numeric serial encodable in SGTIN-96: 2^38 − 1.
   static final BigInt _sgtin96MaxSerial = BigInt.from(274877906943);
 
-  /// The 82-character set GS1 permits in an SGTIN-198 / AI-21 serial: digits,
-  /// upper- and lower-case letters and a fixed punctuation subset
-  /// (`! " % & ' ( ) * + , - . / : ; < = > ? _`).
-  static final Set<int> _sgtin198Alphabet = {
-    for (final c in [
-      0x21, 0x22, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2A, 0x2B, 0x2C, 0x2D, 0x2E,
-      0x2F, 0x3A, 0x3B, 0x3C, 0x3D, 0x3E, 0x3F, 0x5F,
-    ])
-      c,
-    for (var c = 0x30; c <= 0x39; c++) c, // 0–9
-    for (var c = 0x41; c <= 0x5A; c++) c, // A–Z
-    for (var c = 0x61; c <= 0x7A; c++) c, // a–z
-  };
-
   /// Validates [serial] against the constraints of [scheme], throwing a
   /// [FormatException] with a human-readable message if it does not fit. Used
   /// by [toEpcTagUri] and by the UI to pre-flight a serial before encoding.
@@ -124,22 +114,26 @@ class Sgtin {
       case SgtinScheme.sgtin96:
         if (!RegExp(r'^(0|[1-9][0-9]*)$').hasMatch(serial)) {
           throw const FormatException(
-              'SGTIN-96 serial must be digits with no leading zero');
+            'SGTIN-96 serial must be digits with no leading zero',
+          );
         }
         if (BigInt.parse(serial) > _sgtin96MaxSerial) {
           throw const FormatException(
-              'SGTIN-96 serial exceeds 38 bits (max 274877906943)');
+            'SGTIN-96 serial exceeds 38 bits (max 274877906943)',
+          );
         }
       case SgtinScheme.sgtin198:
         if (serial.length > 20) {
           throw const FormatException(
-              'SGTIN-198 serial must be 20 characters or fewer');
+            'SGTIN-198 serial must be 20 characters or fewer',
+          );
         }
         for (final unit in serial.codeUnits) {
-          if (!_sgtin198Alphabet.contains(unit)) {
+          if (!Gs1.ai82Chars.contains(unit)) {
             throw FormatException(
-                'SGTIN-198 serial has an unsupported character',
-                String.fromCharCode(unit));
+              'SGTIN-198 serial has an unsupported character',
+              String.fromCharCode(unit),
+            );
           }
         }
     }

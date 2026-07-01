@@ -13,6 +13,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:macos_ui/macos_ui.dart';
 
 import '../state/app_controller.dart';
+import 'digital_link_validator_pane.dart';
 
 /// The far-right panel enumerating every serial in the current workspace.
 class SerializationLog extends ConsumerStatefulWidget {
@@ -166,7 +167,7 @@ class _SerializationLogState extends ConsumerState<SerializationLog> {
         ),
         _navBar(theme, serials.isEmpty),
         Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
           child: PushButton(
             controlSize: ControlSize.large,
             secondary: true,
@@ -174,6 +175,17 @@ class _SerializationLogState extends ConsumerState<SerializationLog> {
                 ? null
                 : () => showSerialLogDialog(context, serials),
             child: const Text('Open full log…'),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          child: PushButton(
+            controlSize: ControlSize.large,
+            secondary: true,
+            onPressed: serials.isEmpty
+                ? null
+                : () => showDigitalLinkBulkValidatorSheet(context, serials),
+            child: const Text('Validate all'),
           ),
         ),
       ],

@@ -9,6 +9,7 @@ import 'dart:math' as math;
 import 'encode_config.dart';
 import 'size_result.dart';
 import 'symbology.dart';
+import '../sizing/pdf417_capacity.dart';
 import '../sizing/sizer.dart';
 
 /// Paper sizes for batch sheets. Cut sheets have a finite height; flexographic
@@ -108,6 +109,7 @@ class Batch {
     required String Function(String fullSerial) buildOneD,
     required String Function(String fullSerial) buildTwoD,
     required QrEcLevel ecLevel,
+    Pdf417EcLevel pdf417EcLevel = Pdf417EcLevel.level2,
     required double dpi,
     required double xDimensionMm,
     required double barHeightMm,
@@ -152,6 +154,7 @@ class Batch {
         symbology: twoDSymbology,
         data: items.first.twoDData!,
         ecLevel: ecLevel,
+        pdf417EcLevel: pdf417EcLevel,
         dpi: dpi,
         xDimensionMm: xDimensionMm,
         logoSideMm: logoSideMm,

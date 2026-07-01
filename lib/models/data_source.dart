@@ -5,6 +5,7 @@
 // https://polyformproject.org/licenses/noncommercial/1.0.0/
 
 import '../encoders/gs1.dart';
+import '../encoders/gs1_keys.dart';
 import '../encoders/gtin.dart';
 import '../encoders/sgtin.dart';
 import 'caption.dart';
@@ -30,15 +31,19 @@ enum SgtinFormat {
   /// The EPC binary scheme this format encodes to, or null for the non-EPC
   /// representations (element string, Digital Link).
   SgtinScheme? get epcScheme => switch (this) {
-        sgtin96 => SgtinScheme.sgtin96,
-        sgtin198 => SgtinScheme.sgtin198,
-        _ => null,
-      };
+    sgtin96 => SgtinScheme.sgtin96,
+    sgtin198 => SgtinScheme.sgtin198,
+    _ => null,
+  };
 }
 
 /// The outcome of resolving a data source: either an encodable string or a
 /// human-readable error to show in the UI.
 typedef ResolvedData = ({String? data, String? error});
+
+/// Sentinel distinguishing "not passed" from "explicitly passed as null" for
+/// [DataSourceInput.copyWith]'s nullable [DataSourceInput.gs1KeyType].
+const Object _unset = Object();
 
 /// Holds every input field and knows how to turn them into the string that gets
 /// encoded into a symbol.
@@ -63,7 +68,33 @@ class DataSourceInput {
   /// it gates the serial, the EPC SGTIN-96/198 formats and the serialized run.
   /// When false the source is a plain class-level GTIN: `(01)<gtin>`, Digital
   /// Link `/01/<gtin>`, or a native retail EAN/UPC — no serial.
+  ///
+  /// When [gs1KeyType] is set, [serialize] plays the same "carries a serial"
+  /// role for the [Gs1KeyType.supportsSerial] types (GRAI/GDTI/GCN).
   final bool serialize;
+
+  // GS1 key inputs (GRAI, GDTI, GCN, GLN, SSCC, GSRN, GSIN, GIAI, GINC,
+  // CPID, GMN) — see lib/encoders/gs1_keys.dart. Null [gs1KeyType] means
+  // "use the GTIN/SGTIN fields above", preserving all existing behaviour.
+  final Gs1KeyType? gs1KeyType;
+  final String gs1CompanyPrefix;
+
+  /// The secondary numeric/alphanumeric component next to the company
+  /// prefix — asset type (GRAI), doc type (GDTI), coupon ref (GCN),
+  /// location ref (GLN), serial ref (SSCC), service ref (GSRN), shipper ref
+  /// (GSIN), asset ref (GIAI) or component ref (CPID). Unused by GINC/GMN.
+  final String gs1Reference;
+
+  /// The optional individual-asset serial for GRAI/GDTI/GCN, gated by
+  /// [serialize] (mirrors how [serial] gates the SGTIN).
+  final String gs1KeySerial;
+
+  /// SSCC's leading extension digit (0–9).
+  final int gs1ExtensionDigit;
+
+  /// The whole free-form value for GINC/GMN, which have no company-prefix
+  /// split.
+  final String gs1OpaqueValue;
 
   const DataSourceInput({
     this.kind = DataSourceKind.sgtin,
@@ -75,6 +106,12 @@ class DataSourceInput {
     this.digitalLinkDomain = 'https://id.gs1.org',
     this.gtinLength = 14,
     this.serialize = true,
+    this.gs1KeyType,
+    this.gs1CompanyPrefix = '0614141',
+    this.gs1Reference = '00001',
+    this.gs1KeySerial = '001',
+    this.gs1ExtensionDigit = 0,
+    this.gs1OpaqueValue = 'EXAMPLE-001',
   });
 
   DataSourceInput copyWith({
@@ -87,6 +124,12 @@ class DataSourceInput {
     String? digitalLinkDomain,
     int? gtinLength,
     bool? serialize,
+    Object? gs1KeyType = _unset,
+    String? gs1CompanyPrefix,
+    String? gs1Reference,
+    String? gs1KeySerial,
+    int? gs1ExtensionDigit,
+    String? gs1OpaqueValue,
   }) {
     return DataSourceInput(
       kind: kind ?? this.kind,
@@ -98,6 +141,14 @@ class DataSourceInput {
       digitalLinkDomain: digitalLinkDomain ?? this.digitalLinkDomain,
       gtinLength: gtinLength ?? this.gtinLength,
       serialize: serialize ?? this.serialize,
+      gs1KeyType: identical(gs1KeyType, _unset)
+          ? this.gs1KeyType
+          : gs1KeyType as Gs1KeyType?,
+      gs1CompanyPrefix: gs1CompanyPrefix ?? this.gs1CompanyPrefix,
+      gs1Reference: gs1Reference ?? this.gs1Reference,
+      gs1KeySerial: gs1KeySerial ?? this.gs1KeySerial,
+      gs1ExtensionDigit: gs1ExtensionDigit ?? this.gs1ExtensionDigit,
+      gs1OpaqueValue: gs1OpaqueValue ?? this.gs1OpaqueValue,
     );
   }
 
@@ -105,9 +156,10 @@ class DataSourceInput {
   ResolvedData resolve() {
     try {
       return switch (kind) {
-        DataSourceKind.rawText => rawText.isEmpty
-            ? (data: null, error: 'Enter some text to encode')
-            : (data: rawText, error: null),
+        DataSourceKind.rawText =>
+          rawText.isEmpty
+              ? (data: null, error: 'Enter some text to encode')
+              : (data: rawText, error: null),
         DataSourceKind.sgtin => (data: _encodeProduct(), error: null),
       };
     } on FormatException catch (e) {
@@ -129,18 +181,30 @@ class DataSourceInput {
     }
   }
 
-  /// Encodes the GS1 product source. When [serialize] is on it is a serialised
-  /// GTIN (SGTIN) carrying the serial and able to use the EPC schemes; when off
-  /// it is a plain class-level GTIN with no `(21)` serial and no EPC form.
+  /// Encodes the GS1 product source. When [gs1KeyType] is set, builds that
+  /// GS1 identifier type instead of a GTIN/SGTIN (see [_buildGs1Key]).
+  /// Otherwise: when [serialize] is on it is a serialised GTIN (SGTIN)
+  /// carrying the serial and able to use the EPC schemes; when off it is a
+  /// plain class-level GTIN with no `(21)` serial and no EPC form.
   String _encodeProduct({SgtinFormat? format, String? serial}) {
     final fmt = format ?? sgtinFormat;
+    if (gs1KeyType != null) {
+      final ident = _buildGs1Key(gs1KeyType!, serial: serial);
+      // The new key types have no EPC form; fall back to the Digital Link,
+      // mirroring how a plain (unserialised) GTIN falls back below.
+      return fmt == SgtinFormat.elementString
+          ? ident.toElementString()
+          : ident.toDigitalLink(domain: digitalLinkDomain);
+    }
     if (serialize) {
       final s = Sgtin(gtin: gtin, serial: serial ?? this.serial);
       return switch (fmt) {
         SgtinFormat.elementString => s.toElementString(),
         SgtinFormat.digitalLink => s.toDigitalLink(domain: digitalLinkDomain),
         SgtinFormat.sgtin96 || SgtinFormat.sgtin198 => s.toEpcTagUri(
-            companyPrefixLength: companyPrefixLength, scheme: fmt.epcScheme!),
+          companyPrefixLength: companyPrefixLength,
+          scheme: fmt.epcScheme!,
+        ),
       };
     }
     // Plain GTIN — no serial. The EPC schemes need a serial, so they fall back
@@ -151,8 +215,7 @@ class DataSourceInput {
       SgtinFormat.elementString => '(01)$g14',
       SgtinFormat.digitalLink ||
       SgtinFormat.sgtin96 ||
-      SgtinFormat.sgtin198 =>
-        _gtinDigitalLink(g14),
+      SgtinFormat.sgtin198 => _gtinDigitalLink(g14),
     };
   }
 
@@ -163,12 +226,74 @@ class DataSourceInput {
     return '$host/01/$g14';
   }
 
+  /// Builds the [Gs1Identifier] for [type] from the `gs1*` fields. [serial]
+  /// overrides [gs1KeySerial] (used by serialized runs); only meaningful for
+  /// [Gs1KeyType.supportsSerial] types, and only when [serialize] is on —
+  /// otherwise no serial is appended, mirroring the plain-GTIN fallback.
+  Gs1Identifier _buildGs1Key(Gs1KeyType type, {String? serial}) {
+    final s = type.supportsSerial && serialize
+        ? (serial ?? gs1KeySerial)
+        : null;
+    return switch (type) {
+      Gs1KeyType.grai => Gs1Keys.grai(
+        companyPrefix: gs1CompanyPrefix,
+        assetType: gs1Reference,
+        serial: s,
+      ),
+      Gs1KeyType.gdti => Gs1Keys.gdti(
+        companyPrefix: gs1CompanyPrefix,
+        docType: gs1Reference,
+        serial: s,
+      ),
+      Gs1KeyType.gcn => Gs1Keys.gcn(
+        companyPrefix: gs1CompanyPrefix,
+        couponRef: gs1Reference,
+        serial: s,
+      ),
+      Gs1KeyType.gln => Gs1Keys.gln(
+        companyPrefix: gs1CompanyPrefix,
+        locationRef: gs1Reference,
+      ),
+      Gs1KeyType.sscc => Gs1Keys.sscc(
+        extensionDigit: gs1ExtensionDigit,
+        companyPrefix: gs1CompanyPrefix,
+        serialRef: gs1Reference,
+      ),
+      Gs1KeyType.gsrnProvider => Gs1Keys.gsrn(
+        companyPrefix: gs1CompanyPrefix,
+        serviceRef: gs1Reference,
+      ),
+      Gs1KeyType.gsrnRecipient => Gs1Keys.gsrn(
+        companyPrefix: gs1CompanyPrefix,
+        serviceRef: gs1Reference,
+        recipient: true,
+      ),
+      Gs1KeyType.gsin => Gs1Keys.gsin(
+        companyPrefix: gs1CompanyPrefix,
+        shipperRef: gs1Reference,
+      ),
+      Gs1KeyType.giai => Gs1Keys.giai(
+        companyPrefix: gs1CompanyPrefix,
+        assetRef: gs1Reference,
+      ),
+      Gs1KeyType.ginc => Gs1Keys.ginc(value: gs1OpaqueValue),
+      Gs1KeyType.cpid => Gs1Keys.cpid(
+        companyPrefix: gs1CompanyPrefix,
+        componentRef: gs1Reference,
+      ),
+      Gs1KeyType.gmn => Gs1Keys.gmn(value: gs1OpaqueValue),
+    };
+  }
+
   /// The encodable payload for [sym], honouring each symbology's constraints:
-  /// 2D and GS1-128 carry the full SGTIN form; retail 1D codes
-  /// (EAN-13 / EAN-8 / UPC-A) carry the *native trailing* GTIN-N; other 1D codes
-  /// carry the bare GTIN-14 (serial dropped). For free text it returns the text,
-  /// with [serial] appended when given. Returns null when nothing valid can be
-  /// encoded.
+  /// 2D and GS1-128 carry the full SGTIN (or other GS1 key) form; retail 1D
+  /// codes (EAN-13 / EAN-8 / UPC-A) carry the *native trailing* GTIN-N (GTIN
+  /// only); other 1D codes (Code 128, Code 39) carry the bare GTIN-14 or
+  /// bare GS1 key value (serial dropped) — the parenthesised element string
+  /// and the Digital Link's URL scheme both use characters (`(`, lower-case
+  /// letters, `:`) that Code 39's restricted charset can't encode. For free
+  /// text it returns the text, with [serial] appended when given. Returns
+  /// null when nothing valid can be encoded.
   String? payloadFor(Symbology sym, {String? serial}) {
     if (kind != DataSourceKind.sgtin) {
       final r = resolve();
@@ -176,6 +301,15 @@ class DataSourceInput {
       return serial == null ? r.data : encodeWith(serial: serial);
     }
     try {
+      if (gs1KeyType != null) {
+        if (sym.is2D) return encodeWith(serial: serial);
+        if (sym == Symbology.gs1_128) {
+          return encodeWith(format: SgtinFormat.elementString, serial: serial);
+        }
+        // An explicit empty serial (not omitted — omitting falls back to
+        // gs1KeySerial) forces the bare key, dropping any serial.
+        return _buildGs1Key(gs1KeyType!, serial: '').value;
+      }
       if (sym.is2D) return encodeWith(serial: serial);
       if (sym == Symbology.gs1_128) {
         return encodeWith(format: SgtinFormat.elementString, serial: serial);
@@ -198,24 +332,33 @@ class DataSourceInput {
     }
   }
 
-  /// The serialized-number caption shown under the code. For an SGTIN it is the
-  /// serial (bold); free text has no serial.
+  /// The serialized-number caption shown under the code. For an SGTIN — or a
+  /// serializable GS1 key type (GRAI/GDTI/GCN) with [serialize] on — it is
+  /// the serial (bold); otherwise there is no caption.
   LabelCaption caption() {
-    return switch (kind) {
-      DataSourceKind.sgtin =>
-        serialize ? LabelCaption(bold: serial) : const LabelCaption(),
-      DataSourceKind.rawText => const LabelCaption(),
-    };
+    if (kind != DataSourceKind.sgtin) return const LabelCaption();
+    final type = gs1KeyType;
+    if (type != null) {
+      return type.supportsSerial && serialize
+          ? LabelCaption(bold: gs1KeySerial)
+          : const LabelCaption();
+    }
+    return serialize ? LabelCaption(bold: serial) : const LabelCaption();
   }
 
-  /// The raw FNC1-delimited bytes for an SGTIN element string, when a caller
-  /// needs the true encoded payload (e.g. byte-count display for DataMatrix).
+  /// The raw FNC1-delimited bytes for the current GS1-128 element string,
+  /// when a caller needs the true encoded payload (e.g. byte-count display
+  /// for DataMatrix).
   String? gs1RawOrNull() {
     if (kind != DataSourceKind.sgtin ||
         sgtinFormat != SgtinFormat.elementString) {
       return null;
     }
     try {
+      if (gs1KeyType != null) {
+        final ident = _buildGs1Key(gs1KeyType!);
+        return Gs1.encode([(ident.type.ai, ident.value)]);
+      }
       if (serialize) {
         final s = Sgtin(gtin: gtin, serial: serial);
         return Gs1.encode([('01', s.gtin14), ('21', s.serial)]);

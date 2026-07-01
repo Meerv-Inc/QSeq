@@ -30,9 +30,11 @@ class SvgExporter {
     LabelCaption? caption,
   }) {
     final h = height ?? (cfg.symbology.is2D ? width : width * 0.4);
-    final barcode = cfg.symbology == Symbology.qrCode
-        ? BarcodeFactory.build(cfg.symbology, ecLevel: cfg.ecLevel)
-        : BarcodeFactory.build(cfg.symbology);
+    final barcode = BarcodeFactory.build(
+      cfg.symbology,
+      ecLevel: cfg.symbology == Symbology.qrCode ? cfg.ecLevel : null,
+      pdf417EcLevel: cfg.pdf417EcLevel,
+    );
 
     var svg = barcode.toSvg(
       cfg.data,
@@ -41,7 +43,7 @@ class SvgExporter {
       drawText: !cfg.symbology.is2D,
     );
 
-    if (cfg.symbology.is2D && logoPng != null && cfg.logoSideMm > 0) {
+    if (cfg.symbology.supportsLogo && logoPng != null && cfg.logoSideMm > 0) {
       // Logo side as a fraction of the symbol: reuse the on-screen ratio by
       // mapping logoSideMm against the symbol's physical side via the caller's
       // proportion (logoSideMm relative to a nominal symbol size is applied as

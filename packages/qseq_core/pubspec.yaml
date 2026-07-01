@@ -12,6 +12,7 @@ environment:
 # Pure Dart — no Flutter, no dart:ui. Runs on the Dart VM (Jaspr prerender) and
 # compiled to JS (browser).
 dependencies:
+  barcode: ^2.2.9
 
 dev_dependencies:
   test: ^1.25.0

@@ -4,6 +4,7 @@
 // only; reuse requires attribution to Meerv Inc. See LICENSE for terms.
 // https://polyformproject.org/licenses/noncommercial/1.0.0/
 
+import '../sizing/pdf417_capacity.dart';
 import 'symbology.dart';
 
 /// Everything the sizing/rendering engine needs to produce one symbol.
@@ -15,6 +16,9 @@ class EncodeConfig {
   final String data;
 
   final QrEcLevel ecLevel;
+
+  /// Error-correction level for PDF417 (a separate 0–8 scale from [ecLevel]).
+  final Pdf417EcLevel pdf417EcLevel;
 
   /// Print resolution in dots per inch.
   final double dpi;
@@ -35,6 +39,7 @@ class EncodeConfig {
     required this.symbology,
     required this.data,
     this.ecLevel = QrEcLevel.medium,
+    this.pdf417EcLevel = Pdf417EcLevel.level2,
     this.dpi = 300,
     this.xDimensionMm = 0.5,
     this.barHeightMm = 15,
@@ -46,6 +51,7 @@ class EncodeConfig {
     Symbology? symbology,
     String? data,
     QrEcLevel? ecLevel,
+    Pdf417EcLevel? pdf417EcLevel,
     double? dpi,
     double? xDimensionMm,
     double? barHeightMm,
@@ -56,6 +62,7 @@ class EncodeConfig {
       symbology: symbology ?? this.symbology,
       data: data ?? this.data,
       ecLevel: ecLevel ?? this.ecLevel,
+      pdf417EcLevel: pdf417EcLevel ?? this.pdf417EcLevel,
       dpi: dpi ?? this.dpi,
       xDimensionMm: xDimensionMm ?? this.xDimensionMm,
       barHeightMm: barHeightMm ?? this.barHeightMm,

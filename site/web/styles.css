@@ -67,6 +67,24 @@ body:not(.qseq-unlocked) .generator{display:none}
 .loglist .row .pglink{margin-left:8px;white-space:nowrap;color:var(--muted);font-size:.92em}
 .loglist .row .pglink:hover{color:var(--accent);text-decoration:underline}
 .loglist .empty{color:var(--muted)}
+.validate-toggle{margin-top:10px}
+.val-entry{border-bottom:1px solid transparent}
+.val-entry summary{display:flex;gap:8px;padding:3px 0;align-items:flex-start;cursor:pointer;list-style:none}
+.val-entry summary::-webkit-details-marker{display:none}
+.val-entry summary::before{content:'▸';color:var(--muted);flex:none;width:10px}
+.val-entry[open] summary::before{content:'▾'}
+.val-entry summary .n{color:var(--muted);user-select:none;flex:none}
+.val-entry summary a{color:var(--accent);text-decoration:none}
+.val-entry summary a:hover{text-decoration:underline}
+.val-entry summary .valmark{flex:none;font-weight:700}
+.val-entry summary .valmark.ok{color:var(--accent2)}
+.val-entry summary .valmark.bad{color:var(--err)}
+.val-log{margin:2px 0 8px 26px;padding:8px 10px;background:#0e1217;border:1px solid var(--line);
+  border-radius:6px;font-size:.78em;line-height:1.5}
+.val-log-line{word-break:break-all}
+.val-log-line.ok{color:var(--accent2)}
+.val-log-line.bad{color:var(--err)}
+.val-log-line.warn{color:#ffd479}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px}
 .inputs h2,.preview h2{margin:0 0 16px;font-size:1.15rem}
 /* App heading: logo sits to the left of the "Codes & Labels App" title. */
@@ -135,6 +153,7 @@ body:not(.qseq-unlocked) .generator{display:none}
 .support p{color:#c4cdd6;margin:0 0 14px}
 .support .mail{color:var(--accent);text-decoration:underline}
 .support .cta{justify-content:flex-start;margin-top:22px}
+.about .cta{margin-top:26px}
 
 footer{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;max-width:1180px;margin:0 auto;
   padding:28px 24px;border-top:1px solid var(--line);color:var(--muted);font-family:var(--mono);font-size:.8rem}

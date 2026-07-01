@@ -59,4 +59,40 @@ class Gs1 {
   /// `(01)80614141123454(21)6789`.
   static String elementString(List<(String ai, String value)> pairs) =>
       pairs.map((p) => '(${p.$1})${p.$2}').join();
+
+  /// The 82-character set ("AI-82") GS1 permits in alphanumeric AI values —
+  /// batch/lot, serial, CPV and similar fields: digits, upper- and lower-case
+  /// letters and a fixed punctuation subset
+  /// (`! " % & ' ( ) * + , - . / : ; < = > ? _`).
+  static final Set<int> ai82Chars = {
+    for (final c in [
+      0x21,
+      0x22,
+      0x25,
+      0x26,
+      0x27,
+      0x28,
+      0x29,
+      0x2A,
+      0x2B,
+      0x2C,
+      0x2D,
+      0x2E,
+      0x2F,
+      0x3A,
+      0x3B,
+      0x3C,
+      0x3D,
+      0x3E,
+      0x3F,
+      0x5F,
+    ])
+      c,
+    for (var c = 0x30; c <= 0x39; c++) c, // 0–9
+    for (var c = 0x41; c <= 0x5A; c++) c, // A–Z
+    for (var c = 0x61; c <= 0x7A; c++) c, // a–z
+  };
+
+  /// Returns true if every character of [value] is in the AI-82 set.
+  static bool isAi82(String value) => value.codeUnits.every(ai82Chars.contains);
 }

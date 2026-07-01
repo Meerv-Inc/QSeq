@@ -43,10 +43,11 @@ class BatchPdf {
         includeRulers ? await PdfRuler.build(contentWmm, contentHmm, dpi) : null;
 
     final twoDBarcode = batch.hasTwoD
-        ? (batch.twoDSample!.symbology.supportsEcLevel
-            ? BarcodeFactory.build(batch.twoDSample!.symbology,
-                ecLevel: batch.twoDSample!.ecLevel)
-            : BarcodeFactory.build(batch.twoDSample!.symbology))
+        ? BarcodeFactory.build(
+            batch.twoDSample!.symbology,
+            ecLevel: batch.twoDSample!.ecLevel,
+            pdf417EcLevel: batch.twoDSample!.pdf417EcLevel,
+          )
         : null;
     final oneDBarcode = batch.hasOneD
         ? BarcodeFactory.build(batch.oneDSample!.symbology)
@@ -88,7 +89,9 @@ class BatchPdf {
           height: s.heightMm * PdfPageFormat.mm,
           drawText: false,
         );
-        if (logoPng != null && batch.twoDSample!.logoSideMm > 0) {
+        if (logoPng != null &&
+            batch.twoDSample!.symbology.supportsLogo &&
+            batch.twoDSample!.logoSideMm > 0) {
           final logoMm = batch.twoDSample!.logoSideMm;
           twoD = pw.Stack(alignment: pw.Alignment.center, children: [
             twoD,

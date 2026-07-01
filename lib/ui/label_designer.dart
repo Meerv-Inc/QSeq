@@ -164,9 +164,11 @@ class _LabelDesignerState extends ConsumerState<LabelDesigner> {
       double h,
       {bool logo = false}) {
     final code = bw.BarcodeWidget(
-      barcode: symbology.supportsEcLevel
-          ? BarcodeFactory.build(symbology, ecLevel: s.ecLevel)
-          : BarcodeFactory.build(symbology),
+      barcode: BarcodeFactory.build(
+        symbology,
+        ecLevel: symbology.supportsEcLevel ? s.ecLevel : null,
+        pdf417EcLevel: symbology.supportsPdf417EcLevel ? s.pdf417EcLevel : null,
+      ),
       data: data,
       width: w,
       height: h,
@@ -174,7 +176,7 @@ class _LabelDesignerState extends ConsumerState<LabelDesigner> {
       color: const Color(0xFF000000),
       errorBuilder: (_, _) => const SizedBox(),
     );
-    if (!logo || s.logoSideMm <= 0) return code;
+    if (!logo || s.logoSideMm <= 0 || !symbology.supportsLogo) return code;
     // Centre dead-space (and the picked logo image) at the same fraction the
     // exports print.
     final n = naturalLabelSymbolSize(

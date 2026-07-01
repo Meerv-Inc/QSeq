@@ -14,6 +14,7 @@ import 'package:flutter/material.dart' show ThemeMode;
 import '../state/app_controller.dart';
 import '../state/project_io.dart';
 import 'about_pane.dart';
+import 'digital_link_validator_pane.dart';
 import 'export_actions.dart';
 import 'inputs_panel.dart';
 import 'license_pane.dart';
@@ -136,6 +137,10 @@ class HomePage extends ConsumerWidget {
                 label: 'PDF',
                 icon: CupertinoIcons.doc_richtext,
                 onPressed: () => _runPdf(context, ref)),
+            _toolButton(
+                label: 'Validate',
+                icon: CupertinoIcons.checkmark_shield,
+                onPressed: () => showDigitalLinkValidatorSheet(context)),
             _toolButton(
                 label: 'About',
                 icon: CupertinoIcons.info_circle,

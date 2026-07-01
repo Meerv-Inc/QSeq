@@ -5,11 +5,15 @@
 // https://polyformproject.org/licenses/noncommercial/1.0.0/
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:qseq/encoders/gtin.dart';
+import 'package:qseq/encoders/sgtin.dart';
+import 'package:qseq/models/combined_label.dart';
 import 'package:qseq/models/encode_config.dart';
 import 'package:qseq/models/symbology.dart';
 import 'package:qseq/sizing/datamatrix_capacity.dart';
 import 'package:qseq/sizing/dpi.dart';
 import 'package:qseq/sizing/logo_ec.dart';
+import 'package:qseq/sizing/pdf417_capacity.dart';
 import 'package:qseq/sizing/qr_capacity.dart';
 import 'package:qseq/sizing/sizer.dart';
 
@@ -139,6 +143,103 @@ void main() {
       // 95 symbol modules + 11 left + 7 right = 113 modules (GS1), not the
       // symmetric 95 + 2*11 = 117 the old single-quiet-zone code produced.
       expect(r.outer.widthPx, 113 * dots);
+    });
+
+    test('PDF417 reports its EC level and module grid in the geometry label',
+        () {
+      const cfg = EncodeConfig(
+        symbology: Symbology.pdf417,
+        data: 'https://id.gs1.org/01/80614141123458/21/6789',
+        pdf417EcLevel: Pdf417EcLevel.level2,
+        dpi: 300,
+        xDimensionMm: 0.33,
+      );
+      final r = Sizer.compute(cfg);
+      expect(r.fits, isTrue);
+      expect(r.geometryLabel, contains('Level 2'));
+      expect(r.geometryLabel, contains('×'));
+      expect(r.bytesCapacity, isNull);
+      expect(r.outer.widthPx, greaterThan(0));
+      expect(r.outer.heightPx, greaterThan(0));
+    });
+
+    test('PDF417 grows its outer size with the quiet zone modules', () {
+      const cfg = EncodeConfig(
+        symbology: Symbology.pdf417,
+        data: 'HELLO',
+        dpi: 300,
+        xDimensionMm: 0.33,
+      );
+      final r = Sizer.compute(cfg);
+      final dots = Dpi.moduleDots(0.33, 300);
+      // quietZoneModules is 2 on each side for pdf417.
+      expect(r.outer.widthPx % dots, 0);
+      expect((r.outer.widthPx / dots).round() >= 2 * 2, isTrue);
+    });
+
+    test('PDF417 logo requests are dropped with a warning, not applied', () {
+      const cfg = EncodeConfig(
+        symbology: Symbology.pdf417,
+        data: 'HELLO',
+        logoSideMm: 5,
+      );
+      final r = Sizer.compute(cfg);
+      expect(r.logoBudget, isNull);
+      expect(r.warnings.any((w) => w.contains('no safe centre dead-space')),
+          isTrue);
+    });
+
+    test('PDF417 data past capacity is reported as not fitting', () {
+      const cfg = EncodeConfig(
+        symbology: Symbology.pdf417,
+        data: 'A',
+        pdf417EcLevel: Pdf417EcLevel.level8,
+      );
+      final huge = EncodeConfig(
+        symbology: cfg.symbology,
+        data: 'A' * 20000,
+        pdf417EcLevel: cfg.pdf417EcLevel,
+      );
+      final r = Sizer.compute(huge);
+      expect(r.fits, isFalse);
+      expect(r.warnings.first, contains('exceeds PDF417 capacity'));
+    });
+  });
+
+  group('CombinedLabel + PDF417', () {
+    test('a PDF417 2D symbol forces vertical stacking even when the user '
+        'chose side-by-side', () {
+      final sgtin = Sgtin(gtin: Gtin.example(14), serial: 'ABC123');
+      final label = CombinedLabel.fromSgtin(
+        sgtin: sgtin,
+        twoDSymbology: Symbology.pdf417,
+        digitalLinkDomain: 'https://id.gs1.org',
+        dpi: 300,
+        xDimensionMm: 0.33,
+        barHeightMm: 12,
+        ecLevel: QrEcLevel.medium,
+        arrangement: LabelArrangement.sideBySide,
+        gapMm: 2,
+        paddingMm: 2,
+      );
+      expect(label.arrangement, LabelArrangement.stacked);
+    });
+
+    test('a QR 2D symbol keeps the user-chosen side-by-side arrangement', () {
+      final sgtin = Sgtin(gtin: Gtin.example(14), serial: 'ABC123');
+      final label = CombinedLabel.fromSgtin(
+        sgtin: sgtin,
+        twoDSymbology: Symbology.qrCode,
+        digitalLinkDomain: 'https://id.gs1.org',
+        dpi: 300,
+        xDimensionMm: 0.33,
+        barHeightMm: 12,
+        ecLevel: QrEcLevel.medium,
+        arrangement: LabelArrangement.sideBySide,
+        gapMm: 2,
+        paddingMm: 2,
+      );
+      expect(label.arrangement, LabelArrangement.sideBySide);
     });
   });
 }

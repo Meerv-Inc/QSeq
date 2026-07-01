@@ -56,6 +56,7 @@ class GenInput {
   final Symbology twoD;
   final Symbology oneDSym;
   final QrEcLevel ec;
+  final Pdf417EcLevel pdf417EcLevel;
   final double dpi;
   final double xdim;
   final double barh;
@@ -80,6 +81,7 @@ class GenInput {
     this.twoD = Symbology.qrCode,
     this.oneDSym = Symbology.gs1_128,
     this.ec = QrEcLevel.medium,
+    this.pdf417EcLevel = Pdf417EcLevel.level2,
     this.dpi = 300,
     this.xdim = 0.5,
     this.barh = 15,
@@ -94,9 +96,15 @@ class GenInput {
   });
 }
 
-Barcode barcodeFor(Symbology s, QrEcLevel ec) => switch (s) {
+Barcode barcodeFor(Symbology s, QrEcLevel ec, {Pdf417EcLevel? pdf417Ec}) =>
+    switch (s) {
       Symbology.qrCode => Barcode.qrCode(errorCorrectLevel: _ec(ec)),
       Symbology.dataMatrix => Barcode.dataMatrix(),
+      Symbology.pdf417 => Barcode.pdf417(
+          securityLevel: _pdf417Level(pdf417Ec ?? Pdf417EcLevel.level2),
+          moduleHeight: Pdf417Capacity.moduleHeight,
+          preferredRatio: Pdf417Capacity.preferredRatio,
+        ),
       Symbology.gs1_128 => Barcode.gs128(),
       Symbology.code128 => Barcode.code128(),
       Symbology.code39 => Barcode.code39(),
@@ -111,6 +119,9 @@ BarcodeQRCorrectionLevel _ec(QrEcLevel l) => switch (l) {
       QrEcLevel.quartile => BarcodeQRCorrectionLevel.quartile,
       QrEcLevel.high => BarcodeQRCorrectionLevel.high,
     };
+
+Pdf417SecurityLevel _pdf417Level(Pdf417EcLevel l) =>
+    Pdf417SecurityLevel.values[l.index];
 
 /// One rendered symbol: an SVG fragment positioned at (0,0) in mm units, its
 /// outer extent (quiet zones included), and the sizing result behind it.
@@ -129,6 +140,7 @@ EncodeConfig _cfg(GenInput i, Symbology sym, String data,
       symbology: sym,
       data: data,
       ecLevel: i.ec,
+      pdf417EcLevel: i.pdf417EcLevel,
       dpi: i.dpi,
       xDimensionMm: i.xdim,
       barHeightMm: i.barh,
@@ -174,25 +186,33 @@ SymbolRender renderSymbol(GenInput i, Symbology sym, String data,
   final effX = Dpi.effectiveXDimensionMm(i.xdim, i.dpi);
   final outW = size.outer.widthMm, outH = size.outer.heightMm;
   final totalModulesW = size.outer.widthPx ~/ size.moduleDots;
+  // PDF417 is a stacked-linear (rectangular, not square) 2D symbol — its
+  // module count differs per axis, so the height can't be assumed equal to
+  // the width the way it safely can for QR/Data Matrix.
+  final totalModulesH = size.outer.heightPx ~/ size.moduleDots;
   final b = StringBuffer()
     ..write('<rect x="0" y="0" width="${numStr(outW)}" '
         'height="${numStr(outH)}" fill="#fff"/>');
-  final bc = barcodeFor(sym, i.ec);
+  final bc = barcodeFor(sym, i.ec, pdf417Ec: i.pdf417EcLevel);
   if (sym.is2D) {
     final quiet = sym.quietZoneModules;
-    final symModules = totalModulesW - 2 * quiet;
-    final symMm = symModules * effX;
+    final symModulesW = totalModulesW - 2 * quiet;
+    final symModulesH = totalModulesH - 2 * quiet;
+    final symMmW = symModulesW * effX;
+    final symMmH = symModulesH * effX;
     final q = quiet * effX;
-    final body =
-        bc.toSvg(data, width: symMm, height: symMm, drawText: false, fullSvg: false);
+    final body = bc.toSvg(data,
+        width: symMmW, height: symMmH, drawText: false, fullSvg: false);
     b.write('<g transform="translate(${numStr(q)},${numStr(q)})">$body</g>');
-    if (logoSideMm > 0 && symModules > 2) {
+    // Centre knockout only ever applies to square symbols (supportsLogo
+    // excludes PDF417), so symModulesW == symModulesH here.
+    if (logoSideMm > 0 && sym.supportsLogo && symModulesW > 2) {
       // Centre knockout snapped to whole modules (desktop _centredModuleHole).
       var n = (logoSideMm / effX).round();
       if (n > 0) {
-        if ((symModules - n) % 2 != 0) n++;
-        n = n.clamp(1, symModules);
-        final off = (symModules - n) / 2 * effX;
+        if ((symModulesW - n) % 2 != 0) n++;
+        n = n.clamp(1, symModulesW);
+        final off = (symModulesW - n) / 2 * effX;
         final hx = q + off, hs = n * effX;
         b.write('<rect x="${numStr(hx)}" y="${numStr(hx)}" '
             'width="${numStr(hs)}" height="${numStr(hs)}" fill="#fff"/>');
@@ -250,7 +270,7 @@ String _errMsg(Object e) =>
 /// The dead-space side that actually applies: manual override when set,
 /// otherwise the EC-share auto size; 0 when the logo is off.
 double activeLogoMm(GenInput i, String twoDData) {
-  if (!i.logoOn) return 0;
+  if (!i.logoOn || !i.twoD.supportsLogo) return 0;
   return i.logoManualMm > 0 ? i.logoManualMm : autoLogoMm(i, twoDData);
 }
 
@@ -314,7 +334,12 @@ Artwork buildCombined(GenInput i, {String? serialOverride}) {
     final g = i.gapMm.clamp(0, 100).toDouble();
     final p = i.padMm.clamp(0, 100).toDouble();
     double w, h, x2, y2, x1, y1;
-    if (i.arrangement == LabelArrangement.stacked) {
+    // PDF417 is already wide on its own; side by side with a 1D code would
+    // make the combined label excessively wide, so force the vertical
+    // layout regardless of the user's Arrangement choice (mirrors desktop's
+    // CombinedLabel.fromSgtin).
+    if (i.arrangement == LabelArrangement.stacked ||
+        i.twoD == Symbology.pdf417) {
       w = math.max(two.wMm, one.wMm) + 2 * p;
       h = two.hMm + one.hMm + g + 2 * p;
       x2 = (w - two.wMm) / 2;

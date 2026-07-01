@@ -6,6 +6,7 @@
 
 import '../encoders/sgtin.dart';
 import '../sizing/dpi.dart';
+import '../sizing/pdf417_capacity.dart';
 import '../sizing/sizer.dart';
 import 'encode_config.dart';
 import 'size_result.dart';
@@ -45,7 +46,7 @@ class CombinedLabel {
   /// Builds both symbols from a shared SGTIN plus shared print settings.
   factory CombinedLabel.fromSgtin({
     required Sgtin sgtin,
-    required Symbology twoDSymbology, // qrCode or dataMatrix
+    required Symbology twoDSymbology, // qrCode, dataMatrix or pdf417
     required String digitalLinkDomain,
     required double dpi,
     required double xDimensionMm,
@@ -55,6 +56,7 @@ class CombinedLabel {
     required double gapMm,
     required double paddingMm,
     double logoSideMm = 0,
+    Pdf417EcLevel pdf417EcLevel = Pdf417EcLevel.level2,
   }) {
     final oneD = EncodeConfig(
       symbology: Symbology.gs1_128,
@@ -69,6 +71,7 @@ class CombinedLabel {
       dpi: dpi,
       xDimensionMm: xDimensionMm,
       ecLevel: ecLevel,
+      pdf417EcLevel: pdf417EcLevel,
       logoSideMm: logoSideMm,
     );
     return CombinedLabel(
@@ -76,7 +79,12 @@ class CombinedLabel {
       twoD: twoD,
       oneDSize: Sizer.compute(oneD),
       twoDSize: Sizer.compute(twoD),
-      arrangement: arrangement,
+      // PDF417 is already wide on its own; side by side with a 1D code
+      // would make the combined label excessively wide, so force the
+      // vertical layout regardless of the user's Arrangement choice.
+      arrangement: twoDSymbology == Symbology.pdf417
+          ? LabelArrangement.stacked
+          : arrangement,
       gapMm: gapMm,
       paddingMm: paddingMm,
     );

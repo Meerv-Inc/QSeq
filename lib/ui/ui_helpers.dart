@@ -4,8 +4,56 @@
 // only; reuse requires attribution to Meerv Inc. See LICENSE for terms.
 // https://polyformproject.org/licenses/noncommercial/1.0.0/
 
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/widgets.dart';
 import 'package:macos_ui/macos_ui.dart';
+
+/// A checked/unchecked box with an explicit, always-visible checkmark —
+/// unlike the stock [MacosCheckbox], whose checked-state colour depends on
+/// `macos_ui`'s internal window-focus tracking and can render a white
+/// checkmark on a near-white background in light mode when that state is
+/// unreliable (e.g. a Flutter desktop window that doesn't consistently
+/// report itself as the OS "key"/main window). This sidesteps that by never
+/// depending on window-focus state at all: checked is solid accent blue
+/// with a white check, unchecked is a plain outline, in both themes.
+class PlainCheckbox extends StatelessWidget {
+  final bool value;
+  final ValueChanged<bool> onChanged;
+  final double size;
+
+  const PlainCheckbox({
+    super.key,
+    required this.value,
+    required this.onChanged,
+    this.size = 14,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => onChanged(!value),
+      child: Container(
+        width: size,
+        height: size,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: value ? MacosColors.systemBlueColor : null,
+          border: value
+              ? null
+              : Border.all(color: MacosColors.systemGrayColor, width: 1),
+          borderRadius: BorderRadius.circular(3.5),
+        ),
+        child: value
+            ? Icon(
+                CupertinoIcons.checkmark,
+                size: size - 3,
+                color: MacosColors.white,
+              )
+            : null,
+      ),
+    );
+  }
+}
 
 /// A label above a field, the standard macOS inspector layout.
 class LabeledField extends StatelessWidget {
@@ -22,8 +70,10 @@ class LabeledField extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.only(bottom: 4),
-            child: Text(label,
-                style: MacosTheme.of(context).typography.caption1),
+            child: Text(
+              label,
+              style: MacosTheme.of(context).typography.caption1,
+            ),
           ),
           child,
         ],
@@ -37,16 +87,21 @@ class NumberField extends StatefulWidget {
   final double value;
   final ValueChanged<double> onChanged;
   final String? suffix;
-  const NumberField(
-      {super.key, required this.value, required this.onChanged, this.suffix});
+  const NumberField({
+    super.key,
+    required this.value,
+    required this.onChanged,
+    this.suffix,
+  });
 
   @override
   State<NumberField> createState() => _NumberFieldState();
 }
 
 class _NumberFieldState extends State<NumberField> {
-  late final TextEditingController _c =
-      TextEditingController(text: _fmt(widget.value));
+  late final TextEditingController _c = TextEditingController(
+    text: _fmt(widget.value),
+  );
 
   String _fmt(double v) =>
       v == v.roundToDouble() ? v.toInt().toString() : v.toString();
@@ -82,16 +137,20 @@ class _NumberFieldState extends State<NumberField> {
 class PlainTextField extends StatefulWidget {
   final String value;
   final ValueChanged<String> onChanged;
-  const PlainTextField(
-      {super.key, required this.value, required this.onChanged});
+  const PlainTextField({
+    super.key,
+    required this.value,
+    required this.onChanged,
+  });
 
   @override
   State<PlainTextField> createState() => _PlainTextFieldState();
 }
 
 class _PlainTextFieldState extends State<PlainTextField> {
-  late final TextEditingController _c =
-      TextEditingController(text: widget.value);
+  late final TextEditingController _c = TextEditingController(
+    text: widget.value,
+  );
 
   @override
   void didUpdateWidget(covariant PlainTextField old) {
@@ -133,9 +192,12 @@ class SectionCard extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.only(bottom: 10),
-            child: Text(title,
-                style: theme.typography.headline
-                    .copyWith(fontWeight: FontWeight.w600)),
+            child: Text(
+              title,
+              style: theme.typography.headline.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
           ...children,
         ],

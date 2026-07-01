@@ -60,6 +60,7 @@ String projectJson({
       'oneDSymbology': i.oneDSym.name,
       'twoDSymbology': i.twoD.name,
       'errorCorrection': _ecTo[i.ec],
+      'pdf417ErrorCorrection': i.pdf417EcLevel.name,
       'arrangement': i.arrangement.name,
       'labelGapMm': i.gapMm,
       'labelPaddingMm': i.padMm,
@@ -109,6 +110,7 @@ T? _enumByName<T extends Enum>(List<T> values, String? name) =>
   Symbology twoD,
   Symbology oneD,
   QrEcLevel ec,
+  Pdf417EcLevel pdf417EcLevel,
   double dpi,
   double xdim,
   double barh,
@@ -164,13 +166,17 @@ T? _enumByName<T extends Enum>(List<T> values, String? name) =>
       rawText: d['rawText'] as String? ?? 'https://example.com',
     ),
     twoD: _enumByName(
-            [Symbology.qrCode, Symbology.dataMatrix], w['twoDSymbology'] as String?) ??
+            [Symbology.qrCode, Symbology.dataMatrix, Symbology.pdf417],
+            w['twoDSymbology'] as String?) ??
         Symbology.qrCode,
     oneD: _enumByName(
             Symbology.values.where((s) => !s.is2D).toList(),
             w['oneDSymbology'] as String?) ??
         Symbology.gs1_128,
     ec: ec,
+    pdf417EcLevel: _enumByName(
+            Pdf417EcLevel.values, w['pdf417ErrorCorrection'] as String?) ??
+        Pdf417EcLevel.level2,
     dpi: ((pr['dpi'] as num?)?.toDouble() ?? 300).clamp(36, 1200),
     xdim: ((pr['xDimensionMm'] as num?)?.toDouble() ?? 0.5).clamp(0.05, 5),
     barh: ((pr['barHeightMm'] as num?)?.toDouble() ?? 15).clamp(1, 300),

@@ -50,12 +50,12 @@ class PreviewPane extends ConsumerWidget {
           child: s.labelOn && !s.mode.isSerialized
               ? const LabelDesigner()
               : s.labelOn && s.mode.isSerialized
-                  ? const _LabelSheetView()
-                  : s.mode.isSerialized
-                      ? _batch(context, ref, s)
-                      : s.mode.isCombo
-                          ? _combined(context, ref, s)
-                          : _single(context, ref, s),
+              ? const _LabelSheetView()
+              : s.mode.isSerialized
+              ? _batch(context, ref, s)
+              : s.mode.isCombo
+              ? _combined(context, ref, s)
+              : _single(context, ref, s),
         ),
       ),
     );
@@ -74,8 +74,10 @@ class PreviewPane extends ConsumerWidget {
     // Cap the on-screen cells per page so a long continuous web stays responsive;
     // the exported PDF still emits every code.
     const previewCap = 120;
-    final pageItems =
-        batch.items.skip(pageIndex * perPage).take(perPage).toList();
+    final pageItems = batch.items
+        .skip(pageIndex * perPage)
+        .take(perPage)
+        .toList();
     final shown = pageItems.take(previewCap).toList();
     final hiddenOnPage = pageItems.length - shown.length;
     final cols = batch.columns < 1 ? 1 : batch.columns;
@@ -98,7 +100,9 @@ class PreviewPane extends ConsumerWidget {
     // serialized preview shows the same knockout (and picked logo image) that the
     // exported PDF prints — matching the single/combined previews.
     final twoOuterMm = batch.twoDSize?.outer.widthMm ?? 0;
-    final twoLogoFrac = (batch.hasTwoD &&
+    final twoLogoFrac =
+        (batch.hasTwoD &&
+            (batch.twoDSample?.symbology.supportsLogo ?? false) &&
             (batch.twoDSample?.logoSideMm ?? 0) > 0 &&
             twoOuterMm > 0)
         ? batch.twoDSample!.logoSideMm / twoOuterMm
@@ -108,50 +112,55 @@ class PreviewPane extends ConsumerWidget {
     // One sheet cell: the 2D and/or 1D code with its HRI underneath, every
     // dimension at the same physical scale as the page.
     Widget cell(BatchItem it) => SizedBox(
-          width: cellWpx,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (batch.hasTwoD && it.twoDData != null) ...[
-                _logoOverlay(
-                  bw.BarcodeWidget(
-                    barcode: batch.twoDSample!.symbology.supportsEcLevel
-                        ? BarcodeFactory.build(batch.twoDSample!.symbology,
-                            ecLevel: batch.twoDSample!.ecLevel)
-                        : BarcodeFactory.build(batch.twoDSample!.symbology),
-                    data: it.twoDData!,
-                    width: twoWpx,
-                    height: twoHpx,
-                    drawText: false,
-                    errorBuilder: (c, e) => _inlineError(e),
-                  ),
-                  twoWpx,
-                  twoLogoFrac,
-                  s.logoImagePath,
+      width: cellWpx,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (batch.hasTwoD && it.twoDData != null) ...[
+            _logoOverlay(
+              bw.BarcodeWidget(
+                barcode: BarcodeFactory.build(
+                  batch.twoDSample!.symbology,
+                  ecLevel: batch.twoDSample!.ecLevel,
+                  pdf417EcLevel: batch.twoDSample!.pdf417EcLevel,
                 ),
-                const SizedBox(height: 6),
-                _hri(context,
-                    LabelCaption.hri(it.twoDData!, boldTail: it.counter),
-                    cellWpx),
-              ],
-              if (batch.hasOneD && it.oneDData != null) ...[
-                const SizedBox(height: 12),
-                bw.BarcodeWidget(
-                  barcode: BarcodeFactory.build(batch.oneDSample!.symbology),
-                  data: it.oneDData!,
-                  width: oneWpx,
-                  height: oneHpx,
-                  drawText: false,
-                  errorBuilder: (c, e) => _inlineError(e),
-                ),
-                const SizedBox(height: 6),
-                _hri(context,
-                    LabelCaption.hri(it.oneDData!, boldTail: it.counter),
-                    cellWpx),
-              ],
-            ],
-          ),
-        );
+                data: it.twoDData!,
+                width: twoWpx,
+                height: twoHpx,
+                drawText: false,
+                errorBuilder: (c, e) => _inlineError(e),
+              ),
+              twoWpx,
+              twoLogoFrac,
+              s.logoImagePath,
+            ),
+            const SizedBox(height: 6),
+            _hri(
+              context,
+              LabelCaption.hri(it.twoDData!, boldTail: it.counter),
+              cellWpx,
+            ),
+          ],
+          if (batch.hasOneD && it.oneDData != null) ...[
+            const SizedBox(height: 12),
+            bw.BarcodeWidget(
+              barcode: BarcodeFactory.build(batch.oneDSample!.symbology),
+              data: it.oneDData!,
+              width: oneWpx,
+              height: oneHpx,
+              drawText: false,
+              errorBuilder: (c, e) => _inlineError(e),
+            ),
+            const SizedBox(height: 6),
+            _hri(
+              context,
+              LabelCaption.hri(it.oneDData!, boldTail: it.counter),
+              cellWpx,
+            ),
+          ],
+        ],
+      ),
+    );
 
     // Lay the codes out as a fixed [cols]-wide grid (the page's real column
     // count) so the white "page" takes the page's portrait/landscape shape and
@@ -219,7 +228,10 @@ class PreviewPane extends ConsumerWidget {
               pageTrue,
               const SizedBox(width: 6),
               RulerStrip(
-                  pxPerMm: trueScale, lengthPx: pageHpx, horizontal: false),
+                pxPerMm: trueScale,
+                lengthPx: pageHpx,
+                horizontal: false,
+              ),
             ],
           );
     final sheetW = pageWpx + (s.rulersOnScreen ? 6 + rulerBand : 0);
@@ -231,10 +243,10 @@ class PreviewPane extends ConsumerWidget {
         final availW = box.maxWidth.isFinite ? box.maxWidth - 24 : sheetW;
         final availH = box.maxHeight.isFinite ? box.maxHeight - 120 : sheetH;
         final fitZoom = sheetW > 0 && sheetH > 0
-            ? [availW / sheetW, availH / sheetH]
-                .reduce((a, b) => a < b ? a : b)
-                .clamp(0.1, 3.0)
-                .toDouble()
+            ? [
+                availW / sheetW,
+                availH / sheetH,
+              ].reduce((a, b) => a < b ? a : b).clamp(0.1, 3.0).toDouble()
             : 1.0;
         // zoom == 0 means auto-fit; otherwise honour the explicit zoom.
         final z = zoom <= 0 ? fitZoom : zoom;
@@ -255,10 +267,7 @@ class PreviewPane extends ConsumerWidget {
             _zoomBar(context, ref, z),
             Expanded(
               child: _SheetScroll(
-                child: Padding(
-                  padding: const EdgeInsets.all(8),
-                  child: sheet,
-                ),
+                child: Padding(padding: const EdgeInsets.all(8), child: sheet),
               ),
             ),
             if (refPpm > 0 && s.rulersOnScreen)
@@ -267,12 +276,14 @@ class PreviewPane extends ConsumerWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text('Scale  ',
-                        style: MacosTheme.of(context).typography.caption2),
+                    Text(
+                      'Scale  ',
+                      style: MacosTheme.of(context).typography.caption2,
+                    ),
                     RulerStrip(
-                        pxPerMm: refPpm * z,
-                        lengthPx:
-                            (60 * refPpm * z).clamp(120, 360).toDouble()),
+                      pxPerMm: refPpm * z,
+                      lengthPx: (60 * refPpm * z).clamp(120, 360).toDouble(),
+                    ),
                   ],
                 ),
               ),
@@ -284,8 +295,15 @@ class PreviewPane extends ConsumerWidget {
                   style: MacosTheme.of(context).typography.caption2,
                 ),
               ),
-            _pageBrowser(context, ref, s.pageFormat, pageIndex, pageCount,
-                batch.items.length, perPage),
+            _pageBrowser(
+              context,
+              ref,
+              s.pageFormat,
+              pageIndex,
+              pageCount,
+              batch.items.length,
+              perPage,
+            ),
           ],
         );
       },
@@ -315,8 +333,11 @@ class PreviewPane extends ConsumerWidget {
           ),
           SizedBox(
             width: 52,
-            child: Text('${(zoom * 100).round()}%',
-                textAlign: TextAlign.center, style: type.caption1),
+            child: Text(
+              '${(zoom * 100).round()}%',
+              textAlign: TextAlign.center,
+              style: type.caption1,
+            ),
           ),
           MacosIconButton(
             icon: const MacosIcon(CupertinoIcons.plus),
@@ -337,8 +358,15 @@ class PreviewPane extends ConsumerWidget {
   /// Tabbed page browser pinned to the bottom of a serialized sheet, mirroring
   /// the web version: one tab per printed page, horizontally scrollable, the
   /// active tab highlighted. A continuous web reads as a single endless page.
-  Widget _pageBrowser(BuildContext context, WidgetRef ref, PageFormat fmt,
-      int pageIndex, int pageCount, int total, int perPage) {
+  Widget _pageBrowser(
+    BuildContext context,
+    WidgetRef ref,
+    PageFormat fmt,
+    int pageIndex,
+    int pageCount,
+    int total,
+    int perPage,
+  ) {
     final type = MacosTheme.of(context).typography;
     if (fmt.isContinuous) {
       return Padding(
@@ -360,10 +388,9 @@ class PreviewPane extends ConsumerWidget {
   /// Full human-readable interpretation under a code — the entire encoded
   /// string, wrapped, with the incrementing serial in bold.
   Widget _hri(BuildContext context, LabelCaption cap, double maxWidth) {
-    final base = MacosTheme.of(context)
-        .typography
-        .caption2
-        .copyWith(fontFamily: 'monospace', height: 1.3);
+    final base = MacosTheme.of(
+      context,
+    ).typography.caption2.copyWith(fontFamily: 'monospace', height: 1.3);
     final bold = base.copyWith(fontWeight: FontWeight.bold);
     final full = cap.prefix + cap.bold;
     final boldLen = cap.bold.length;
@@ -403,7 +430,6 @@ class PreviewPane extends ConsumerWidget {
     );
   }
 
-
   Widget _single(BuildContext context, WidgetRef ref, AppSettings s) {
     final resolved = s.resolved;
     if (resolved.data == null) {
@@ -411,8 +437,9 @@ class PreviewPane extends ConsumerWidget {
     }
     final cfg = s.singleConfig;
     final size = ref.watch(singleSizeProvider);
-    final frac =
-        (cfg.logoSideMm > 0 && size != null) ? _fracFor(cfg.logoSideMm, size) : 0.0;
+    final frac = (cfg.symbology.supportsLogo && cfg.logoSideMm > 0 && size != null)
+        ? _fracFor(cfg.logoSideMm, size)
+        : 0.0;
     final is2D = cfg.symbology.is2D;
     final dispW = is2D ? 240.0 : 320.0;
     final dispH = is2D ? 240.0 : 120.0;
@@ -428,11 +455,14 @@ class PreviewPane extends ConsumerWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (ppmH > 0 && ppmV > 0 && s.rulersOnScreen)
-            Row(mainAxisSize: MainAxisSize.min, children: [
-              symbol,
-              const SizedBox(width: 16),
-              RulerStrip(pxPerMm: ppmV, lengthPx: dispH, horizontal: false),
-            ])
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                symbol,
+                const SizedBox(width: 16),
+                RulerStrip(pxPerMm: ppmV, lengthPx: dispH, horizontal: false),
+              ],
+            )
           else
             symbol,
           if (ppmH > 0 && s.rulersOnScreen)
@@ -455,18 +485,23 @@ class PreviewPane extends ConsumerWidget {
       return _message(context, 'Enter a valid GTIN and serial');
     }
     Widget block(EncodeConfig cfg, Widget symbol) => Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            symbol,
-            const SizedBox(height: 6),
-            _hri(context, LabelCaption.hri(cfg.data), 260),
-          ],
-        );
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        symbol,
+        const SizedBox(height: 6),
+        _hri(context, LabelCaption.hri(cfg.data), 260),
+      ],
+    );
     final twoD = block(
+      label.twoD,
+      _symbol(
         label.twoD,
-        _symbol(label.twoD,
-            logoFraction: _fracFor(s.safeLogoSideMm, label.twoDSize),
-            logoPath: s.logoImagePath));
+        logoFraction: label.twoD.symbology.supportsLogo
+            ? _fracFor(s.safeLogoSideMm, label.twoDSize)
+            : 0.0,
+        logoPath: s.logoImagePath,
+      ),
+    );
     final oneD = block(label.oneD, _symbol(label.oneD));
     const gap = SizedBox(width: 20, height: 18);
     return _card(
@@ -475,17 +510,23 @@ class PreviewPane extends ConsumerWidget {
           : Row(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [twoD, gap, oneD]),
+              children: [twoD, gap, oneD],
+            ),
     );
   }
 
   /// One symbol with optional centre logo dead-space overlay.
-  Widget _symbol(EncodeConfig cfg,
-      {double logoFraction = 0, String? logoPath}) {
+  Widget _symbol(
+    EncodeConfig cfg, {
+    double logoFraction = 0,
+    String? logoPath,
+  }) {
     final is2D = cfg.symbology.is2D;
-    final barcode = cfg.symbology.supportsEcLevel
-        ? BarcodeFactory.build(cfg.symbology, ecLevel: cfg.ecLevel)
-        : BarcodeFactory.build(cfg.symbology);
+    final barcode = BarcodeFactory.build(
+      cfg.symbology,
+      ecLevel: cfg.ecLevel,
+      pdf417EcLevel: cfg.pdf417EcLevel,
+    );
     final side = is2D ? 240.0 : 320.0;
     final widget = bw.BarcodeWidget(
       barcode: barcode,
@@ -504,7 +545,11 @@ class PreviewPane extends ConsumerWidget {
   /// one is set. Shared by the single, combined and serialized previews so all
   /// three match the exported PDF.
   Widget _logoOverlay(
-      Widget code, double codePx, double logoFraction, String? logoPath) {
+    Widget code,
+    double codePx,
+    double logoFraction,
+    String? logoPath,
+  ) {
     if (logoFraction <= 0) return code;
     final logoSide = codePx * logoFraction.clamp(0.0, 0.5);
     return Stack(
@@ -517,8 +562,12 @@ class PreviewPane extends ConsumerWidget {
           color: const Color(0xFFFFFFFF),
           alignment: Alignment.center,
           child: (logoPath != null && File(logoPath).existsSync())
-              ? Image.file(File(logoPath),
-                  width: logoSide, height: logoSide, fit: BoxFit.contain)
+              ? Image.file(
+                  File(logoPath),
+                  width: logoSide,
+                  height: logoSide,
+                  fit: BoxFit.contain,
+                )
               : null,
         ),
       ],
@@ -545,19 +594,22 @@ class PreviewPane extends ConsumerWidget {
   }
 
   Widget _message(BuildContext context, String text) {
-    return Text(text,
-        style: MacosTheme.of(context)
-            .typography
-            .title3
-            .copyWith(color: MacosColors.systemGrayColor));
+    return Text(
+      text,
+      style: MacosTheme.of(
+        context,
+      ).typography.title3.copyWith(color: MacosColors.systemGrayColor),
+    );
   }
 
   Widget _inlineError(String error) => SizedBox(
-        width: 240,
-        child: Text(error,
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: Color(0xFFCC0000), fontSize: 12)),
-      );
+    width: 240,
+    child: Text(
+      error,
+      textAlign: TextAlign.center,
+      style: const TextStyle(color: Color(0xFFCC0000), fontSize: 12),
+    ),
+  );
 }
 
 /// A vertically-scrolling area for the serialized sheet that keeps its
@@ -667,8 +719,11 @@ class _PageTabsState extends State<_PageTabs> {
   void _reveal() {
     final ctx = _activeKey.currentContext;
     if (ctx != null) {
-      Scrollable.ensureVisible(ctx,
-          alignment: 0.5, duration: const Duration(milliseconds: 200));
+      Scrollable.ensureVisible(
+        ctx,
+        alignment: 0.5,
+        duration: const Duration(milliseconds: 200),
+      );
     }
   }
 
@@ -694,16 +749,20 @@ class _PageTabsState extends State<_PageTabs> {
                 padding: const EdgeInsets.only(right: 8),
                 child: Align(
                   alignment: Alignment.centerLeft,
-                  child: Text(widget.info,
-                      style: type.caption2
-                          .copyWith(color: MacosColors.systemGrayColor)),
+                  child: Text(
+                    widget.info,
+                    style: type.caption2.copyWith(
+                      color: MacosColors.systemGrayColor,
+                    ),
+                  ),
                 ),
               ),
             ),
             _arrow(
-                left: true,
-                enabled: !atStart,
-                onTap: () => widget.onSelect(widget.pageIndex - 1)),
+              left: true,
+              enabled: !atStart,
+              onTap: () => widget.onSelect(widget.pageIndex - 1),
+            ),
             const SizedBox(width: 6),
             // The tab strip scrolls horizontally (with a visible bar) between
             // the prev/next arrows when there are more pages than fit.
@@ -735,9 +794,10 @@ class _PageTabsState extends State<_PageTabs> {
             ),
             const SizedBox(width: 6),
             _arrow(
-                left: false,
-                enabled: !atEnd,
-                onTap: () => widget.onSelect(widget.pageIndex + 1)),
+              left: false,
+              enabled: !atEnd,
+              onTap: () => widget.onSelect(widget.pageIndex + 1),
+            ),
           ],
         ),
       ),
@@ -788,7 +848,8 @@ class _PageTabsState extends State<_PageTabs> {
             color: active ? accent : const Color(0xFFEDEDED),
             borderRadius: BorderRadius.circular(6),
             border: Border.all(
-                color: active ? accent : const Color(0xFFD6D6D6)),
+              color: active ? accent : const Color(0xFFD6D6D6),
+            ),
           ),
           child: Text(
             '${p + 1}',
@@ -796,8 +857,7 @@ class _PageTabsState extends State<_PageTabs> {
               fontFamily: 'monospace',
               fontSize: 12,
               fontWeight: active ? FontWeight.bold : FontWeight.normal,
-              color:
-                  active ? const Color(0xFFFFFFFF) : const Color(0xFF333333),
+              color: active ? const Color(0xFFFFFFFF) : const Color(0xFF333333),
             ),
           ),
         ),
@@ -851,7 +911,9 @@ class _LabelSheetViewState extends ConsumerState<_LabelSheetView> {
     final a = LabelExport.arrange(s, spec, serial: batch.items.first.serial);
     final pageWmm = batch.effectiveWidthMm;
     final cols = math.max(
-        1, ((pageWmm - 2 * _margin + _gap) / (a.wMm + _gap)).floor());
+      1,
+      ((pageWmm - 2 * _margin + _gap) / (a.wMm + _gap)).floor(),
+    );
     final continuous = batch.page.isContinuous;
     final total = batch.items.length;
     final rowsPerPage = continuous
@@ -859,7 +921,8 @@ class _LabelSheetViewState extends ConsumerState<_LabelSheetView> {
         : math.max(
             1,
             ((batch.effectiveHeightMm - 2 * _margin + _gap) / (a.hMm + _gap))
-                .floor());
+                .floor(),
+          );
     final perPage = math.max(1, cols * rowsPerPage);
     final pageCount = math.max(1, (total + perPage - 1) ~/ perPage);
     final pageIndex = ref.watch(batchPageProvider).clamp(0, pageCount - 1);
@@ -870,20 +933,24 @@ class _LabelSheetViewState extends ConsumerState<_LabelSheetView> {
 
     // Page height to draw: fixed for a real format, content-fit for a web.
     final phMm = continuous
-        ? 2 * _margin +
-            ((shown.length + cols - 1) ~/ cols) * (a.hMm + _gap)
+        ? 2 * _margin + ((shown.length + cols - 1) ~/ cols) * (a.hMm + _gap)
         : batch.effectiveHeightMm;
 
     // Fingerprint everything that changes the rendered labels (the spec is
     // clone-replaced on every edit, so its identity changes when it mutates).
+    // The encoded payload of each shown item — rather than individual
+    // DataSourceInput fields (gtin, serialize, format, domain, ...) — is
+    // used here so this can't go stale when a field is added later (it
+    // already missed `rawText`, so a free-text edit never invalidated the
+    // cached raster); `oneDData`/`twoDData` reflect every input field by
+    // construction.
+    final payloads = shown
+        .map((it) => '${it.oneDData}~${it.twoDData}')
+        .join('␟');
     final sig = [
       identityHashCode(spec),
       pageIndex,
-      serials.join(','),
-      s.data.gtin,
-      s.data.serialize,
-      s.data.sgtinFormat.name,
-      s.data.digitalLinkDomain,
+      payloads,
       s.twoDSymbology.name,
       s.oneDSymbology.name,
       s.ecLevel.name,
@@ -895,119 +962,147 @@ class _LabelSheetViewState extends ConsumerState<_LabelSheetView> {
     ].join('|');
     if (sig != _sig) _renderLatest(sig, s, spec, serials);
 
-    final fmtLabel = '${batch.page.label} · '
+    final fmtLabel =
+        '${batch.page.label} · '
         '$pageCount page${pageCount == 1 ? '' : 's'} · '
         '$cols×$rowsPerPage labels/page';
 
-    return Column(children: [
-      Expanded(
-        child: _imgs.isEmpty
-            ? const Center(child: ProgressCircle())
-            : LayoutBuilder(builder: (context, c) {
-                const band = 30.0;
-                final rulers = s.rulersOnScreen;
-                final reserveW = rulers ? band + 6 : 0.0;
-                final reserveH = rulers ? band + 4 : 0.0;
-                final scale = math.min((c.maxWidth - 8 - reserveW) / pageWmm,
-                    (c.maxHeight - 8 - reserveH) / phMm);
-                final pageWpx = pageWmm * scale, pageHpx = phMm * scale;
-                final pageBox = Container(
-                  width: pageWpx,
-                  height: pageHpx,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFFFFF),
-                    border: Border.all(color: const Color(0xFFCCCCCC)),
-                    boxShadow: const [
-                      BoxShadow(
-                          color: Color(0x22000000),
-                          blurRadius: 6,
-                          offset: Offset(0, 2)),
-                    ],
-                  ),
-                  child: Stack(
-                    children: [
-                      for (var i = 0; i < _imgs.length; i++)
-                        Positioned(
-                          left: (_margin +
-                                  _gap / 2 +
-                                  (i % cols) * (a.wMm + _gap)) *
-                              scale,
-                          top: (_margin +
-                                  _gap / 2 +
-                                  (i ~/ cols) * (a.hMm + _gap)) *
-                              scale,
-                          width: a.wMm * scale,
-                          height: a.hMm * scale,
-                          child:
-                              RawImage(image: _imgs[i], fit: BoxFit.fill),
-                        ),
-                    ],
-                  ),
-                );
-                // True-scale rulers around the page (mm/inch/vernier), at the
-                // same px-per-mm as the rendered page.
-                final content = rulers
-                    ? Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 4),
-                            child: RulerStrip(
-                                pxPerMm: scale,
-                                lengthPx: pageWpx,
-                                band: band),
+    return Column(
+      children: [
+        Expanded(
+          child: _imgs.isEmpty
+              ? const Center(child: ProgressCircle())
+              : LayoutBuilder(
+                  builder: (context, c) {
+                    const band = 30.0;
+                    final rulers = s.rulersOnScreen;
+                    final reserveW = rulers ? band + 6 : 0.0;
+                    final reserveH = rulers ? band + 4 : 0.0;
+                    final scale = math.min(
+                      (c.maxWidth - 8 - reserveW) / pageWmm,
+                      (c.maxHeight - 8 - reserveH) / phMm,
+                    );
+                    final pageWpx = pageWmm * scale, pageHpx = phMm * scale;
+                    final pageBox = Container(
+                      width: pageWpx,
+                      height: pageHpx,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFFFFF),
+                        border: Border.all(color: const Color(0xFFCCCCCC)),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x22000000),
+                            blurRadius: 6,
+                            offset: Offset(0, 2),
                           ),
-                          Row(
+                        ],
+                      ),
+                      child: Stack(
+                        children: [
+                          for (var i = 0; i < _imgs.length; i++)
+                            Positioned(
+                              left:
+                                  (_margin +
+                                      _gap / 2 +
+                                      (i % cols) * (a.wMm + _gap)) *
+                                  scale,
+                              top:
+                                  (_margin +
+                                      _gap / 2 +
+                                      (i ~/ cols) * (a.hMm + _gap)) *
+                                  scale,
+                              width: a.wMm * scale,
+                              height: a.hMm * scale,
+                              child: RawImage(
+                                image: _imgs[i],
+                                fit: BoxFit.fill,
+                              ),
+                            ),
+                        ],
+                      ),
+                    );
+                    // True-scale rulers around the page (mm/inch/vernier), at the
+                    // same px-per-mm as the rendered page.
+                    final content = rulers
+                        ? Column(
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              pageBox,
-                              const SizedBox(width: 6),
-                              RulerStrip(
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 4),
+                                child: RulerStrip(
                                   pxPerMm: scale,
-                                  lengthPx: pageHpx,
-                                  horizontal: false,
-                                  band: band),
+                                  lengthPx: pageWpx,
+                                  band: band,
+                                ),
+                              ),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  pageBox,
+                                  const SizedBox(width: 6),
+                                  RulerStrip(
+                                    pxPerMm: scale,
+                                    lengthPx: pageHpx,
+                                    horizontal: false,
+                                    band: band,
+                                  ),
+                                ],
+                              ),
                             ],
-                          ),
-                        ],
-                      )
-                    : pageBox;
-                return SingleChildScrollView(
-                  child: Center(
-                    child: Padding(
-                        padding: const EdgeInsets.all(4), child: content),
-                  ),
-                );
-              }),
-      ),
-      if (hidden > 0)
-        Padding(
-          padding: const EdgeInsets.only(top: 4),
-          child: Text('+ $hidden more on this page — all export',
-              style: const TextStyle(
-                  fontSize: 11, color: MacosColors.systemGrayColor)),
+                          )
+                        : pageBox;
+                    return SingleChildScrollView(
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(4),
+                          child: content,
+                        ),
+                      ),
+                    );
+                  },
+                ),
         ),
-      if (continuous)
-        Padding(
-          padding: const EdgeInsets.only(top: 12),
-          child: Text(fmtLabel,
+        if (hidden > 0)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              '+ $hidden more on this page — all export',
               style: const TextStyle(
-                  fontSize: 11, color: MacosColors.systemGrayColor)),
-        )
-      else
-        _PageTabs(
-          info: fmtLabel,
-          pageIndex: pageIndex,
-          pageCount: pageCount,
-          onSelect: (p) => ref.read(batchPageProvider.notifier).set(p),
-        ),
-    ]);
+                fontSize: 11,
+                color: MacosColors.systemGrayColor,
+              ),
+            ),
+          ),
+        if (continuous)
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Text(
+              fmtLabel,
+              style: const TextStyle(
+                fontSize: 11,
+                color: MacosColors.systemGrayColor,
+              ),
+            ),
+          )
+        else
+          _PageTabs(
+            info: fmtLabel,
+            pageIndex: pageIndex,
+            pageCount: pageCount,
+            onSelect: (p) => ref.read(batchPageProvider.notifier).set(p),
+          ),
+      ],
+    );
   }
 
   Future<void> _renderLatest(
-      String sig, AppSettings s, LabelSpec spec, List<String> serials) async {
+    String sig,
+    AppSettings s,
+    LabelSpec spec,
+    List<String> serials,
+  ) async {
     if (sig == _pendingSig) return; // already rendering this exact state
     _pendingSig = sig;
     final ps = s.copyWith(dpi: _previewDpi);
@@ -1018,8 +1113,9 @@ class _LabelSheetViewState extends ConsumerState<_LabelSheetView> {
       // 2D centre dead-space (so the on-screen sheet matches the export).
       logo = await ExportActions.loadLogo(s.logoImagePath);
       for (final serial in serials) {
-        out.add(await LabelExport.renderImage(ps, spec,
-            serial: serial, logo: logo));
+        out.add(
+          await LabelExport.renderImage(ps, spec, serial: serial, logo: logo),
+        );
       }
     } catch (_) {
       logo?.dispose();
@@ -1053,7 +1149,9 @@ class _LabelSheetViewState extends ConsumerState<_LabelSheetView> {
   }
 
   Widget _centered(String msg) => Center(
-        child: Text(msg,
-            style: const TextStyle(color: MacosColors.systemGrayColor)),
-      );
+    child: Text(
+      msg,
+      style: const TextStyle(color: MacosColors.systemGrayColor),
+    ),
+  );
 }

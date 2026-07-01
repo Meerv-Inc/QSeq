@@ -52,6 +52,35 @@ void main() {
     });
   }
 
+  testWidgets('serialized pdf417 sheet renders without error', (tester) async {
+    final c = _serial(twoD: Symbology.pdf417);
+    addTearDown(c.dispose);
+
+    final batch = c.read(batchProvider)!;
+    expect(batch.twoDSample!.symbology, Symbology.pdf417);
+
+    await tester.pumpWidget(_host(c, const PreviewPane()));
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+      'a pdf417 sheet ignores a stale logoSideMm left over from a prior '
+      'QR selection and still renders cleanly', (tester) async {
+    final c = _serial(twoD: Symbology.pdf417, logoSideMm: 4);
+    addTearDown(c.dispose);
+
+    final batch = c.read(batchProvider)!;
+    // logoSideMm still flows into the config (so a warning can surface), but
+    // PDF417 never applies a knockout — the sizer reports no logo budget.
+    expect(batch.twoDSample!.logoSideMm, greaterThan(0));
+    expect(batch.twoDSize!.logoBudget, isNull);
+
+    await tester.pumpWidget(_host(c, const PreviewPane()));
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('serialization log exposes four arrow nav buttons',
       (tester) async {
     final c = _serial(twoD: Symbology.qrCode);
