@@ -130,6 +130,7 @@ class LabelSpec {
       symbology: sym,
       data: data,
       ecLevel: i.ec,
+      pdf417EcLevel: i.pdf417EcLevel,
       dpi: i.dpi,
       xDimensionMm: i.xdim,
       barHeightMm: i.barh,
@@ -141,9 +142,22 @@ class LabelSpec {
   }
 }
 
+/// True if [spec]'s twoD/oneD rects currently sit side by side (similar y,
+/// separated in x) rather than stacked (2D above 1D). Used to detect a stale
+/// layout after switching the 2D symbology to/from PDF417, which forces
+/// vertical stacking — derived from the live rects rather than tracked state.
+bool labelLayoutIsSideBySide(LabelSpec spec) {
+  final a = spec.rects['twoD'], b = spec.rects['oneD'];
+  if (a == null || b == null) return false;
+  final vOverlap = math.min(a.y + a.h, b.y + b.h) - math.max(a.y, b.y);
+  return vOverlap > math.min(a.h, b.h) * 0.5;
+}
+
 /// Default arrangement: title across the top, 2D lower-left, 1D lower-right,
-/// shared HRI spanning the bottom. Fills [spec.rects].
-void autoArrange(GenInput i, LabelSpec spec) {
+/// shared HRI spanning the bottom. Fills [spec.rects]. [stacked2D] forces the
+/// 2D element above the 1D (PDF417 is too wide to sit side by side with a 1D
+/// code — mirrors buildCombined's forced stacking).
+void autoArrange(GenInput i, LabelSpec spec, {bool stacked2D = false}) {
   spec.rects.clear();
   final t = labelTexts(i);
   final p = math.min(4.0, math.max(1.5, spec.wMm * 0.04));
@@ -163,6 +177,30 @@ void autoArrange(GenInput i, LabelSpec spec) {
   final n2 = spec.twoDOn ? naturalSize(i, i.twoD, t.d2) : null;
   final n1 = spec.oneDOn ? naturalSize(i, i.oneDSym, t.d1) : null;
   final gap = p;
+  final availW = spec.wMm - 2 * p;
+  if (stacked2D && n2 != null && n1 != null) {
+    final halfH = (bandH - gap) / 2;
+    var w2 = n2.w * (halfH / n2.h), h2 = halfH;
+    if (w2 > availW) {
+      final k = availW / w2;
+      w2 *= k;
+      h2 *= k;
+    }
+    var w1 = n1.w * (halfH / n1.h), h1 = halfH;
+    if (w1 > availW) {
+      final k = availW / w1;
+      w1 *= k;
+      h1 *= k;
+    }
+    final y0 = top + (bandH - (h2 + h1 + gap)) / 2;
+    spec.rects['twoD'] = ElRect(p + (availW - w2) / 2, y0, w2, h2);
+    spec.rects['oneD'] = ElRect(p + (availW - w1) / 2, y0 + h2 + gap, w1, h1);
+    if (spec.hriOn) {
+      spec.rects['hri'] =
+          ElRect(p, spec.hMm - p - hriH, spec.wMm - 2 * p, hriH);
+    }
+    return;
+  }
   double w2 = 0, h2 = 0, w1 = 0, h1 = 0;
   if (n2 != null) {
     final k = bandH / n2.h;
@@ -174,7 +212,6 @@ void autoArrange(GenInput i, LabelSpec spec) {
     w1 = n1.w * k;
     h1 = bandH;
   }
-  final availW = spec.wMm - 2 * p;
   final totalW = w2 + w1 + ((n2 != null && n1 != null) ? gap : 0);
   if (totalW > availW && totalW > 0) {
     final k = availW / totalW;
@@ -199,9 +236,13 @@ void autoArrange(GenInput i, LabelSpec spec) {
 }
 
 void ensureArranged(GenInput i, LabelSpec spec) {
+  final stacked2D =
+      i.mode.use2D && i.mode.use1D && i.twoD == Symbology.pdf417;
   final missing = labelElementKeys
       .any((k) => spec.on(k) && !spec.rects.containsKey(k));
-  if (missing) autoArrange(i, spec);
+  if (missing || (stacked2D && labelLayoutIsSideBySide(spec))) {
+    autoArrange(i, spec, stacked2D: stacked2D);
+  }
 }
 
 String _dashedRect(

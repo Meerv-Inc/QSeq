@@ -109,6 +109,13 @@ class PreviewPane extends ConsumerWidget {
         : 0.0;
     final oneWpx = (batch.oneDSize?.outer.widthMm ?? 0) * trueScale;
     final oneHpx = (batch.oneDSize?.outer.heightMm ?? 0) * trueScale;
+    // The on-screen HRI caption must render at the SAME print-true metrics
+    // Batch.cellHeightMm assumed when computing rows/perPage/pageHeightMm —
+    // otherwise the fixed-size UI caption font silently drifts from what the
+    // page-fitting math assumed, and cells overflow the drawn page instead of
+    // moving cleanly to the next one.
+    final hriFontPx = (Batch.hriPt / 2.835) * trueScale;
+
     // One sheet cell: the 2D and/or 1D code with its HRI underneath, every
     // dimension at the same physical scale as the page.
     Widget cell(BatchItem it) => SizedBox(
@@ -134,15 +141,17 @@ class PreviewPane extends ConsumerWidget {
               twoLogoFrac,
               s.logoImagePath,
             ),
-            const SizedBox(height: 6),
+            SizedBox(height: Batch.gapBeforeTwoDHriMm * trueScale),
             _hri(
               context,
               LabelCaption.hri(it.twoDData!, boldTail: it.counter),
               cellWpx,
+              fontSizePx: hriFontPx,
+              freeWrap: true,
             ),
           ],
           if (batch.hasOneD && it.oneDData != null) ...[
-            const SizedBox(height: 12),
+            SizedBox(height: Batch.gapBeforeOneDMm * trueScale),
             bw.BarcodeWidget(
               barcode: BarcodeFactory.build(batch.oneDSample!.symbology),
               data: it.oneDData!,
@@ -151,11 +160,13 @@ class PreviewPane extends ConsumerWidget {
               drawText: false,
               errorBuilder: (c, e) => _inlineError(e),
             ),
-            const SizedBox(height: 6),
+            SizedBox(height: Batch.gapBeforeOneDHriMm * trueScale),
             _hri(
               context,
               LabelCaption.hri(it.oneDData!, boldTail: it.counter),
               cellWpx,
+              fontSizePx: hriFontPx,
+              freeWrap: true,
             ),
           ],
         ],
@@ -189,6 +200,7 @@ class PreviewPane extends ConsumerWidget {
     final pageHpx = batch.pageHeightMm * trueScale;
     final marginPx = batch.marginMm * trueScale;
     final pageTrue = Container(
+      key: const Key('batchPageContainer'),
       width: pageWpx,
       height: pageHpx,
       clipBehavior: Clip.antiAlias,
@@ -208,6 +220,7 @@ class PreviewPane extends ConsumerWidget {
           maxWidth: double.infinity,
           maxHeight: double.infinity,
           child: Column(
+            key: const Key('batchPageGrid'),
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: gridRows,
@@ -267,6 +280,7 @@ class PreviewPane extends ConsumerWidget {
             _zoomBar(context, ref, z),
             Expanded(
               child: _SheetScroll(
+                resetKey: pageIndex,
                 child: Padding(padding: const EdgeInsets.all(8), child: sheet),
               ),
             ),
@@ -386,14 +400,41 @@ class PreviewPane extends ConsumerWidget {
   }
 
   /// Full human-readable interpretation under a code — the entire encoded
-  /// string, wrapped, with the incrementing serial in bold.
-  Widget _hri(BuildContext context, LabelCaption cap, double maxWidth) {
-    final base = MacosTheme.of(
-      context,
-    ).typography.caption2.copyWith(fontFamily: 'monospace', height: 1.3);
+  /// string, wrapped, with the incrementing serial in bold. [freeWrap] wraps
+  /// at any character (matching batch_pdf.dart's plain text layout) instead
+  /// of only at slashes — required in the paginated batch preview, where the
+  /// on-screen wrap must produce the same line count Batch.cellHeightMm
+  /// assumed, or cells silently overflow the drawn page instead of moving to
+  /// the next one.
+  Widget _hri(
+    BuildContext context,
+    LabelCaption cap,
+    double maxWidth, {
+    double? fontSizePx,
+    bool freeWrap = false,
+  }) {
+    final base = MacosTheme.of(context).typography.caption2.copyWith(
+          fontFamily: 'monospace',
+          height: fontSizePx != null ? 1.4 : 1.3,
+          fontSize: fontSizePx,
+        );
     final bold = base.copyWith(fontWeight: FontWeight.bold);
     final full = cap.prefix + cap.bold;
     final boldLen = cap.bold.length;
+
+    if (freeWrap) {
+      return ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: maxWidth),
+        child: Text.rich(
+          TextSpan(children: [
+            TextSpan(text: cap.prefix, style: base),
+            if (cap.bold.isNotEmpty) TextSpan(text: cap.bold, style: bold),
+          ]),
+          textAlign: TextAlign.center,
+          softWrap: true,
+        ),
+      );
+    }
 
     // For a URI, the domain (scheme + host) gets its own first line; the path
     // then wraps onto a second/third line, but only ever at a slash so the
@@ -617,7 +658,12 @@ class PreviewPane extends ConsumerWidget {
 /// column of codes. Owns its controller so the bar and the view stay attached.
 class _SheetScroll extends StatefulWidget {
   final Widget child;
-  const _SheetScroll({required this.child});
+  // Changing this (the page index) snaps the scroll position back to the
+  // top-left — otherwise switching pages keeps whatever scroll offset the
+  // previous page was at, so a new page can open already scrolled past its
+  // own top margin (looking like the margin is simply missing).
+  final Object? resetKey;
+  const _SheetScroll({required this.child, this.resetKey});
 
   @override
   State<_SheetScroll> createState() => _SheetScrollState();
@@ -626,6 +672,18 @@ class _SheetScroll extends StatefulWidget {
 class _SheetScrollState extends State<_SheetScroll> {
   final _vController = ScrollController();
   final _hController = ScrollController();
+
+  @override
+  void didUpdateWidget(_SheetScroll old) {
+    super.didUpdateWidget(old);
+    if (widget.resetKey != old.resetKey) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (_vController.hasClients) _vController.jumpTo(0);
+        if (_hController.hasClients) _hController.jumpTo(0);
+      });
+    }
+  }
 
   @override
   void dispose() {

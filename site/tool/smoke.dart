@@ -168,6 +168,27 @@ void main() {
     final spec2 = LabelSpec()..applyJson(spec.toJson());
     if (spec2.hriFontMm != 5) throw StateError('hriFontMm round-trip');
   }
+  // label designer: PDF417 forces 2D above 1D, including re-arranging a
+  // design made while 2D was QR (mirrors the desktop fix).
+  {
+    const iQr = GenInput(mode: WebMode.combo, data: data);
+    final spec = LabelSpec();
+    ensureArranged(iQr, spec);
+    if (!labelLayoutIsSideBySide(spec)) {
+      throw StateError('expected QR combo to auto-arrange side by side');
+    }
+    final iPdf = GenInput(
+        mode: WebMode.combo, data: data, twoD: Symbology.pdf417);
+    ensureArranged(iPdf, spec);
+    if (labelLayoutIsSideBySide(spec)) {
+      throw StateError('stale side-by-side layout survived switch to PDF417');
+    }
+    final twoD = spec.rects['twoD']!, oneD = spec.rects['oneD']!;
+    if (twoD.y + twoD.h > oneD.y + 0.01) {
+      throw StateError('PDF417 combo did not stack 2D above 1D');
+    }
+    print('ok  label designer pdf417 stacking');
+  }
   // project round-trip (overlay + copies persisted)
   {
     const i = GenInput(mode: WebMode.twoDSheet, data: data);

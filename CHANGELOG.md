@@ -6,6 +6,59 @@ releases.
 
 © 2026 Meerv Inc. — PolyForm Noncommercial License 1.0.0.
 
+## [1.7.1] — 2026-07-01
+
+### Fixed
+- **Label designer didn't stack PDF417 above the 1D code** — its auto-arrange
+  had no concept of PDF417's forced vertical layout, so a design made while
+  the 2D symbology was QR or Data Matrix stayed side by side (badly cropped)
+  after switching to PDF417. It now re-arranges automatically on switch, both
+  in the interactive designer and in exports.
+- **Sheet of copies / serialized sheets could overflow the bottom of the
+  on-screen page** instead of paginating cleanly to the next one — the
+  on-screen cell used its own fixed-pixel gaps and UI caption font instead of
+  the print-true metrics that actually govern how many rows fit per page, so
+  the two silently drifted apart. The on-screen cell now renders at those
+  same metrics, with extra headroom for font-engine differences between the
+  screen and the exported PDF.
+- **Switching pages on a serialized/copies sheet kept the previous page's
+  scroll position** — a newly opened page could appear already scrolled past
+  its own top margin, looking like the margin was missing. The scroll now
+  resets to the top on every page change.
+
+## [1.7.0] — 2026-07-01
+
+### Added
+- **GS1 Digital Link validator** (macOS, Windows and web), inspired by
+  `digital-link.js`: paste or generate a Digital Link URI and see it decoded
+  into its Application Identifier components, with structural errors — bad
+  check digits, out-of-order qualifiers, unknown AIs, malformed URIs —
+  surfaced all at once rather than on first failure. **Validate all** runs
+  every entry in the Serialization Log and reports pass/fail per row.
+- **GS1 identifier types beyond GTIN**: GRAI, GDTI, GCN, GLN, SSCC, GSRN
+  (provider and recipient), GSIN, GIAI, GINC, CPID and GMN, each generatable
+  serialized or unserialized where the standard allows. The GS1 identifier
+  type picker now explains the selected type's make-up (digit structure) and
+  its typical use case directly under the dropdown.
+- **PDF417 as a 2D symbology** (macOS, Windows and web), with its own 9-level
+  (0–8) error-correction control. A PDF417 code is always placed above the 1D
+  code on combined and serialized labels — including the label designer —
+  since it is too wide to sit side by side with a 1D barcode; it has no
+  logo/centre dead-space, since a stacked-linear symbol has no safe knockout
+  zone the way a QR or Data Matrix module grid does.
+
+### Fixed
+- **Serialized sheets didn't refresh every label** when the free-text data
+  source or the GS1 Digital Link domain was edited — the on-screen preview's
+  cache-invalidation signature was missing the raw text field.
+- **White-on-white checkboxes in light mode** (the Label designer /
+  Serialization checkboxes in the Workspace panel) — replaced the
+  platform checkbox with one that doesn't depend on window-focus state.
+- **Code 39 failed to encode GS1 key types** ("Unable to encode '(' to Code
+  39 Barcode") — GS1 element strings (parenthesized AIs) and Digital Link
+  URLs were being sent to Code 39 unconditionally; the payload now adapts to
+  what each symbology can actually encode.
+
 ## [1.6.0] — 2026-06-17
 
 ### Added

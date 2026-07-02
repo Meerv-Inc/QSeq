@@ -17,6 +17,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:macos_ui/macos_ui.dart';
 
 import '../models/label_spec.dart';
+import '../models/symbology.dart';
 import '../render/barcode_factory.dart';
 import '../state/app_controller.dart';
 
@@ -46,6 +47,7 @@ class _LabelDesignerState extends ConsumerState<LabelDesigner> {
             symbology: s.twoDSymbology,
             data: t.d2,
             ecLevel: s.ecLevel,
+            pdf417EcLevel: s.pdf417EcLevel,
             dpi: s.safeDpi,
             xDimensionMm: s.safeXDimensionMm,
             barHeightMm: s.safeBarHeightMm)
@@ -65,14 +67,22 @@ class _LabelDesignerState extends ConsumerState<LabelDesigner> {
               style: MacosTheme.of(context).typography.body));
     }
 
+    // PDF417 is too wide to sit side by side with a 1D code, so the label
+    // designer forces it above the 1D code the same way the static combined
+    // label and serialized sheets already do.
+    final needsStacked2D =
+        show2D && show1D && s.twoDSymbology == Symbology.pdf417;
+
     // Arrange missing elements; push the arrangement into state after the
     // frame so drags operate on the same rects we painted.
     var arranged = spec;
     final missing = labelElementKeys.any((k) =>
         _enabled(k, spec, show2D, show1D) && !spec.rects.containsKey(k));
-    if (missing) {
+    final stackingMismatch =
+        needsStacked2D && labelLayoutIsSideBySide(spec);
+    if (missing || stackingMismatch) {
       arranged = spec.clone();
-      autoArrangeLabel(arranged, n2, n1);
+      autoArrangeLabel(arranged, n2, n1, stacked2D: needsStacked2D);
       final push = arranged;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) ref.read(labelSpecProvider.notifier).set(push);

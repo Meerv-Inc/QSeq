@@ -31,6 +31,11 @@ const List<(String, String)> _register = [
 
 /// End-user Release Notes — an excerpt of CHANGELOG.md relevant to users.
 const List<String> _releaseNotes = [
+  'Fixed: the label designer not stacking PDF417 above the 1D code; sheet of copies / serialized sheets overflowing the bottom of the on-screen page instead of paginating cleanly; switching pages keeping the previous page\'s scroll position.',
+  'GS1 Digital Link validator — paste or generate a Digital Link URI and see it decoded into its Application Identifier components, with every structural error surfaced at once. "Validate all" checks every entry in the Serialization Log.',
+  'Generate GS1 identifiers beyond GTIN: GRAI, GDTI, GCN, GLN, SSCC, GSRN (provider/recipient), GSIN, GIAI, GINC, CPID and GMN — with an in-app explanation of each type\'s digit structure and typical use case.',
+  'PDF417 as a 2D symbology, with its own error-correction control. It\'s automatically placed above the 1D code on combined and serialized labels — too wide to sit side by side — and has no centre logo, since a stacked-linear symbol has no safe knockout zone.',
+  'Fixed: serialized sheets not refreshing every label on a data-source or Digital Link domain edit; white-on-white checkboxes in light mode; Code 39 failing to encode GS1 key element strings.',
   'Companion website rebuilt on a single Dart codebase (Jaspr) — the web generator now runs the exact same encoders and sizing engine as the desktop app, so an identity minted on macOS, Windows or the web is byte-for-byte the same.',
   'Meet QRPic, our MIT-licensed Android sister app: scan a logo\'d QR code and see exactly how much of its error-correction budget the logo spends — downloadable from qseq.app.',
   'Run on Windows too — a native desktop build alongside the signed & notarized macOS app.',
@@ -38,7 +43,7 @@ const List<String> _releaseNotes = [
   'Serialized sheets reworked so the on-screen preview tracks the printed pages.',
   'Place a centre logo as an image in the cleared 2D dead-space (web), or remove it.',
   'Measurement rulers stay clear of the code in single-code PDF exports.',
-  'Generate QR Code, Data Matrix and 1D barcodes (GS1-128, Code 128, Code 39, EAN-13, UPC-A).',
+  'Generate QR Code, Data Matrix, PDF417 and 1D barcodes (GS1-128, Code 128, Code 39, EAN-13, UPC-A).',
   'Encode SGTINs as GS1 element strings, EPC Tag URIs, or GS1 Digital Links.',
   'Choose your Digital Link resolver — GS1 (id.gs1.org) or QDat.io (tapdpp.qdat.io).',
   'Build serialized sheets and page through them by page size — A4, Letter, A3, Legal, or a flexographic continuous web — with a full serial log of every encoded link.',

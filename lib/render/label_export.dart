@@ -19,6 +19,7 @@ import 'package:pdf/widgets.dart' as pw;
 import '../models/batch.dart';
 import '../models/encode_config.dart';
 import '../models/label_spec.dart';
+import '../models/symbology.dart';
 import '../state/app_controller.dart';
 import 'barcode_factory.dart';
 import 'pdf_ruler.dart';
@@ -37,7 +38,14 @@ class LabelExport {
     final out = spec.clone();
     final missing = labelElementKeys.any((k) =>
         _on(out, s, k) && !out.rects.containsKey(k));
-    if (missing) autoArrangeLabel(out, n2, n1);
+    // PDF417 is too wide to sit side by side with a 1D code, so it's forced
+    // above the 1D code — re-arrange if a stale side-by-side layout was
+    // designed before switching the 2D symbology to PDF417.
+    final stacked2D = s.mode.use2D && s.mode.use1D &&
+        s.twoDSymbology == Symbology.pdf417;
+    if (missing || (stacked2D && labelLayoutIsSideBySide(out))) {
+      autoArrangeLabel(out, n2, n1, stacked2D: stacked2D);
+    }
     final r2 = out.rects['twoD'];
     if (r2 != null && n2 != null) r2.h = r2.w * n2.h / n2.w;
     final r1 = out.rects['oneD'];

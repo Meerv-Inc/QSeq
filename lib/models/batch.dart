@@ -188,18 +188,29 @@ class Batch {
   // rows/perPage/pageCount all derive from cellHeightMm, so a flat caption
   // budget (the old behaviour) badly under-counted multi-line Digital Links and
   // made the on-screen page count, the page-browser slicing and the
-  // serialization-log page labels disagree with the exported PDF.
-  static const double _hriPt = 5.0;
-  static const double _hriLineMm = _hriPt * 1.4 / 2.835; // ≈ 2.47 mm per line
-  static const double _hriCharMm = _hriPt * 0.62 / 2.835; // ≈ 1.09 mm per char
+  // serialization-log page labels disagree with the exported PDF. Public so
+  // preview_pane.dart's on-screen cell can render at these exact metrics too
+  // — otherwise the on-screen preview silently drifts from what rows/perPage
+  // assumed and cells overflow the drawn page instead of moving to the next.
+  static const double hriPt = 5.0;
+  static const double hriLineMm = hriPt * 1.4 / 2.835; // ≈ 2.47 mm per line
+  static const double hriCharMm = hriPt * 0.62 / 2.835; // ≈ 1.09 mm per char
+  static const double gapBeforeTwoDHriMm = 2;
+  static const double gapBeforeOneDMm = 4;
+  static const double gapBeforeOneDHriMm = 2;
 
   /// Estimated wrapped-HRI line count for [data] at the cell width, mirroring
-  /// the 5 pt caption batch_pdf renders. Slightly conservative (rounds up) so
-  /// the estimate never under-fills relative to the PDF.
+  /// the 5 pt caption batch_pdf renders. Deliberately conservative (rounds up,
+  /// plus one full extra line of headroom) so the estimate never under-fills
+  /// relative to either the PDF's font metrics or the on-screen preview's UI
+  /// font — different text-layout engines wrap the same string slightly
+  /// differently, and under-estimating here is what makes rows/perPage
+  /// promise more room than actually renders, spilling cells onto the next
+  /// page's territory instead of paginating cleanly.
   int _hriLines(String? data) {
     if (data == null || data.isEmpty) return 0;
-    final cpl = math.max(8, (cellWidthMm / _hriCharMm).floor());
-    return math.max(1, (data.length / cpl).ceil());
+    final cpl = math.max(8, (cellWidthMm / hriCharMm).floor());
+    return math.max(1, (data.length / cpl).ceil()) + 1;
   }
 
   // MultiPage flows on the tallest cell in each row and serials vary in length
@@ -210,13 +221,20 @@ class Batch {
   int get _maxOneDLines =>
       hasOneD ? items.fold(0, (m, it) => math.max(m, _hriLines(it.oneDData))) : 0;
 
+  /// Wrapped-HRI line count for the 2D/1D band — exposed so preview_pane.dart
+  /// can size the on-screen caption block to match cellHeightMm exactly.
+  int get maxTwoDLines => _maxTwoDLines;
+  int get maxOneDLines => _maxOneDLines;
+
   double get cellHeightMm {
     final twoH = twoDSize?.outer.heightMm ?? 0;
     final oneH = oneDSize?.outer.heightMm ?? 0;
     // Mirror batch_pdf.dart's per-band gaps exactly: 2 mm before the 2D HRI;
     // 4 mm before the 1D code and 2 mm before its HRI.
-    final twoCap = hasTwoD ? 2 + _maxTwoDLines * _hriLineMm : 0.0;
-    final oneCap = hasOneD ? 4 + 2 + _maxOneDLines * _hriLineMm : 0.0;
+    final twoCap = hasTwoD ? gapBeforeTwoDHriMm + _maxTwoDLines * hriLineMm : 0.0;
+    final oneCap = hasOneD
+        ? gapBeforeOneDMm + gapBeforeOneDHriMm + _maxOneDLines * hriLineMm
+        : 0.0;
     return twoH + twoCap + oneH + oneCap;
   }
 

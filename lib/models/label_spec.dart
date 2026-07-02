@@ -12,6 +12,7 @@
 // UI / export layers.
 import 'dart:math' as math;
 
+import '../sizing/pdf417_capacity.dart';
 import '../sizing/sizer.dart';
 import 'data_source.dart';
 import 'encode_config.dart';
@@ -162,12 +163,14 @@ class LabelSpec {
   required double dpi,
   required double xDimensionMm,
   required double barHeightMm,
+  Pdf417EcLevel pdf417EcLevel = Pdf417EcLevel.level2,
 }) {
   try {
     final s = Sizer.compute(EncodeConfig(
       symbology: symbology,
       data: data,
       ecLevel: ecLevel,
+      pdf417EcLevel: pdf417EcLevel,
       dpi: dpi,
       xDimensionMm: xDimensionMm,
       barHeightMm: barHeightMm,
@@ -179,11 +182,26 @@ class LabelSpec {
   }
 }
 
+/// True if [spec]'s twoD/oneD rects currently sit side by side (similar y,
+/// separated in x) rather than stacked (2D above 1D). Used to detect a stale
+/// layout after switching the 2D symbology to/from PDF417, which forces
+/// vertical stacking — derived from the live rects rather than tracked state,
+/// so it catches the mismatch regardless of which surface last touched them.
+bool labelLayoutIsSideBySide(LabelSpec spec) {
+  final a = spec.rects['twoD'], b = spec.rects['oneD'];
+  if (a == null || b == null) return false;
+  final vOverlap = math.min(a.y + a.h, b.y + b.h) - math.max(a.y, b.y);
+  return vOverlap > math.min(a.h, b.h) * 0.5;
+}
+
 /// Default arrangement: title across the top, 2D lower-left, 1D lower-right,
 /// shared HRI spanning the bottom. Fills [spec.rects]. [n2]/[n1] are the
-/// natural sizes of the enabled symbols (null = element absent).
+/// natural sizes of the enabled symbols (null = element absent). [stacked2D]
+/// forces the 2D element above the 1D (PDF417 is too wide to sit side by
+/// side with a 1D code — mirrors CombinedLabel.fromSgtin's forced stacking).
 void autoArrangeLabel(
-    LabelSpec spec, ({double w, double h})? n2, ({double w, double h})? n1) {
+    LabelSpec spec, ({double w, double h})? n2, ({double w, double h})? n1,
+    {bool stacked2D = false}) {
   spec.rects.clear();
   final p = math.min(4.0, math.max(1.5, spec.wMm * 0.04));
   final titleFont = (spec.hMm * 0.09).clamp(2.2, 4.2);
@@ -200,6 +218,30 @@ void autoArrangeLabel(
   final bottom = spec.hMm - p - (hriH > 0 ? hriH + p * 0.4 : 0);
   final bandH = math.max(4.0, bottom - top);
   final gap = p;
+  final availW = spec.wMm - 2 * p;
+  if (stacked2D && n2 != null && n1 != null) {
+    final halfH = (bandH - gap) / 2;
+    var w2 = n2.w * (halfH / n2.h), h2 = halfH;
+    if (w2 > availW) {
+      final k = availW / w2;
+      w2 *= k;
+      h2 *= k;
+    }
+    var w1 = n1.w * (halfH / n1.h), h1 = halfH;
+    if (w1 > availW) {
+      final k = availW / w1;
+      w1 *= k;
+      h1 *= k;
+    }
+    final y0 = top + (bandH - (h2 + h1 + gap)) / 2;
+    spec.rects['twoD'] = ElRect(p + (availW - w2) / 2, y0, w2, h2);
+    spec.rects['oneD'] = ElRect(p + (availW - w1) / 2, y0 + h2 + gap, w1, h1);
+    if (spec.hriOn) {
+      spec.rects['hri'] =
+          ElRect(p, spec.hMm - p - hriH, spec.wMm - 2 * p, hriH);
+    }
+    return;
+  }
   double w2 = 0, h2 = 0, w1 = 0, h1 = 0;
   if (n2 != null) {
     final k = bandH / n2.h;
@@ -211,7 +253,6 @@ void autoArrangeLabel(
     w1 = n1.w * k;
     h1 = bandH;
   }
-  final availW = spec.wMm - 2 * p;
   final totalW = w2 + w1 + ((n2 != null && n1 != null) ? gap : 0);
   if (totalW > availW && totalW > 0) {
     final k = availW / totalW;

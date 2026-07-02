@@ -6,6 +6,6 @@
 
 /// Single source of truth for the app's displayed version.
 /// Keep in sync with `version:` in pubspec.yaml.
-const String kAppVersion = '1.6.0';
-const String kBuildDate = '2026-06-17';
+const String kAppVersion = '1.7.1';
+const String kBuildDate = '2026-07-01';
 const String kVersionLabel = 'Version $kAppVersion · $kBuildDate';
